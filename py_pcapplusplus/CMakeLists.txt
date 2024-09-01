@@ -3,7 +3,13 @@ project(py_pcapplusplus)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/x86_64/install")
+if(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+	set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/x86_64/install")
+elseif(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "aarch64")
+	set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/aarch64/install")
+else()
+	message(FATAL_ERROR "unsupported processor ${CMAKE_HOST_SYSTEM_PROCESSOR}")
+endif()
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(PcapPlusPlus REQUIRED)
 

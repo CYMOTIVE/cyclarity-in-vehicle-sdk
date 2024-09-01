@@ -1,0 +1,10 @@
+prefix="/home/pi/projects/gal/PcapPlusPlus/aarch64/install"
+libdir="${prefix}/lib"
+includedir="${prefix}/include"
+
+Name: PcapPlusPlus
+Description: PcapPlusPlus is a multiplatform C++ library for capturing, parsing and crafting of network packets.
+URL: https://pcapplusplus.github.io/
+Version: 23.09+
+Cflags: -I${includedir}/pcapplusplus
+Libs:  -L${libdir} -lPcap++ -lPacket++ -lCommon++ -lpcap -lpthread
