@@ -3,6 +3,7 @@ project(py_pcapplusplus)
 
 set(CMAKE_CXX_STANDARD 14)
 
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/x86_64/install")
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(PcapPlusPlus REQUIRED)
 
