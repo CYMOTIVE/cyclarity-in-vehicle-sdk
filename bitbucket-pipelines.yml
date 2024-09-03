@@ -13,6 +13,8 @@ pipelines:
           caches:
             - pip
           script:
+            - mkdir -p ~/.pip  
+            - echo -e "[global]\nindex-url = https://pypi.org/simple" > ~/.pip/pip.conf
             - pip install --upgrade pip
             - pip install pytest
             - pip install -e .
