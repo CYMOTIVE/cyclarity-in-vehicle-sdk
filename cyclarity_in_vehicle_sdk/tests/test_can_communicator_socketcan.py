@@ -1,16 +1,16 @@
 from unittest import mock, TestCase
 
 import pytest
-from cyclarity_in_vehicle_sdk.communication.can.base.can_communicator_base import Message
+from cyclarity_in_vehicle_sdk.communication.can.base.can_communicator_base import CanMessage
 from cyclarity_in_vehicle_sdk.communication.can.impl.can_communicator_socketcan import CanCommunicatorSocketCan
 
-test_m1 = Message(
+test_m1 = CanMessage(
         arbitration_id=0x401,
         data=[0x44, 0x44, 0x44, 0x44, 0x44, 0x44],
         is_extended_id=False,
 )  
 
-test_m2 = Message(
+test_m2 = CanMessage(
     arbitration_id=0x404,
     data=[0x55, 0x55, 0x55, 0x55, 0x55, 0x55],
     is_extended_id=True,

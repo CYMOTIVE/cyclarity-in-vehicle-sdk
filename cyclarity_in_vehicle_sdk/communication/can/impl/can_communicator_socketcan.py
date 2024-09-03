@@ -1,7 +1,7 @@
 import time
 from types import TracebackType
 from pydantic import Field
-from cyclarity_in_vehicle_sdk.communication.can.base.can_communicator_base import CanCommunicatorBase, Message, BusABC
+from cyclarity_in_vehicle_sdk.communication.can.base.can_communicator_base import CanCommunicatorBase, CanMessage, BusABC
 from can.interfaces.socketcan import SocketcanBus
 from typing import Optional, Sequence, Type, Union
 
@@ -28,13 +28,13 @@ class CanCommunicatorSocketCan(CanCommunicatorBase):
         self.close()
         return False
 
-    def send(self, can_msg: Message, timeout: Optional[float] = None):
+    def send(self, can_msg: CanMessage, timeout: Optional[float] = None):
         if not hasattr(self, "bus"):
             raise RuntimeError("CanCommunicatorSocketCan has not been opened")
         
         self.bus.send(msg=can_msg, timeout=timeout)
     
-    def send_periodically(self, msgs:      Union[Message, Sequence[Message]],
+    def send_periodically(self, msgs:      Union[CanMessage, Sequence[CanMessage]],
              period:    float,
              duration:  Optional[float] = None):
         if not hasattr(self, "bus"):
@@ -42,7 +42,7 @@ class CanCommunicatorSocketCan(CanCommunicatorBase):
         
         self.bus.send_periodic(msgs=msgs, period=period, duration=duration)
     
-    def receive(self, timeout: Optional[float] = None) -> Optional[Message]:
+    def receive(self, timeout: Optional[float] = None) -> Optional[CanMessage]:
         if not hasattr(self, "bus"):
             raise RuntimeError("CanCommunicatorSocketCan has not been opened")
 
@@ -63,11 +63,11 @@ class CanCommunicatorSocketCan(CanCommunicatorBase):
             time_past = time.time() - start_time
         return ret_msg
         
-    def sniff(self, sniff_time: float) -> Optional[list[Message]]:
+    def sniff(self, sniff_time: float) -> Optional[list[CanMessage]]:
         if not hasattr(self, "bus"):
             raise RuntimeError("CanCommunicatorSocketCan has not been opened")
         
-        ret_msgs: list[Message] = []
+        ret_msgs: list[CanMessage] = []
         start_time = time.time()
         time_passed = 0
         while time_passed < sniff_time:

@@ -4,7 +4,7 @@ from typing import Optional, Sequence, Type, TypeAlias, Union
 import can
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 
-Message: TypeAlias = can.Message
+CanMessage: TypeAlias = can.Message
 BusABC: TypeAlias = can.BusABC
 
 class CanCommunicatorBase(ParsableModel):
@@ -23,50 +23,50 @@ class CanCommunicatorBase(ParsableModel):
         raise NotImplementedError
 
     @abstractmethod
-    def send(self, can_msg: Message, timeout: Optional[float] = None):
+    def send(self, can_msg: CanMessage, timeout: Optional[float] = None):
         """sends CAN message over the channel
 
         Args:
-            can_msg (Message): CAN message in the python-can format `Message`
+            can_msg (CanMessage): CAN message in the python-can format `CanMessage`
             timeout (Optional[float], optional): time out in seconds. Defaults to None.
         """
         raise NotImplementedError
     
     @abstractmethod
     def send_periodically(self, 
-                          msgs:      Union[Message, Sequence[Message]],
+                          msgs:      Union[CanMessage, Sequence[CanMessage]],
                           period:    float,
                           duration:  Optional[float] = None):
         """Send periodically CAN message(s)
 
         Args:
-            msgs (Union[Message, Sequence[Message]]): single message or sequence of messages to be sent periodically
+            msgs (Union[CanMessage, Sequence[CanMessage]]): single message or sequence of messages to be sent periodically
             period (float): time period in seconds between sending of the message(s)
             duration (Optional[float], optional): duration time in seconds tp be sending the message(s) periodically. None means indefinitely.
         """
         raise NotImplementedError
     
     @abstractmethod
-    def receive(self, timeout: Optional[float] = None) -> Optional[Message]:
+    def receive(self, timeout: Optional[float] = None) -> Optional[CanMessage]:
         """receive a CAN message over the channel
 
         Args:
             timeout (Optional[float], optional): timeout in seconds to try and receive. None means indefinably.
 
         Returns:
-            Optional[Message]: CAN message if a message was received, None otherwise.
+            Optional[CanMessage]: CAN message if a message was received, None otherwise.
         """
         raise NotImplementedError
     
     @abstractmethod
-    def sniff(self, sniff_time: float) -> Optional[list[Message]]:
+    def sniff(self, sniff_time: float) -> Optional[list[CanMessage]]:
         """sniff CAN messages from the channel for specific time
 
         Args:
             sniff_time (float): time in seconds to be sniffing the channel
 
         Returns:
-            Optional[list[Message]]: list of CAN messages sniffed, None if none was sniffed
+            Optional[list[CanMessage]]: list of CAN messages sniffed, None if none was sniffed
         """
         raise NotImplementedError
     
