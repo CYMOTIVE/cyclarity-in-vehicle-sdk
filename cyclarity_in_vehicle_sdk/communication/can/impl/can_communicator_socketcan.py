@@ -45,7 +45,14 @@ class CanCommunicatorSocketCan(CanCommunicatorBase):
     def receive(self, timeout: Optional[float] = None) -> Optional[Message]:
         if not hasattr(self, "bus"):
             raise RuntimeError("CanCommunicatorSocketCan has not been opened")
-        
+
+        if not timeout:
+            ret_msg = self.bus.recv()
+            if ret_msg and ret_msg.arbitration_id not in self.blacklist_ids:
+                return ret_msg
+            else:
+                return None
+            
         ret_msg = None
         time_past = 0.0
         start_time = time.time()

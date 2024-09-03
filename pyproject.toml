@@ -18,6 +18,8 @@ can-isotp = "^2.0.6"
 udsoncan = "^1.23.1"
 py_pcapplusplus = {path = "./py_pcapplusplus"}
 cmake = "^3.30.2"
+pytest = "^8.3.2"
+python-can = "^4.4.2"
 
 
 [build-system]

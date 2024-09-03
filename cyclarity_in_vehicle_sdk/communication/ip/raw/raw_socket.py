@@ -3,7 +3,7 @@ import asyncio
 from typing import Callable, Optional
 from enum import Enum
 
-from clarity.communicator.communicator_base import RawSocketCommunicatorBase
+from cyclarity_in_vehicle_sdk.communication.ip.base.raw_socket_base import RawSocketCommunicatorBase
 from pydantic import Field
 from py_pcapplusplus import RawSocket, Packet, IPv4Layer, IPv6Layer, LayerType
 

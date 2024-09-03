@@ -11,7 +11,7 @@ import udsoncan.services.WriteDataByIdentifier
 
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
-from protocol.uds.base.uds_utils_base import NegativeResponse, NoResponse, RoutingControlResponseData, SessionControlResultData, UdsUtilsBase, InvalidResponse
+from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import NegativeResponse, NoResponse, RoutingControlResponseData, SessionControlResultData, UdsUtilsBase, InvalidResponse
 
 DEFAULT_UDS_OPERATION_TIMEOUT = 2
 

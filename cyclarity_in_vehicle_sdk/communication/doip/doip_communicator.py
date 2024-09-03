@@ -1,7 +1,7 @@
 from typing import Optional
 from cyclarity_in_vehicle_sdk.communication.base.communicator_base import CommunicatorBase, CommunicatorType
 from cyclarity_in_vehicle_sdk.communication.ip.tcp.tcp import TcpCommunicator
-from protocol.doip.impl.doip_utils import DoipUtils, RoutingActivationResponse
+from cyclarity_in_vehicle_sdk.protocol.doip.impl.doip_utils import DoipUtils, RoutingActivationResponse
 
 class DoipCommunicator(CommunicatorBase):
     tcp_communicator: TcpCommunicator

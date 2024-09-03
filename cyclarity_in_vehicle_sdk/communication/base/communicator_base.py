@@ -20,7 +20,7 @@ class CommunicatorBase(ParsableModel):
 
         Args:
             data (bytes): data to send in bytes format
-            timeout: timeout in seconds for send operation
+            timeout (Optional[float]): timeout in seconds for send operation. defaults to None
 
         Returns:
             int: amount of bytes sent

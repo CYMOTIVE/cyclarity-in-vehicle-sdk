@@ -1,3 +1,4 @@
+from enum import IntEnum
 from functools import partial
 import time
 from typing import Optional, Type, TypeAlias
@@ -13,6 +14,11 @@ from cyclarity_in_vehicle_sdk.communication.ip.tcp.tcp import TcpCommunicator
 from py_pcapplusplus import IPv4Layer, IPv6Layer, PayloadLayer, Packet, TcpLayer, UdpLayer, LayerType
 
 DOIP_PORT = 13400
+
+class DoipProtocolVersion(IntEnum):
+    DoIP_13400_2010 = 0x01
+    DoIP_13400_2012 = 0x02
+    DoIP_13400_2019 = 0x03
 
 # type aliases
 VehicleIdentificationResponse: TypeAlias = messages.VehicleIdentificationResponse
@@ -44,7 +50,13 @@ class DoipUtils(ParsableModel):
             tcp_con.close()
         return True
     
-    def initiate_vehicle_identity_req(self, source_address: IPvAnyAddress, source_port: int, target_address: IPvAnyAddress, protocol_version: int = 0x02, eid: bytes = None, vin: str = None) -> VehicleIdentificationResponse:
+    def initiate_vehicle_identity_req(self, 
+                                      source_address: IPvAnyAddress, 
+                                      source_port: int, 
+                                      target_address: IPvAnyAddress, 
+                                      protocol_version: DoipProtocolVersion = DoipProtocolVersion.DoIP_13400_2012, 
+                                      eid: bytes = None, 
+                                      vin: str = None) -> VehicleIdentificationResponse:
         if eid:
             message = messages.VehicleIdentificationRequestWithEID(eid)
         elif vin:
@@ -52,7 +64,10 @@ class DoipUtils(ParsableModel):
         else:
             message = messages.VehicleIdentificationRequest()
 
-        is_answer_cb = partial(DoipUtils._is_answer, expected_source_port=source_port, l4_type=LayerType.UdpLayer, expected_resp_type=messages.VehicleIdentificationResponse)
+        is_answer_cb = partial(DoipUtils._is_answer, 
+                               expected_source_port=source_port, 
+                               l4_type=LayerType.UdpLayer, 
+                               expected_resp_type=messages.VehicleIdentificationResponse)
 
         doip_layer_data = self._pack_doip_message(message, protocol_version)
         packet = Packet()
@@ -87,7 +102,7 @@ class DoipUtils(ParsableModel):
                                         client_logical_address: int,
                                         timeout: float = constants.A_PROCESSING_TIME,
                                         activation_type: ActivationType = ActivationType.Default,
-                                        protocol_version: int = 0x02,
+                                        protocol_version: DoipProtocolVersion = DoipProtocolVersion.DoIP_13400_2012,
                                         vm_specific: int = None) -> Optional[RoutingActivationResponse]:
         
         
@@ -105,7 +120,7 @@ class DoipUtils(ParsableModel):
                                               client_logical_address: int,
                                               timeout: float = constants.A_PROCESSING_TIME,
                                               activation_type: ActivationType = ActivationType.Default,
-                                              protocol_version: int = 0x02,
+                                              protocol_version: DoipProtocolVersion = DoipProtocolVersion.DoIP_13400_2012,
                                               vm_specific: int = None) -> Optional[RoutingActivationResponse]:
         
         message = messages.RoutingActivationRequest(
@@ -118,8 +133,15 @@ class DoipUtils(ParsableModel):
             return response
         return None
 
-    def req_entity_status(self, source_address: IPvAnyAddress, source_port: int, target_address: IPvAnyAddress, protocol_version: int = 0x02) -> EntityStatusResponse:
-        is_answer_cb = partial(DoipUtils._is_answer, expected_source_port=source_port, l4_type=LayerType.UdpLayer, expected_resp_type=messages.EntityStatusResponse)
+    def req_entity_status(self, 
+                          source_address: IPvAnyAddress, 
+                          source_port: int, 
+                          target_address: IPvAnyAddress, 
+                          protocol_version: DoipProtocolVersion = DoipProtocolVersion.DoIP_13400_2012) -> EntityStatusResponse:
+        is_answer_cb = partial(DoipUtils._is_answer, 
+                               expected_source_port=source_port, 
+                               l4_type=LayerType.UdpLayer, 
+                               expected_resp_type=messages.EntityStatusResponse)
 
         message = messages.DoipEntityStatusRequest()
         doip_layer_data = self._pack_doip_message(message, protocol_version)
@@ -165,7 +187,7 @@ class DoipUtils(ParsableModel):
         return None
 
     @staticmethod
-    def _pack_doip_message(message: messages.DoIPMessage, protocol_version: int = 0x02) -> bytes:
+    def _pack_doip_message(message: messages.DoIPMessage, protocol_version: DoipProtocolVersion = DoipProtocolVersion.DoIP_13400_2012,) -> bytes:
         payload_data = message.pack()
         payload_type = messages.payload_message_to_type[type(message)]
 
@@ -201,10 +223,13 @@ class DoipUtils(ParsableModel):
             tcp_layer: TcpLayer = other.get_layer(LayerType.TcpLayer)
             if tcp_layer:
                 received_dst_port = tcp_layer.dst_port
-        else:
+        elif l4_type == LayerType.UdpLayer:
             udp_layer: UdpLayer = other.get_layer(LayerType.UdpLayer)
             if udp_layer:
                 received_dst_port = udp_layer.dst_port
+        else:
+            raise RuntimeError(f"Unsupported layer 4 type received: {l4_type}, expected TCP/UDP")
+        
         if received_dst_port and received_dst_port == expected_source_port and payload_layer:
             parser = Parser()
             result = parser.read_message(bytes(payload_layer))
