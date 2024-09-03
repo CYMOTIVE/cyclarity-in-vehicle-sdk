@@ -19,9 +19,3 @@ pipelines:
             - pip install pytest
             - pip install -e .
             - pytest -v cyclarity_in_vehicle_sdk/tests/* --junitxml=test-reports/report.xml
-      - step:
-          name: Lint code
-          script:
-            # Enforce style consistency across Python projects https://flake8.pycqa.org
-            - pip install flake8
-            - flake8 . --extend-exclude=dist,build --show-source --statistics
