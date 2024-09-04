@@ -3,7 +3,9 @@
 #  This template allows you to validate your python code.
 #  The workflow allows running tests and code linting on the default branch.
 
-image: galr2103/cyclarity-in-vehicle:buildx-latest
+image: 
+  name: galr2103/cyclarity-in-vehicle:buildx-latest
+  run-as-user: 0
 
 steps:
   - step: &build-and-test
