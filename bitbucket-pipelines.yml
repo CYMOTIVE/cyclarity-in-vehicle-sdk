@@ -12,21 +12,17 @@ script:
   fi
 
 pipelines:
-  default:
-    steps:
-      - step:
-          name: Test
-          caches:
-            - pip
-          script:
-            - *uninstall_sdk
-            - mkdir -p ~/.pip  
-            - echo -e "[global]\nindex-url = https://pypi.org/simple" > ~/.pip/pip.conf
-            - pip install --upgrade pip
-            - pip install pytest
-            - pip install -e .
-            - pytest -v cyclarity_in_vehicle_sdk/tests/* --junitxml=test-reports/report.xml
   custom:
+    Build and test:
+      -script:
+        - *uninstall_sdk
+        - mkdir -p ~/.pip  
+        - echo -e "[global]\nindex-url = https://pypi.org/simple" > ~/.pip/pip.conf
+        - pip install --upgrade pip
+        - pip install pytest
+        - pip install -e .
+        - pytest -v cyclarity_in_vehicle_sdk/tests/* --junitxml=test-reports/report.xml
+
     Doploy to PyPI:
       -script: 
       - *uninstall_sdk
