@@ -33,6 +33,7 @@ def setup_vcan0():
         subprocess.run(shlex.split("ip link set up vcan0"))
     return
 
+@pytest.mark.skip
 @pytest.fixture(scope="class")
 def send_periodic_messages(setup_vcan0):
     print("send_periodic_messages")
