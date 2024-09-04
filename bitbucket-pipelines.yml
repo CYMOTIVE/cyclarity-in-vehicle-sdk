@@ -5,17 +5,11 @@
 
 image: galr2103/cyclarity-in-vehicle:buildx-latest
 
-script:
-- &uninstall_sdk >
-  if pip show cyclarity-in-vehicle-sdk 1>/dev/null; then
-    pip uninstall -y cyclarity-in-vehicle-sdk
-  fi
-
 pipelines:
   custom:
     Build and test:
       -script:
-        - *uninstall_sdk
+        - sh ./scripts/uninstall_sdk.sh
         - mkdir -p ~/.pip  
         - echo -e "[global]\nindex-url = https://pypi.org/simple" > ~/.pip/pip.conf
         - pip install --upgrade pip
@@ -25,5 +19,5 @@ pipelines:
 
     Doploy to PyPI:
       -script: 
-      - *uninstall_sdk
+      - sh ./scripts/uninstall_sdk.sh
       - sh ./scripts/pipeline_deploy_pypi.sh
