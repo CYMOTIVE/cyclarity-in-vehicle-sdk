@@ -7,21 +7,21 @@ image: galr2103/cyclarity-in-vehicle:buildx-latest
 
 steps:
   - step: &build-and-test
-    name: Build and test cyclarity-in-vehicle-sdk
-    script:
-      - sh ./scripts/uninstall_sdk.sh
-      - mkdir -p ~/.pip  
-      - echo -e "[global]\nindex-url = https://pypi.org/simple" > ~/.pip/pip.conf
-      - pip install --upgrade pip
-      - pip install pytest
-      - pip install -e .
-      - pytest -v cyclarity_in_vehicle_sdk/tests/* --junitxml=test-reports/report.xml
+        name: Build and test cyclarity-in-vehicle-sdk
+        script:
+          - sh ./scripts/uninstall_sdk.sh
+          - mkdir -p ~/.pip  
+          - echo -e "[global]\nindex-url = https://pypi.org/simple" > ~/.pip/pip.conf
+          - pip install --upgrade pip
+          - pip install pytest
+          - pip install -e .
+          - pytest -v cyclarity_in_vehicle_sdk/tests/* --junitxml=test-reports/report.xml
 
   - step: &deploy-pypi
-    name: Doploy cyclarity-in-vehicle-sdk to PyPI
-    script:
-      - sh ./scripts/uninstall_sdk.sh
-      - sh ./scripts/pipeline_deploy_pypi.sh
+        name: Doploy cyclarity-in-vehicle-sdk to PyPI
+        script:
+          - sh ./scripts/uninstall_sdk.sh
+          - sh ./scripts/pipeline_deploy_pypi.sh
 
 pipelines:
   custom:
