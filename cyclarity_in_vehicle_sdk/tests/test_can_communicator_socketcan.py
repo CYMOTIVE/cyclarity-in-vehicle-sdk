@@ -33,7 +33,6 @@ def setup_vcan0():
         subprocess.run(shlex.split("ip link set up vcan0"))
     return
 
-@pytest.mark.skip
 @pytest.fixture(scope="class")
 def send_periodic_messages(setup_vcan0):
     print("send_periodic_messages")
@@ -42,6 +41,7 @@ def send_periodic_messages(setup_vcan0):
         can_comm.send_periodically(test_m2, 0.1, 4)
         yield
 
+@pytest.mark.skip
 @pytest.mark.usefixtures("send_periodic_messages")
 class TestCanCommunicatorSocketCan(TestCase):
     def setUp(self) -> None:

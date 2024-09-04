@@ -29,4 +29,5 @@ pipelines:
       - step: *build-and-test
 
     Doploy to PyPI:
+      - step: *build-and-test
       - step: *deploy-pypi
