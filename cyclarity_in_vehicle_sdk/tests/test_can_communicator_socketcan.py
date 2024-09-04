@@ -18,9 +18,8 @@ test_m2 = CanMessage(
     is_extended_id=True,
 )
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="class", autouse=True)
 def setup_vcan0():
-    print("setup_vcan0")
     try:  
         output = subprocess.check_output('ip link show ' + "vcan0", shell=True)  
         if output:  
@@ -35,7 +34,6 @@ def setup_vcan0():
 
 @pytest.fixture(scope="class")
 def send_periodic_messages(setup_vcan0):
-    print("send_periodic_messages")
     with CanCommunicatorSocketCan(channel="vcan0", support_fd=True) as can_comm:
         can_comm.send_periodically(test_m1, 0.1, 4)
         can_comm.send_periodically(test_m2, 0.1, 4)
