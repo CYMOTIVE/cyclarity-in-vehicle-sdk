@@ -1,3 +1,5 @@
+import shlex
+import subprocess
 from unittest import mock, TestCase
 
 import pytest
@@ -22,8 +24,22 @@ def send_periodic_messages():
         can_comm.send_periodically(test_m1, 0.1, 4)
         can_comm.send_periodically(test_m2, 0.1, 4)
         yield
-    
 
+@pytest.fixture
+def setup_vcan0():
+    try:  
+        output = subprocess.check_output('ip link show ' + "vcan0", shell=True)  
+        if output:  
+            print("Interface exists.")  
+    except subprocess.CalledProcessError:  
+        print("Interface does not exist.")  
+        # Setup VCAN0
+        subprocess.run(shlex.split("ip link add dev vcan0 type vcan"))
+        subprocess.run(shlex.split("ip link set vcan0 mtu 16"))
+        subprocess.run(shlex.split("ip link set up vcan0"))
+    yield
+
+@pytest.mark.usefixtures("setup_vcan0")
 @pytest.mark.usefixtures("send_periodic_messages")
 class TestCanCommunicatorSocketCan(TestCase):
     def setUp(self) -> None:
@@ -46,7 +62,8 @@ class TestCanCommunicatorSocketCan(TestCase):
     ):  
         msgs = self.can_comm.sniff(sniff_time=0.5)
         self.assertIsNotNone(msgs)
-        sniffed_ids = {msg.arbitration_id for msg in msgs}
+        sniffed_ids = set()
+        {sniffed_ids.add(msg.arbitration_id) for msg in msgs}
         self.assertEqual(len(sniffed_ids), 2)
         self.assertIn(test_m1.arbitration_id, sniffed_ids)
         self.assertIn(test_m2.arbitration_id, sniffed_ids)
@@ -57,7 +74,8 @@ class TestCanCommunicatorSocketCan(TestCase):
         self.can_comm.add_to_blacklist(canids=[test_m1.arbitration_id])
         msgs = self.can_comm.sniff(sniff_time=0.5)
         self.assertIsNotNone(msgs)
-        sniffed_ids = {msg.arbitration_id for msg in msgs}
+        sniffed_ids = set()
+        {sniffed_ids.add(msg.arbitration_id) for msg in msgs}
         self.assertEqual(len(sniffed_ids), 1)
         self.assertNotIn(test_m1.arbitration_id, sniffed_ids)
         self.assertIn(test_m2.arbitration_id, sniffed_ids)
