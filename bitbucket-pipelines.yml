@@ -28,5 +28,6 @@ pipelines:
             - pytest -v cyclarity_in_vehicle_sdk/tests/* --junitxml=test-reports/report.xml
   custom:
     Doploy to PyPI:
-      -step: *uninstall_sdk
-      -step: sh ./scripts/pipeline_deploy_pypi.sh
+      -script: 
+      - *uninstall_sdk
+      - sh ./scripts/pipeline_deploy_pypi.sh
