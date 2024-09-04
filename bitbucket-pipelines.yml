@@ -3,19 +3,30 @@
 #  This template allows you to validate your python code.
 #  The workflow allows running tests and code linting on the default branch.
 
-image: python:3.10
+image: galr2103/cyclarity-in-vehicle:buildx-latest
+
+script:
+- &uninstall_sdk >
+  if pip show cyclarity-in-vehicle-sdk 1>/dev/null; then
+    pip uninstall -y cyclarity-in-vehicle-sdk
+  fi
 
 pipelines:
   default:
-    - parallel:
+    steps:
       - step:
           name: Test
           caches:
             - pip
           script:
+            - *uninstall_sdk
             - mkdir -p ~/.pip  
             - echo -e "[global]\nindex-url = https://pypi.org/simple" > ~/.pip/pip.conf
             - pip install --upgrade pip
             - pip install pytest
             - pip install -e .
             - pytest -v cyclarity_in_vehicle_sdk/tests/* --junitxml=test-reports/report.xml
+  custom:
+    Doploy to PyPI:
+      -step: *uninstall_sdk
+      -step: sh ./scripts/pipeline_deploy_pypi.sh
