@@ -102,5 +102,5 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
         return found_packet
                 
     def receive(self, timeout: float = 2) -> Optional[Packet]:
-        return self.in_socket.receive_packet(blocking=False, timeout=timeout)
+        return self.in_socket.receive_packet(blocking=True, timeout=timeout)
     
