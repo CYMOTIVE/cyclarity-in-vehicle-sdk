@@ -32,6 +32,4 @@ The In-Vehicle SDK package includes the following interfaces and implementations
 ## Installation  
   
 You can install the In-Vehicle SDK package using pip:  
-  
-```bash  
-pip install cyclarity-in-vehicle-sdk  
+`pip install cyclarity-in-vehicle-sdk`
