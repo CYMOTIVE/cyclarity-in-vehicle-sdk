@@ -3,6 +3,13 @@ set -e
 
 export PYPI_TOKEN
 
+if [ "$BITBUCKET_BRANCH"  = "release" ]; then
+    echo "The branch is release, releasing new version"
+else
+    echo "Releasing a prerelease version"
+    poetry version prerelease
+fi
+
 poetry install
 poetry build
 poetry config pypi-token.pypi $PYPI_TOKEN
