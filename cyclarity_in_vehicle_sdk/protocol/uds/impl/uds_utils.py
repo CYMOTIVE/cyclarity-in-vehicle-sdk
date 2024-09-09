@@ -1,21 +1,18 @@
 from typing import Any, Callable, Optional, Union
-import udsoncan.Request
-import udsoncan.services
-from udsoncan.Response import Response
-import udsoncan.services.ECUReset
-import udsoncan.services.ReadDataByIdentifier
-import udsoncan.services.RoutineControl
-import udsoncan.services.SecurityAccess
-import udsoncan.services.TesterPresent
-import udsoncan.services.WriteDataByIdentifier
-
-from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
+from udsoncan.BaseService import BaseService
+from udsoncan.Request import Request
+from udsoncan.services import ECUReset, ReadDataByIdentifier, RoutineControl, SecurityAccess, TesterPresent, WriteDataByIdentifier, DiagnosticSessionControl
+from udsoncan.common.DidCodec import DidCodec
+from udsoncan import latest_standard
+from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import UdsSid, NegativeResponse, NoResponse, RoutingControlResponseData, SessionControlResultData, UdsUtilsBase, InvalidResponse, RawUdsResponse
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
-from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import NegativeResponse, NoResponse, RoutingControlResponseData, SessionControlResultData, UdsUtilsBase, InvalidResponse
+from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
 
 DEFAULT_UDS_OPERATION_TIMEOUT = 2
+RAW_SERVICES_WITH_SUB_FUNC = {value: type(name, (BaseService,), {'_sid':value, '_use_subfunction':True}) for name, value in UdsSid.__members__.items()}  
+RAW_SERVICES_WITHOUT_SUB_FUNC = {value: type(name, (BaseService,), {'_sid':value, '_use_subfunction':False}) for name, value in UdsSid.__members__.items()}  
 
-class MyAsciiCodec(udsoncan.DidCodec):
+class MyAsciiCodec(DidCodec):
     def __init__(self):
         pass
 
@@ -29,8 +26,7 @@ class MyAsciiCodec(udsoncan.DidCodec):
         return string_bin.hex()
 
     def __len__(self) -> int:
-        raise udsoncan.DidCodec.ReadAllRemainingData
-
+        raise DidCodec.ReadAllRemainingData
 
 class UdsUtils(UdsUtilsBase):
     data_link_layer: Union[IsoTpCommunicator, DoipCommunicator]
@@ -45,7 +41,7 @@ class UdsUtils(UdsUtilsBase):
         """
         self.data_link_layer.close()
     
-    def session(self, session: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, standard_version: int = udsoncan.latest_standard) -> SessionControlResultData:
+    def session(self, session: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, standard_version: int = latest_standard) -> SessionControlResultData:
         """	Diagnostic Session Control
 
         Args:
@@ -53,6 +49,7 @@ class UdsUtils(UdsUtilsBase):
             session (int): session to switch into
             standard_version (int, optional): the version of the UDS standard we are interacting with. Defaults to udsoncan.latest_standard (2020).
             
+        :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
@@ -61,9 +58,9 @@ class UdsUtils(UdsUtilsBase):
         Returns:
             SessionControlResultData
         """
-        request = udsoncan.services.DiagnosticSessionControl.make_request(session=session)
+        request = DiagnosticSessionControl.make_request(session=session)
         response = self._send_and_read_response(request=request, timeout=timeout)   
-        interpreted_response = udsoncan.services.DiagnosticSessionControl.interpret_response(response=response, standard_version=standard_version)
+        interpreted_response = DiagnosticSessionControl.interpret_response(response=response, standard_version=standard_version)
         return interpreted_response.service_data
     
     def ecu_reset(self, reset_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
@@ -73,6 +70,7 @@ class UdsUtils(UdsUtilsBase):
             timeout (float): timeout for the UDS operation in seconds
             reset_type (int): type of the reset (1: hard reset, 2: key Off-On Reset, 3: Soft Reset, .. more manufacture specific types may be supported)
 
+        :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
@@ -81,9 +79,9 @@ class UdsUtils(UdsUtilsBase):
         Returns:
             bool: True if ECU request was accepted, False otherwise.
         """
-        request = udsoncan.services.ECUReset.make_request(reset_type=reset_type)
+        request = ECUReset.make_request(reset_type=reset_type)
         response = self._send_and_read_response(request=request, timeout=timeout)
-        interpreted_response = udsoncan.services.ECUReset.interpret_response(response=response)
+        interpreted_response = ECUReset.interpret_response(response=response)
         return interpreted_response.service_data.reset_type_echo == reset_type
 
     def read_did(self, didlist: Union[int, list[int]], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> dict[int, str]:
@@ -93,6 +91,7 @@ class UdsUtils(UdsUtilsBase):
             timeout (float): timeout for the UDS operation in seconds
             didlist (Union[int, list[int]]): List of data identifier to read.
 
+        :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
@@ -101,11 +100,11 @@ class UdsUtils(UdsUtilsBase):
         Returns:
             dict[int, str]: Dictionary mapping the DID (int) with the value returned
         """
-        request = udsoncan.services.ReadDataByIdentifier.make_request(didlist=didlist, didconfig=None)
+        request = ReadDataByIdentifier.make_request(didlist=didlist, didconfig=None)
         response = self._send_and_read_response(request=request, timeout=timeout)
         # attach MyAsciiCodec for every did provided
         didconfig =  {item: MyAsciiCodec() for item in ([didlist] if isinstance(didlist, int) else didlist)}
-        interpreted_response = udsoncan.services.ReadDataByIdentifier.interpret_response(response=response, didlist=didlist, didconfig=didconfig)
+        interpreted_response = ReadDataByIdentifier.interpret_response(response=response, didlist=didlist, didconfig=didconfig)
         return self._split_dids(didlist=didlist, data_hex=list(interpreted_response.service_data.values.values())[0])
 
     def routing_control(self, routine_id: int, control_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, data: Optional[bytes] = None) -> RoutingControlResponseData:
@@ -117,6 +116,7 @@ class UdsUtils(UdsUtilsBase):
             control_type (int): Service subfunction
             data (Optional[bytes], optional): Optional additional data to provide to the server. Defaults to None.
 
+        :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
@@ -125,9 +125,9 @@ class UdsUtils(UdsUtilsBase):
         Returns:
             RoutingControlResponseData
         """
-        request = udsoncan.services.RoutineControl.make_request(routine_id=routine_id, control_type=control_type, data=data)
+        request = RoutineControl.make_request(routine_id=routine_id, control_type=control_type, data=data)
         response = self._send_and_read_response(request=request, timeout=timeout)
-        interpreted_response = udsoncan.services.RoutineControl.interpret_response(response=response)
+        interpreted_response = RoutineControl.interpret_response(response=response)
         return interpreted_response.service_data
 
     def tester_present(self, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
@@ -136,6 +136,7 @@ class UdsUtils(UdsUtilsBase):
         Args:
             timeout (float): timeout for the UDS operation in seconds
 
+        :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
@@ -144,9 +145,9 @@ class UdsUtils(UdsUtilsBase):
         Returns:
             bool: True if tester preset was accepted successfully. False otherwise
         """
-        request = udsoncan.services.TesterPresent.make_request()
+        request = TesterPresent.make_request()
         response = self._send_and_read_response(request=request, timeout=timeout)
-        interpreted_response = udsoncan.services.TesterPresent.interpret_response(response=response)
+        interpreted_response = TesterPresent.interpret_response(response=response)
         return interpreted_response.service_data.subfunction_echo == 0
 
     def write_did(self, did: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
@@ -156,6 +157,7 @@ class UdsUtils(UdsUtilsBase):
             timeout (float): timeout for the UDS operation in seconds
             did (int): The data identifier to write
 
+        :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
@@ -164,9 +166,9 @@ class UdsUtils(UdsUtilsBase):
         Returns:
             bool: True if WriteDataByIdentifier request sent successfully, False otherwise
         """
-        request = udsoncan.services.WriteDataByIdentifier.make_request(did=did, didconfig=MyAsciiCodec())
+        request = WriteDataByIdentifier.make_request(did=did, didconfig=MyAsciiCodec())
         response = self._send_and_read_response(request=request, timeout=timeout)
-        interpreted_response = udsoncan.services.WriteDataByIdentifier.interpret_response(response=response)
+        interpreted_response = WriteDataByIdentifier.interpret_response(response=response)
         return interpreted_response.service_data.subfunction_echo.did_echo == did
     
     def security_access(self, level: int, gen_key_cb: Callable[[bytes], bytes], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
@@ -177,6 +179,7 @@ class UdsUtils(UdsUtilsBase):
             level (int): The security level to unlock
             gen_key_cb (Callable[[bytes], bytes]): callback for key generation from seed, receives seed in bytes and expected to return key in bytes.
 
+        :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
@@ -185,23 +188,55 @@ class UdsUtils(UdsUtilsBase):
         Returns:
             bool: True if security access was allowed to the requested level. False otherwise
         """
-        request = udsoncan.services.SecurityAccess.make_request(level=level,
-                                                                mode=udsoncan.services.SecurityAccess.Mode.RequestSeed)
+        request = SecurityAccess.make_request(level=level,
+                                                                mode=SecurityAccess.Mode.RequestSeed)
         response = self._send_and_read_response(request=request, timeout=timeout)
-        interpreted_response = udsoncan.services.SecurityAccess.interpret_response(response=response,
-                                                                                   mode=udsoncan.services.SecurityAccess.Mode.RequestSeed)
+        interpreted_response = SecurityAccess.interpret_response(response=response,
+                                                                                   mode=SecurityAccess.Mode.RequestSeed)
         session_key = gen_key_cb(interpreted_response.service_data.seed)
         self.logger.info(session_key.hex())
-        request = udsoncan.services.SecurityAccess.make_request(level=level+1,
-                                                                mode=udsoncan.services.SecurityAccess.Mode.SendKey,
+        request = SecurityAccess.make_request(level=level+1,
+                                                                mode=SecurityAccess.Mode.SendKey,
                                                                 data=session_key)
         response = self._send_and_read_response(request=request, timeout=timeout)
-        interpreted_response = udsoncan.services.SecurityAccess.interpret_response(response=response,
-                                                                                   mode=udsoncan.services.SecurityAccess.Mode.SendKey)
+        interpreted_response = SecurityAccess.interpret_response(response=response,
+                                                                                   mode=SecurityAccess.Mode.SendKey)
         
         return interpreted_response.service_data.security_level_echo == level+1
+    
+    def raw_uds_service(self, sid: UdsSid, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, sub_function: Optional[int] = None, data: Optional[bytes] = None) -> RawUdsResponse:
+        """sends raw UDS service request and reads response
 
-    def _send_and_read_response(self, request: udsoncan.Request, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> Response:
+        Args:
+            sid (UdsSid): Service ID of the request
+            timeout (float): timeout for the UDS operation in seconds
+            sub_function (Optional[int], optional): The service subfunction. Defaults to None.
+            data (Optional[bytes], optional): The service data. Defaults to None.
+
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises NoResponse: If no response was received
+        :raises InvalidResponse: with invalid reason, if invalid response has received
+
+        Returns:
+            RawUdsResponse: Raw UdsResponse
+        """
+        if sub_function is not None:
+            service = RAW_SERVICES_WITH_SUB_FUNC[sid]
+        else:
+            service = RAW_SERVICES_WITHOUT_SUB_FUNC[sid]
+        request = Request(service=service, subfunction=sub_function, data=data)
+        return self._send_and_read_raw_response(request=request, timeout=timeout)
+
+    def _send_and_read_response(self, request: Request, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> RawUdsResponse:
+        response = self._send_and_read_raw_response(request=request, timeout=timeout)
+        
+        if not response.positive:
+            raise NegativeResponse(code=response.code, code_name=response.code_name)
+        
+        return response
+    
+    def _send_and_read_raw_response(self, request: Request, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> RawUdsResponse:
         sent_bytes = self.data_link_layer.send(data=request.get_payload(), timeout=timeout)
         if sent_bytes < len(request.get_payload()):
             self.logger.error("Failed to send request")
@@ -212,12 +247,9 @@ class UdsUtils(UdsUtilsBase):
         if not raw_response:
             raise NoResponse
         
-        response = Response.from_payload(payload=raw_response)
+        response = RawUdsResponse.from_payload(payload=raw_response)
         if not response.valid:
             raise InvalidResponse(invalid_reason=response.invalid_reason)
-        
-        if not response.positive:
-            raise NegativeResponse(code=response.code, code_name=response.code_name)
         
         return response
     
