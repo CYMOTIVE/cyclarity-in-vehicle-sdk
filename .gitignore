@@ -9,9 +9,13 @@ dist/
 
 # Compiled Java class files
 *.class
+.test
 
 # Compiled Python bytecode
 *.py[cod]
+*.pip/*
+*.pyi
+*.venv/*
 
 # Log files
 *.log
@@ -25,6 +29,7 @@ dist/
 
 # JetBrains IDE
 .idea/
+*.iml
 
 # Unit test reports
 TEST*.xml
@@ -48,3 +53,49 @@ Thumbs.db
 *.mov
 *.wmv
 
+# Arcive files
+# *.zip
+
+# Certificates
+*.pem
+*.crt
+*.key
+
+# notebooks
+*.ipynb
+
+# Protocols folder
+protocols/
+
+# Python artifacts
+*_pb2.py
+*_pb2.pyi
+*.egg-info/
+*.cyclarity_api.egg-info
+build/
+.venv/
+wheels/
+
+
+# CDK Context & Staging files
+dist
+build
+.cdk.staging/
+cdk.out/
+.lambdas/
+.projectile
+cdk.context.json
+
+# Environments
+.env
+.venv
+env/
+venv/
+./.*venv
+ENV/
+env.bak/
+venv.bak/
+
+#vscode
+.vscode/*
+poetry.lock
