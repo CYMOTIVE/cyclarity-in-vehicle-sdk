@@ -5,13 +5,11 @@ import isotp
 from ipaddress import IPv4Address
 from cyclarity_in_vehicle_sdk.communication.ip.tcp.tcp import TcpCommunicator
 from cyclarity_in_vehicle_sdk.protocol.uds.impl.uds_utils import UdsUtils
-from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import NegativeResponse, ECUResetType
+from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import NegativeResponse, ECUResetType, UdsResponseCode, UdsSid
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
 from cyclarity_in_vehicle_sdk.communication.can.impl.can_communicator_socketcan import CanCommunicatorSocketCan
 import pytest
-from udsoncan.ResponseCode import ResponseCode
-# from .conftest import setup_uds_server
 
 # uds-server is GPL3 cannot be used here
 @pytest.mark.skip
@@ -58,7 +56,6 @@ class IntegrationTestIsoTpBased(TestCase):
 
 # This test group expects a DoIP server running in the background, specifically ssas-public NetApp with DoIP over loopback
 # see https://cymotive.atlassian.net/wiki/spaces/CLAR/pages/1537048577/DoIP+Server+Setup+Guide
-@pytest.mark.skip
 class IntegrationTestDoipBased(TestCase):
     def setUp(self):
         self.uds_utils = UdsUtils(data_link_layer=DoipCommunicator(tcp_communicator=TcpCommunicator(destination_ip=IPv4Address("127.0.0.1"),
@@ -110,7 +107,7 @@ class IntegrationTestDoipBased(TestCase):
             self.uds_utils.read_did(didlist=0xdd)
 
         ex = cm.exception
-        self.assertEqual(ex.code, ResponseCode.RequestOutOfRange)
+        self.assertEqual(ex.code, UdsResponseCode.RequestOutOfRange)
 
     def test_read_did_multi_not_exists(
         self
@@ -119,7 +116,7 @@ class IntegrationTestDoipBased(TestCase):
             self.uds_utils.read_did(didlist=[0xAB02, 0xdd])
 
         ex = cm.exception
-        self.assertEqual(ex.code, ResponseCode.RequestOutOfRange)
+        self.assertEqual(ex.code, UdsResponseCode.RequestOutOfRange)
 
     def test_security_access(
         self
@@ -139,7 +136,7 @@ class IntegrationTestDoipBased(TestCase):
         with self.assertRaises(NegativeResponse) as cm:
             self.uds_utils.security_access(level=1, gen_key_cb=IntegrationTestDoipBased.gen_key)
         ex = cm.exception
-        self.assertEqual(ex.code, ResponseCode.SubFunctionNotSupportedInActiveSession)
+        self.assertEqual(ex.code, UdsResponseCode.SubFunctionNotSupportedInActiveSession)
 
     def test_security_access_invalid_key_length_fail(
         self
@@ -149,7 +146,7 @@ class IntegrationTestDoipBased(TestCase):
         with self.assertRaises(NegativeResponse) as cm:
             self.uds_utils.security_access(level=1, gen_key_cb=lambda x : b'111')
         ex = cm.exception
-        self.assertEqual(ex.code, ResponseCode.IncorrectMessageLengthOrInvalidFormat)
+        self.assertEqual(ex.code, UdsResponseCode.IncorrectMessageLengthOrInvalidFormat)
 
     def test_security_access_invalid_key(
         self
@@ -159,7 +156,7 @@ class IntegrationTestDoipBased(TestCase):
         with self.assertRaises(NegativeResponse) as cm:
             self.uds_utils.security_access(level=1, gen_key_cb=lambda x : 0x12345678.to_bytes(4, byteorder='big'))
         ex = cm.exception
-        self.assertEqual(ex.code, ResponseCode.InvalidKey)
+        self.assertEqual(ex.code, UdsResponseCode.InvalidKey)
 
     def test_ecu_reset(
         self
@@ -183,7 +180,7 @@ class IntegrationTestDoipBased(TestCase):
             self.uds_utils.ecu_reset(reset_type=ECUResetType.hardReset)
 
         ex = cm.exception
-        self.assertEqual(ex.code, ResponseCode.SecurityAccessDenied)
+        self.assertEqual(ex.code, UdsResponseCode.SecurityAccessDenied)
 
     def test_ecu_reset_from_default_session_fail(
         self
@@ -194,4 +191,12 @@ class IntegrationTestDoipBased(TestCase):
             self.uds_utils.ecu_reset(reset_type=ECUResetType.hardReset)
 
         ex = cm.exception
-        self.assertEqual(ex.code, ResponseCode.ServiceNotSupportedInActiveSession)
+        self.assertEqual(ex.code, UdsResponseCode.ServiceNotSupportedInActiveSession)
+
+    def test_raw_uds(self):
+        # session_change = self.uds_utils.session(session=3)
+        # self.assertEqual(session_change.session_echo, 3)
+        # security_access_res = self.uds_utils.security_access(level=1, gen_key_cb=IntegrationTestDoipBased.gen_key)
+        # self.assertTrue(security_access_res)
+        resp = self.uds_utils.raw_uds_service(sid=UdsSid.TesterPresent, sub_function=0)
+        resp
