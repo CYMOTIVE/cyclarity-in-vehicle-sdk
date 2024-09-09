@@ -154,12 +154,13 @@ class UdsUtilsBase(ParsableModel):
         raise NotImplementedError
 
     @abstractmethod
-    def write_did(self, did: int, timeout: float) -> bool:
+    def write_did(self, did: int, value: str, timeout: float) -> bool:
         """Sends a request for WriteDataByIdentifier
 
         Args:
             timeout (float): timeout for the UDS operation in seconds
             did (int): The data identifier to write
+            value (str): the value to write
 
         Returns:
             bool: True if WriteDataByIdentifier request sent successfully, False otherwise

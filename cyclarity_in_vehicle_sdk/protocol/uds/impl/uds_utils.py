@@ -150,12 +150,13 @@ class UdsUtils(UdsUtilsBase):
         interpreted_response = TesterPresent.interpret_response(response=response)
         return interpreted_response.service_data.subfunction_echo == 0
 
-    def write_did(self, did: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
+    def write_did(self, did: int, value: str, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
         """Sends a request for WriteDataByIdentifier
 
         Args:
             timeout (float): timeout for the UDS operation in seconds
             did (int): The data identifier to write
+            value (str): the value to write
 
         :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
@@ -166,7 +167,7 @@ class UdsUtils(UdsUtilsBase):
         Returns:
             bool: True if WriteDataByIdentifier request sent successfully, False otherwise
         """
-        request = WriteDataByIdentifier.make_request(did=did, didconfig=MyAsciiCodec())
+        request = WriteDataByIdentifier.make_request(did=did, value=value, didconfig={did: MyAsciiCodec()})
         response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = WriteDataByIdentifier.interpret_response(response=response)
         return interpreted_response.service_data.subfunction_echo.did_echo == did
