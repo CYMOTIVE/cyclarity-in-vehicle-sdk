@@ -1,0 +1,33 @@
+#  Template python-build
+
+#  This template allows you to validate your python code.
+#  The workflow allows running tests and code linting on the default branch.
+
+image: sunpeek/poetry:py3.10-slim
+
+steps:
+  - step: &build-and-test
+        name: Build and test cyclarity-in-vehicle-sdk
+        script:
+          - sh ./scripts/uninstall_sdk.sh
+          - mkdir -p ~/.pip  
+          - echo -e "[global]\nindex-url = https://pypi.org/simple" > ~/.pip/pip.conf
+          - pip install --upgrade pip
+          - pip install pytest
+          - pip install -e .
+          - pytest -s -v cyclarity_in_vehicle_sdk/tests/* --junitxml=test-reports/report.xml
+
+  - step: &deploy-pypi
+        name: Doploy cyclarity-in-vehicle-sdk to PyPI
+        script:
+          - sh ./scripts/uninstall_sdk.sh
+          - sh ./scripts/pipeline_deploy_pypi.sh
+
+pipelines:
+  custom:
+    Build and test:
+      - step: *build-and-test
+
+    Doploy to PyPI:
+      - step: *build-and-test
+      - step: *deploy-pypi
