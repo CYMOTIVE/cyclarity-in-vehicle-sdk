@@ -56,6 +56,7 @@ class IntegrationTestIsoTpBased(TestCase):
 
 # This test group expects a DoIP server running in the background, specifically ssas-public NetApp with DoIP over loopback
 # see https://cymotive.atlassian.net/wiki/spaces/CLAR/pages/1537048577/DoIP+Server+Setup+Guide
+@pytest.mark.skip
 class IntegrationTestDoipBased(TestCase):
     def setUp(self):
         self.uds_utils = UdsUtils(data_link_layer=DoipCommunicator(tcp_communicator=TcpCommunicator(destination_ip=IPv4Address("127.0.0.1"),
