@@ -18,7 +18,7 @@ steps:
           - pytest -s -v cyclarity_in_vehicle_sdk/tests/* --junitxml=test-reports/report.xml
 
   - step: &deploy-pypi
-        name: Doploy cyclarity-in-vehicle-sdk to PyPI
+        name: Deploy cyclarity-in-vehicle-sdk to PyPI
         script:
           - sh ./scripts/uninstall_sdk.sh
           - sh ./scripts/pipeline_deploy_pypi.sh
@@ -28,6 +28,6 @@ pipelines:
     Build and test:
       - step: *build-and-test
 
-    Doploy to PyPI:
+    Deploy to PyPI:
       - step: *build-and-test
       - step: *deploy-pypi
