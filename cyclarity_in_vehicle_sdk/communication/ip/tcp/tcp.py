@@ -1,8 +1,9 @@
+from ipaddress import ip_address
 import select
 import socket
 from typing import Optional
 from types import TracebackType
-from pydantic import Field, IPvAnyAddress
+from pydantic import Field
 
 from cyclarity_in_vehicle_sdk.communication.base.communicator_base import CommunicatorType, ConnectionCommunicatorBase
 
@@ -11,8 +12,12 @@ SOCK_DATA_RECV_AMOUNT = 4096
 class TcpCommunicator(ConnectionCommunicatorBase):
     sport: int = Field(None, description="Source port.")
     dport: int = Field(None, description="Destination port.")
-    source_ip: IPvAnyAddress = Field(None, description="Source IP.")
-    destination_ip: IPvAnyAddress = Field(None, description="Destination IP.")
+    source_ip: str = Field(None, description="Source IP.")
+    destination_ip: str = Field(None, description="Destination IP.")
+
+    def model_post_init(self, *args, **kwargs):
+        self.source_ip = ip_address(self.source_ip)
+        self.destination_ip = ip_address(self.destination_ip)
 
     def open(self) -> bool:
         if self.source_ip.version == 6:
