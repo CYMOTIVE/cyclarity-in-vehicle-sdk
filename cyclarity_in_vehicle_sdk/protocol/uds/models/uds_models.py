@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Literal, Optional, Union
+from typing import Callable, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -24,11 +24,10 @@ class SECURITY_ALGORITHM_PIN(SECURITY_ALGORITHM_BASE):
 
 class ELEVATION_INFO(BaseModel):
     need_elevation: Optional[bool] = None
-    algorithm: Union[SECURITY_ALGORITHM_PIN, SECURITY_ALGORITHM_BASE] = Field(
-        default_factory=SECURITY_ALGORITHM_BASE, discriminator="algorithm_type"
-    )
+    seed_subfunction: Optional[int] = None
+    algorithm_cb: Optional[Callable[[bytes], bytes]] = None
     def __str__(self):
-        return "Needs elevation" if self.need_elevation else ""
+        return f"{'Needs elevation' if self.need_elevation else ''}, {'Elevation Callback is available' if self.algorithm_cb else ''}"
 
 
 class SERVICE_INFO(BaseModel):
@@ -56,24 +55,10 @@ class ROUTINE_INFO(BaseModel):
     )
 
 
-class OPEN_SERVICE(BaseModel):
-    sid: int
-
-
-class SESSION_TRANSPOSITION(BaseModel):
-    sess: int
-
-
 class SESSION_INFO(BaseModel):
     accessible: bool = False
     elevation_info: ELEVATION_INFO = Field(default_factory=ELEVATION_INFO)
-    prev_sessions: list[SESSION_TRANSPOSITION] = Field(
-        default_factory=list[SESSION_TRANSPOSITION]
-    )
-    open_services: list[OPEN_SERVICE] = Field(default_factory=list[OPEN_SERVICE])
-    dids: dict[int, DID_INFO] = Field(default_factory=dict[int, DID_INFO])
-    routines: dict[int, ROUTINE_INFO] = Field(default_factory=dict[int, ROUTINE_INFO])
-
+    route_to_session: list[int] = []
 
 class UDS_INFO(BaseModel):
     open_sessions: dict[int, SESSION_INFO] = Field(
