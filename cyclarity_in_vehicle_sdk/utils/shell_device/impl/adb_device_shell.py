@@ -5,8 +5,8 @@ import base64
 from adb_shell.adb_device import AdbDeviceTcp, AdbDeviceUsb
 from adb_shell.auth.sign_pythonrsa import PythonRSASigner
 
-from utils.shell_device.base.device_shell_exception import DeviceShellException
-from utils.shell_device.base.IDeviceShell import IDeviceShell
+from cyclarity_in_vehicle_sdk.utils.shell_device.base.device_shell_exception import DeviceShellException
+from cyclarity_in_vehicle_sdk.utils.shell_device.base.IDeviceShell import IDeviceShell
 
 from pydantic import Field, field_validator
 from pydantic.networks import IPvAnyAddress

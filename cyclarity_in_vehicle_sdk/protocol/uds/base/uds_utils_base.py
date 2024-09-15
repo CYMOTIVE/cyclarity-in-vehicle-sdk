@@ -1,7 +1,10 @@
 from abc import abstractmethod
+from enum import IntEnum
 from typing import Optional, TypeAlias, Union, Callable
 
 import udsoncan
+from udsoncan.Response import Response
+from udsoncan.ResponseCode import ResponseCode
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 from udsoncan.services.ECUReset import ECUReset
 from udsoncan.services.RoutineControl import RoutineControl
@@ -11,6 +14,44 @@ from udsoncan.services.DiagnosticSessionControl import DiagnosticSessionControl
 ECUResetType: TypeAlias = ECUReset.ResetType
 RoutingControlResponseData: TypeAlias = RoutineControl.ResponseData
 SessionControlResultData: TypeAlias = DiagnosticSessionControl.ResponseData
+RawUdsResponse: TypeAlias = Response
+UdsResponseCode: TypeAlias = ResponseCode
+UdsDefinedSessions: TypeAlias = DiagnosticSessionControl.Session
+
+class UdsSid(IntEnum):
+    """The service IDs standardized by UDS.
+
+    For additional information, see https://en.wikipedia.org/wiki/Unified_Diagnostic_Services
+    """
+
+    # 0x10..0x3e: UDS standardized service IDs
+    DiagnosticSessionControl = 0x10
+    EcuReset = 0x11
+    SecurityAccess = 0x27
+    CommunicationControl = 0x28
+    Authentication = 0x29
+    TesterPresent = 0x3E
+    AccessTimingParameters = 0x83
+    SecuredDataTransmission = 0x84
+    ControlDtcSettings = 0x85
+    ResponseOnEvent = 0x86
+    LinkControl = 0x87
+    ReadDataByIdentifier = 0x22
+    ReadMemoryByAddress = 0x23
+    ReadScalingDataByIdentifier = 0x24
+    ReadDataByIdentifierPeriodic = 0x2A
+    DynamicallyDefineDataIdentifier = 0x2C
+    WriteDataByIdentifier = 0x2E
+    WriteMemoryByAddress = 0x3D
+    ClearDiagnosticInformation = 0x14
+    ReadDtcInformation = 0x19
+    InputOutputControlByIdentifier = 0x2F
+    RoutineControl = 0x31
+    RequestDownload = 0x34
+    RequestUpload = 0x35
+    TransferData = 0x36
+    RequestTransferExit = 0x37
+    RequestFileTransfer = 0x38
 
 class NoResponse(Exception):
     def __init__(self, *args, **kwargs):
@@ -114,12 +155,13 @@ class UdsUtilsBase(ParsableModel):
         raise NotImplementedError
 
     @abstractmethod
-    def write_did(self, did: int, timeout: float) -> bool:
+    def write_did(self, did: int, value: str, timeout: float) -> bool:
         """Sends a request for WriteDataByIdentifier
 
         Args:
             timeout (float): timeout for the UDS operation in seconds
             did (int): The data identifier to write
+            value (str): the value to write
 
         Returns:
             bool: True if WriteDataByIdentifier request sent successfully, False otherwise
@@ -137,5 +179,20 @@ class UdsUtilsBase(ParsableModel):
 
         Returns:
             bool: True if security access was allowed to the requested level. False otherwise
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def raw_uds_service(self, sid: UdsSid, timeout: float, sub_function: Optional[int] = None, data: Optional[bytes] = None) -> RawUdsResponse:
+        """sends raw UDS service request and reads response
+
+        Args:
+            sid (UdsSid): Service ID of the request
+            timeout (float): timeout for the UDS operation in seconds
+            sub_function (Optional[int], optional): The service subfunction. Defaults to None.
+            data (Optional[bytes], optional): The service data. Defaults to None.
+
+        Returns:
+            RawUdsResponse: Raw UdsResponse
         """
         raise NotImplementedError
