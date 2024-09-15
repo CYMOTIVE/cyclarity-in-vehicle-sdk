@@ -1,5 +1,5 @@
-from utils.shell_device.base.device_shell_exception import DeviceShellException
-from utils.shell_device.base.IDeviceShell import IDeviceShell
+from cyclarity_in_vehicle_sdk.utils.shell_device.base.device_shell_exception import DeviceShellException
+from cyclarity_in_vehicle_sdk.utils.shell_device.base.IDeviceShell import IDeviceShell
 import serial
 import re
 import time
