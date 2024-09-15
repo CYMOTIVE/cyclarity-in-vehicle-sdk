@@ -59,8 +59,8 @@ class IntegrationTestIsoTpBased(TestCase):
 @pytest.mark.skip
 class IntegrationTestDoipBased(TestCase):
     def setUp(self):
-        self.uds_utils = UdsUtils(data_link_layer=DoipCommunicator(tcp_communicator=TcpCommunicator(destination_ip=IPv4Address("127.0.0.1"),
-                                                                                                           source_ip=IPv4Address("127.0.0.1"),
+        self.uds_utils = UdsUtils(data_link_layer=DoipCommunicator(tcp_communicator=TcpCommunicator(destination_ip="127.0.0.1",
+                                                                                                           source_ip="127.0.0.1",
                                                                                                            sport=0,
                                                                                                            dport=13400),
                                                                             client_logical_address=0xe80,

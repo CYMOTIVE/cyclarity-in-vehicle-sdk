@@ -195,7 +195,6 @@ class UdsUtils(UdsUtilsBase):
         interpreted_response = SecurityAccess.interpret_response(response=response,
                                                                                    mode=SecurityAccess.Mode.RequestSeed)
         session_key = gen_key_cb(interpreted_response.service_data.seed)
-        self.logger.info(session_key.hex())
         request = SecurityAccess.make_request(level=level+1,
                                                                 mode=SecurityAccess.Mode.SendKey,
                                                                 data=session_key)

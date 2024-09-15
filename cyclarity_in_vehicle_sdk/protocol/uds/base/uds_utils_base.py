@@ -16,6 +16,7 @@ RoutingControlResponseData: TypeAlias = RoutineControl.ResponseData
 SessionControlResultData: TypeAlias = DiagnosticSessionControl.ResponseData
 RawUdsResponse: TypeAlias = Response
 UdsResponseCode: TypeAlias = ResponseCode
+UdsDefinedSessions: TypeAlias = DiagnosticSessionControl.Session
 
 class UdsSid(IntEnum):
     """The service IDs standardized by UDS.
