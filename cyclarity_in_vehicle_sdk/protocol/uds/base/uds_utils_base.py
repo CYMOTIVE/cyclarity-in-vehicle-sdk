@@ -1,8 +1,9 @@
 from abc import abstractmethod
 from enum import IntEnum
-from typing import Optional, TypeAlias, Union, Callable
+from typing import Optional, Type, TypeAlias, Union
 
 import udsoncan
+from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE
 from udsoncan.Response import Response
 from udsoncan.ResponseCode import ResponseCode
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
@@ -169,13 +170,12 @@ class UdsUtilsBase(ParsableModel):
         raise NotImplementedError
     
     @abstractmethod
-    def security_access(self, level: int, gen_key_cb: Callable[[bytes], bytes], timeout: float) -> bool:
+    def security_access(self, security_algorithm: Type[SECURITY_ALGORITHM_BASE], timeout: float) -> bool:
         """Sends a request for SecurityAccess
 
         Args:
             timeout (float): timeout for the UDS operation in seconds
-            level (int): The security level to unlock
-            gen_key_cb (Callable[[bytes], bytes]): callback for key generation from seed, receives seed in bytes and expected to return key in bytes.
+            security_algorithm (Type[SECURITY_ALGORITHM_BASE]): security algorithm to use for security access
 
         Returns:
             bool: True if security access was allowed to the requested level. False otherwise

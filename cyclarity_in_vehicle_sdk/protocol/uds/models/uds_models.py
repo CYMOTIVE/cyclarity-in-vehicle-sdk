@@ -1,33 +1,37 @@
-from enum import Enum
-from typing import Callable, Literal, Optional, Union
+from abc import ABC, abstractmethod
+import struct
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
+class SECURITY_ALGORITHM_BASE(BaseModel, ABC):
+    seed_subfunction: Optional[int] = None
+    key_subfunction: Optional[int] = None
 
-# UDS INFO
-class ElevationAlgorithm(str, Enum):
-    UNKNOWN = "UNKNOWN"
-    SA2 = "SA2"
-    PIN = "PIN"
+    @abstractmethod
+    def __call__(self, seed: bytes) -> bytes:
+        raise NotImplementedError
 
 
-class SECURITY_ALGORITHM_BASE(BaseModel):
-    algorithm_type: Literal[ElevationAlgorithm.UNKNOWN] = ElevationAlgorithm.UNKNOWN
-    seed_request: Optional[int] = None
-    key_response: Optional[int] = None
-
+class SECURITY_ALGORITHM_XOR(SECURITY_ALGORITHM_BASE):
+    xor_val: int
+    def __call__(self, seed: bytes) -> bytes:
+        seed_int = int.from_bytes(seed, byteorder='big')
+        key_int = seed_int ^ self.xor_val
+        return struct.pack('>L',key_int)
 
 class SECURITY_ALGORITHM_PIN(SECURITY_ALGORITHM_BASE):
-    algorithm_type: Literal[ElevationAlgorithm.PIN] = ElevationAlgorithm.PIN
-    pin: Optional[int] = None
-
+    pin: int
+    def __call__(self, seed: bytes) -> bytes:
+        seed_int = int.from_bytes(seed, byteorder='big')
+        seed_int += self.pin
+        return struct.pack('>L',seed_int)
 
 class ELEVATION_INFO(BaseModel):
     need_elevation: Optional[bool] = None
-    seed_subfunction: Optional[int] = None
-    algorithm_cb: Optional[Callable[[bytes], bytes]] = None
+    security_algorithm: Optional[SECURITY_ALGORITHM_BASE] = None
     def __str__(self):
-        return f"{'Needs elevation' if self.need_elevation else ''}, {'Elevation Callback is available' if self.algorithm_cb else ''}"
+        return f"{'Needs elevation' if self.need_elevation else ''}, {'Elevation Callback is available' if self.security_algorithm else ''}"
 
 
 class SERVICE_INFO(BaseModel):
