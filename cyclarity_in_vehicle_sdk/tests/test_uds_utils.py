@@ -65,14 +65,6 @@ class IntegrationTestDoipBased(TestCase):
                                                                             routing_activation_needed=True))
         self.assertTrue(self.uds_utils.setup())
     
-    @staticmethod
-    def gen_key(seed: bytes) -> bytes:
-        seed_int = int.from_bytes(seed, byteorder='big')
-        print(hex(seed_int))
-        xored_val = 0x78934673
-        num_bytes_in_key = round(max(seed_int.bit_length(), xored_val.bit_length()) / 8)
-        return (seed_int ^ xored_val).to_bytes(num_bytes_in_key, byteorder='big')
-    
     def test_tester_present(
         self
     ):
