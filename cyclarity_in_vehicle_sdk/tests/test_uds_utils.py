@@ -1,10 +1,7 @@
-from functools import partial
-from unittest import mock, TestCase
-
-import isotp
-from ipaddress import IPv4Address
+from unittest import TestCase
 from cyclarity_in_vehicle_sdk.communication.ip.tcp.tcp import TcpCommunicator
 from cyclarity_in_vehicle_sdk.protocol.uds.impl.uds_utils import UdsUtils
+from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_XOR
 from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import NegativeResponse, ECUResetType, UdsResponseCode, UdsSid
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
@@ -125,7 +122,7 @@ class IntegrationTestDoipBased(TestCase):
         session_change = self.uds_utils.session(session=3)
         self.assertEqual(session_change.session_echo, 3)
         
-        security_access_res = self.uds_utils.security_access(level=1, gen_key_cb=IntegrationTestDoipBased.gen_key)
+        security_access_res = self.uds_utils.security_access(security_algorithm=SECURITY_ALGORITHM_XOR(seed_subfunction=1, key_subfunction=2, xor_val=0x78934673))
         self.assertTrue(security_access_res)
 
 
@@ -135,19 +132,9 @@ class IntegrationTestDoipBased(TestCase):
         session_change = self.uds_utils.session(session=1)
         self.assertEqual(session_change.session_echo, 1)
         with self.assertRaises(NegativeResponse) as cm:
-            self.uds_utils.security_access(level=1, gen_key_cb=IntegrationTestDoipBased.gen_key)
+            self.uds_utils.security_access(security_algorithm=SECURITY_ALGORITHM_XOR(seed_subfunction=1, key_subfunction=2, xor_val=0x78934673))
         ex = cm.exception
         self.assertEqual(ex.code, UdsResponseCode.SubFunctionNotSupportedInActiveSession)
-
-    def test_security_access_invalid_key_length_fail(
-        self
-    ):      
-        session_change = self.uds_utils.session(session=3)
-        self.assertEqual(session_change.session_echo, 3) 
-        with self.assertRaises(NegativeResponse) as cm:
-            self.uds_utils.security_access(level=1, gen_key_cb=lambda x : b'111')
-        ex = cm.exception
-        self.assertEqual(ex.code, UdsResponseCode.IncorrectMessageLengthOrInvalidFormat)
 
     def test_security_access_invalid_key(
         self
@@ -155,7 +142,7 @@ class IntegrationTestDoipBased(TestCase):
         session_change = self.uds_utils.session(session=3)
         self.assertEqual(session_change.session_echo, 3) 
         with self.assertRaises(NegativeResponse) as cm:
-            self.uds_utils.security_access(level=1, gen_key_cb=lambda x : 0x12345678.to_bytes(4, byteorder='big'))
+            self.uds_utils.security_access(security_algorithm=SECURITY_ALGORITHM_XOR(seed_subfunction=1, key_subfunction=2, xor_val=0x321))
         ex = cm.exception
         self.assertEqual(ex.code, UdsResponseCode.InvalidKey)
 
@@ -165,7 +152,7 @@ class IntegrationTestDoipBased(TestCase):
         session_change = self.uds_utils.session(session=3)
         self.assertEqual(session_change.session_echo, 3)
         
-        security_access_res = self.uds_utils.security_access(level=1, gen_key_cb=IntegrationTestDoipBased.gen_key)
+        security_access_res = self.uds_utils.security_access(security_algorithm=SECURITY_ALGORITHM_XOR(seed_subfunction=1, key_subfunction=2, xor_val=0x78934673))
         self.assertTrue(security_access_res)
 
         ecu_reset_res = self.uds_utils.ecu_reset(reset_type=ECUResetType.hardReset)
@@ -197,7 +184,7 @@ class IntegrationTestDoipBased(TestCase):
     def test_raw_uds(self):
         # session_change = self.uds_utils.session(session=3)
         # self.assertEqual(session_change.session_echo, 3)
-        # security_access_res = self.uds_utils.security_access(level=1, gen_key_cb=IntegrationTestDoipBased.gen_key)
+        # security_access_res = self.uds_utils.security_access(security_algorithm=SECURITY_ALGORITHM_XOR(seed_subfunction=1, key_subfunction=2, xor_val=0x78934673))
         # self.assertTrue(security_access_res)
         resp = self.uds_utils.raw_uds_service(sid=UdsSid.TesterPresent, sub_function=0)
         resp
