@@ -58,11 +58,14 @@ class ROUTINE_INFO(BaseModel):
         default_factory=dict[int, PERMISSION_INFO]
     )
 
+class SESSION_ACCESS(BaseModel):
+    id: int = Field(description="ID of this UDS session")
+    elevation_info: Optional[ELEVATION_INFO] = Field(default=None, description="Elevation info for this UDS session, if needed")
 
 class SESSION_INFO(BaseModel):
     accessible: bool = Field(default=False, description="Whether this UDS session is accessible")
-    elevation_info: ELEVATION_INFO = Field(default_factory=ELEVATION_INFO, description="Elevation info for this UDS session")
-    route_to_session: list[int] = Field(default=[], description="The UDS session route to reach this session")
+    elevation_info: Optional[ELEVATION_INFO] = Field(default=None, description="Elevation info for this UDS session")
+    route_to_session: list[SESSION_ACCESS] = Field(default=[], description="The UDS session route to reach this session")
 
 class UDS_INFO(BaseModel):
     open_sessions: dict[int, SESSION_INFO] = Field(
