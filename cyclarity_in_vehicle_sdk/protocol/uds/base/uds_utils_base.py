@@ -3,7 +3,7 @@ from enum import IntEnum
 from typing import Optional, Type, TypeAlias, Union
 
 import udsoncan
-from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE
+from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS
 from udsoncan.Response import Response
 from udsoncan.ResponseCode import ResponseCode
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
@@ -99,6 +99,19 @@ class UdsUtilsBase(ParsableModel):
 
         Returns:
             SessionControlResultData
+        """
+        raise NotImplementedError
+    
+    def transit_to_session(self, route_to_session: list[SESSION_ACCESS], timeout: float, standard_version: int = udsoncan.latest_standard) -> bool:
+        """Transit to the UDS session according to route
+
+        Args:
+            route_to_session (list[SESSION_ACCESS]): list of UDS SESSION_ACCESS objects to follow
+            timeout (float): timeout for the UDS operation in seconds
+            standard_version (int, optional): the version of the UDS standard we are interacting with. Defaults to udsoncan.latest_standard (2020).
+
+        Returns:
+            bool: True if succeeded to transit to the session, False otherwise 
         """
         raise NotImplementedError
     

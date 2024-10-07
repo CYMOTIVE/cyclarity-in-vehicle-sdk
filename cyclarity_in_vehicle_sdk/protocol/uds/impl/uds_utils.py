@@ -7,7 +7,7 @@ from udsoncan import latest_standard
 from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import UdsSid, NegativeResponse, NoResponse, RoutingControlResponseData, SessionControlResultData, UdsUtilsBase, InvalidResponse, RawUdsResponse
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
-from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE
+from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS
 
 DEFAULT_UDS_OPERATION_TIMEOUT = 2
 RAW_SERVICES_WITH_SUB_FUNC = {value: type(name, (BaseService,), {'_sid':value, '_use_subfunction':True}) for name, value in UdsSid.__members__.items()}  
@@ -63,6 +63,34 @@ class UdsUtils(UdsUtilsBase):
         response = self._send_and_read_response(request=request, timeout=timeout)   
         interpreted_response = DiagnosticSessionControl.interpret_response(response=response, standard_version=standard_version)
         return interpreted_response.service_data
+    
+    def transit_to_session(self, route_to_session: list[SESSION_ACCESS], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, standard_version: int = latest_standard) -> bool:
+        """Transit to the UDS session according to route
+
+        Args:
+            route_to_session (list[SESSION_ACCESS]): list of UDS SESSION_ACCESS objects to follow
+            timeout (float): timeout for the UDS operation in seconds
+            standard_version (int, optional): the version of the UDS standard we are interacting with. Defaults to udsoncan.latest_standard (2020).
+
+        Returns:
+            bool: True if succeeded to transit to the session, False otherwise 
+        """
+        for session in route_to_session:
+            try:    
+                change_session_ret = self.session(session=session.id, timeout=timeout, standard_version=standard_version)
+                if change_session_ret.session_echo != session.id:
+                    self.logger.debug(f"Failed to switch to session: {hex(session.id)}")
+                    return False
+                
+                # try to elevate security access if algorithm is provided for this session
+                if session.elevation_info and session.elevation_info.security_algorithm:
+                    self.security_access(security_algorithm=session.elevation_info.security_algorithm, timeout=timeout)
+
+            except Exception as ex:
+                self.logger.debug(f"Failed to switch to session: {hex(session.id)}, what: {ex}")
+                return False
+
+        return True
     
     def ecu_reset(self, reset_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
         """The service "ECU reset" is used to restart the control unit (ECU)
