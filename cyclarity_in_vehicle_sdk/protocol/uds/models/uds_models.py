@@ -5,8 +5,8 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 class SECURITY_ALGORITHM_BASE(BaseModel, ABC):
-    seed_subfunction: Optional[int] = None
-    key_subfunction: Optional[int] = None
+    seed_subfunction: Optional[int] = Field(default=None, description="The subfunction for the get seed operation")
+    key_subfunction: Optional[int] = Field(default=None, description="The subfunction for the send key operation")
 
     @abstractmethod
     def __call__(self, seed: bytes) -> bytes:
@@ -14,31 +14,31 @@ class SECURITY_ALGORITHM_BASE(BaseModel, ABC):
 
 
 class SECURITY_ALGORITHM_XOR(SECURITY_ALGORITHM_BASE):
-    xor_val: int
+    xor_val: int = Field(description="Integer value to XOR the seed with for security key generation")
     def __call__(self, seed: bytes) -> bytes:
         seed_int = int.from_bytes(seed, byteorder='big')
         key_int = seed_int ^ self.xor_val
         return struct.pack('>L',key_int)
 
 class SECURITY_ALGORITHM_PIN(SECURITY_ALGORITHM_BASE):
-    pin: int
+    pin: int = Field(description="Integer value to be added to the seed for security key generation")
     def __call__(self, seed: bytes) -> bytes:
         seed_int = int.from_bytes(seed, byteorder='big')
         seed_int += self.pin
         return struct.pack('>L',seed_int)
 
 class ELEVATION_INFO(BaseModel):
-    need_elevation: Optional[bool] = None
-    security_algorithm: Optional[SECURITY_ALGORITHM_BASE] = None
+    need_elevation: Optional[bool] = Field(default=None, description="Whether this session requires elevation")
+    security_algorithm: Optional[SECURITY_ALGORITHM_BASE] = Field(default=None, description="The security elevation algorithm")
     def __str__(self):
         return f"{'Needs elevation' if self.need_elevation else ''}, {'Elevation Callback is available' if self.security_algorithm else ''}"
 
 
 class SERVICE_INFO(BaseModel):
-    name: str = str()
-    supported: bool = False
-    maybe_supported_error: Optional[str] = None
-    elevation_info: Optional[ELEVATION_INFO] = None
+    name: str = Field(default="", description="The name of the UDS service")
+    supported: bool = Field(default=False, description="Whether this UDS service is supported")
+    maybe_supported_error: Optional[str] = Field(default=None, description="The error code if there is uncertainty that this service is supported")
+    elevation_info: Optional[ELEVATION_INFO] = Field(default=None, description="The elevation info if needed for this service")
 
 
 class PERMISSION_INFO(BaseModel):
@@ -60,9 +60,9 @@ class ROUTINE_INFO(BaseModel):
 
 
 class SESSION_INFO(BaseModel):
-    accessible: bool = False
-    elevation_info: ELEVATION_INFO = Field(default_factory=ELEVATION_INFO)
-    route_to_session: list[int] = []
+    accessible: bool = Field(default=False, description="Whether this UDS session is accessible")
+    elevation_info: ELEVATION_INFO = Field(default_factory=ELEVATION_INFO, description="Elevation info for this UDS session")
+    route_to_session: list[int] = Field(default=[], description="The UDS session route to reach this session")
 
 class UDS_INFO(BaseModel):
     open_sessions: dict[int, SESSION_INFO] = Field(
