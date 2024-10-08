@@ -1,8 +1,9 @@
 from abc import abstractmethod
 from enum import IntEnum
-from typing import Optional, TypeAlias, Union, Callable
+from typing import Optional, Type, TypeAlias, Union
 
 import udsoncan
+from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS
 from udsoncan.Response import Response
 from udsoncan.ResponseCode import ResponseCode
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
@@ -101,6 +102,19 @@ class UdsUtilsBase(ParsableModel):
         """
         raise NotImplementedError
     
+    def transit_to_session(self, route_to_session: list[SESSION_ACCESS], timeout: float, standard_version: int = udsoncan.latest_standard) -> bool:
+        """Transit to the UDS session according to route
+
+        Args:
+            route_to_session (list[SESSION_ACCESS]): list of UDS SESSION_ACCESS objects to follow
+            timeout (float): timeout for the UDS operation in seconds
+            standard_version (int, optional): the version of the UDS standard we are interacting with. Defaults to udsoncan.latest_standard (2020).
+
+        Returns:
+            bool: True if succeeded to transit to the session, False otherwise 
+        """
+        raise NotImplementedError
+    
     @abstractmethod
     def ecu_reset(self, reset_type: int, timeout: float) -> bool:
         """The service "ECU reset" is used to restart the control unit (ECU)
@@ -169,13 +183,12 @@ class UdsUtilsBase(ParsableModel):
         raise NotImplementedError
     
     @abstractmethod
-    def security_access(self, level: int, gen_key_cb: Callable[[bytes], bytes], timeout: float) -> bool:
+    def security_access(self, security_algorithm: Type[SECURITY_ALGORITHM_BASE], timeout: float) -> bool:
         """Sends a request for SecurityAccess
 
         Args:
             timeout (float): timeout for the UDS operation in seconds
-            level (int): The security level to unlock
-            gen_key_cb (Callable[[bytes], bytes]): callback for key generation from seed, receives seed in bytes and expected to return key in bytes.
+            security_algorithm (Type[SECURITY_ALGORITHM_BASE]): security algorithm to use for security access
 
         Returns:
             bool: True if security access was allowed to the requested level. False otherwise
