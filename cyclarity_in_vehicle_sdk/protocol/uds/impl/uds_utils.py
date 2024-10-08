@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Type, Union
 from udsoncan.BaseService import BaseService
 from udsoncan.Request import Request
 from udsoncan.services import ECUReset, ReadDataByIdentifier, RoutineControl, SecurityAccess, TesterPresent, WriteDataByIdentifier, DiagnosticSessionControl
@@ -7,6 +7,7 @@ from udsoncan import latest_standard
 from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import UdsSid, NegativeResponse, NoResponse, RoutingControlResponseData, SessionControlResultData, UdsUtilsBase, InvalidResponse, RawUdsResponse
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
+from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS
 
 DEFAULT_UDS_OPERATION_TIMEOUT = 2
 RAW_SERVICES_WITH_SUB_FUNC = {value: type(name, (BaseService,), {'_sid':value, '_use_subfunction':True}) for name, value in UdsSid.__members__.items()}  
@@ -62,6 +63,34 @@ class UdsUtils(UdsUtilsBase):
         response = self._send_and_read_response(request=request, timeout=timeout)   
         interpreted_response = DiagnosticSessionControl.interpret_response(response=response, standard_version=standard_version)
         return interpreted_response.service_data
+    
+    def transit_to_session(self, route_to_session: list[SESSION_ACCESS], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, standard_version: int = latest_standard) -> bool:
+        """Transit to the UDS session according to route
+
+        Args:
+            route_to_session (list[SESSION_ACCESS]): list of UDS SESSION_ACCESS objects to follow
+            timeout (float): timeout for the UDS operation in seconds
+            standard_version (int, optional): the version of the UDS standard we are interacting with. Defaults to udsoncan.latest_standard (2020).
+
+        Returns:
+            bool: True if succeeded to transit to the session, False otherwise 
+        """
+        for session in route_to_session:
+            try:    
+                change_session_ret = self.session(session=session.id, timeout=timeout, standard_version=standard_version)
+                if change_session_ret.session_echo != session.id:
+                    self.logger.debug(f"Failed to switch to session: {hex(session.id)}")
+                    return False
+                
+                # try to elevate security access if algorithm is provided for this session
+                if session.elevation_info and session.elevation_info.security_algorithm:
+                    self.security_access(security_algorithm=session.elevation_info.security_algorithm, timeout=timeout)
+
+            except Exception as ex:
+                self.logger.debug(f"Failed to switch to session: {hex(session.id)}, what: {ex}")
+                return False
+
+        return True
     
     def ecu_reset(self, reset_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
         """The service "ECU reset" is used to restart the control unit (ECU)
@@ -172,13 +201,12 @@ class UdsUtils(UdsUtilsBase):
         interpreted_response = WriteDataByIdentifier.interpret_response(response=response)
         return interpreted_response.service_data.subfunction_echo.did_echo == did
     
-    def security_access(self, level: int, gen_key_cb: Callable[[bytes], bytes], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
+    def security_access(self, security_algorithm: Type[SECURITY_ALGORITHM_BASE], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
         """Sends a request for SecurityAccess
 
         Args:
             timeout (float): timeout for the UDS operation in seconds
-            level (int): The security level to unlock
-            gen_key_cb (Callable[[bytes], bytes]): callback for key generation from seed, receives seed in bytes and expected to return key in bytes.
+            security_algorithm (Type[SECURITY_ALGORITHM_BASE]): security algorithm to use for security access
 
         :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
@@ -189,20 +217,20 @@ class UdsUtils(UdsUtilsBase):
         Returns:
             bool: True if security access was allowed to the requested level. False otherwise
         """
-        request = SecurityAccess.make_request(level=level,
+        request = SecurityAccess.make_request(level=security_algorithm.seed_subfunction,
                                                                 mode=SecurityAccess.Mode.RequestSeed)
         response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = SecurityAccess.interpret_response(response=response,
                                                                                    mode=SecurityAccess.Mode.RequestSeed)
-        session_key = gen_key_cb(interpreted_response.service_data.seed)
-        request = SecurityAccess.make_request(level=level+1,
+        session_key = security_algorithm(interpreted_response.service_data.seed)
+        request = SecurityAccess.make_request(level=security_algorithm.key_subfunction,
                                                                 mode=SecurityAccess.Mode.SendKey,
                                                                 data=session_key)
         response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = SecurityAccess.interpret_response(response=response,
                                                                                    mode=SecurityAccess.Mode.SendKey)
         
-        return interpreted_response.service_data.security_level_echo == level+1
+        return interpreted_response.service_data.security_level_echo == security_algorithm.key_subfunction
     
     def raw_uds_service(self, sid: UdsSid, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, sub_function: Optional[int] = None, data: Optional[bytes] = None) -> RawUdsResponse:
         """sends raw UDS service request and reads response
