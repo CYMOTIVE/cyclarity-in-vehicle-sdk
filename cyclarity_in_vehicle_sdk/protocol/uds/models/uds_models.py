@@ -48,8 +48,8 @@ class PERMISSION_INFO(BaseModel):
 
 
 class DID_INFO(BaseModel):
-    read_permission: Optional[PERMISSION_INFO] = None
-    write_permission: Optional[PERMISSION_INFO] = None
+    did: int
+    accessible: bool
     current_data: Optional[str] = None
 
 
