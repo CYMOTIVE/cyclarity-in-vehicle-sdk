@@ -1,23 +1,30 @@
 from typing import Optional
 from cyclarity_in_vehicle_sdk.communication.base.communicator_base import CommunicatorType
 from cyclarity_in_vehicle_sdk.communication.can.impl.can_communicator_socketcan import CanCommunicatorSocketCan
-from cyclarity_in_vehicle_sdk.communication.isotp.base.isotp_communicator_base import Address, IsoTpCommunicatorBase
+from cyclarity_in_vehicle_sdk.communication.isotp.base.isotp_communicator_base import Address, AddressingMode, IsoTpCommunicatorBase
 import isotp
 from pydantic import Field
+
+CAN_ID_MAX_NORMAL_11_BITS = 0x7FF
 
 class IsoTpCommunicator(IsoTpCommunicatorBase):
     can_communicator: CanCommunicatorSocketCan = Field(description="CAN Communicator")
     rxid: int = Field(description="Receive CAN id.")
     txid: int = Field(description="Transmit CAN id.")
+    padding_byte: Optional[int] = Field(default=None, ge=0, le=0xFF, description="Optional byte to pad TX messages with, defaults to None meaning no padding, should be in range 0x00-0xFF")
 
     _is_open = False
     _address = None
+    _params: dict = {"blocking_send":True}
 
     def teardown(self):
         self.close()
 
     def model_post_init(self, *args, **kwargs):
-        self._address = Address(rxid=self.rxid, txid=self.txid)
+        mode = AddressingMode.Normal_29bits if (self.rxid > CAN_ID_MAX_NORMAL_11_BITS or self.txid > CAN_ID_MAX_NORMAL_11_BITS) else AddressingMode.Normal_11bits
+        self._address = Address(rxid=self.rxid, txid=self.txid, addressing_mode=mode)
+        if self.padding_byte:
+            self._params.update({"tx_padding":self.padding_byte})
 
     def set_address(self, address: Address):
         self._address = address
@@ -31,7 +38,7 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
         try:
             self.can_stack.send(data=data, send_timeout=timeout)
         except isotp.BlockingSendTimeout as ex:
-            self.logger.warn(f"Timeout for send operation: {str(ex)}")
+            self.logger.warning(f"Timeout for send operation: {str(ex)}")
             return 0
         
         return len(data)
@@ -49,7 +56,7 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
             return False
         
         self.can_communicator.open()
-        self.can_stack = isotp.CanStack(bus=self.can_communicator.get_bus(), address=self._address, params={"blocking_send":True})
+        self.can_stack = isotp.CanStack(bus=self.can_communicator.get_bus(), address=self._address, params=self._params)
         self.can_stack.start()
         self._is_open = True
         return True
