@@ -1,0 +1,139 @@
+@startuml communication_and_utils_stack_v4
+
+interface CommunicatorBase {
+    +send(self, data: bytes) -> int:
+    +recv(self, recv_timeout: int, size: int) -> bytes:
+    +open(self) -> bool:
+    +close(self) -> bool:
+    +get_type(self) -> CommunicatorType:
+}
+
+abstract ConnectionCommunicatorBase extends CommunicatorBase {
+    +connect(self) -> bool
+    +is_open() -> bool
+}
+
+abstract ConnectionlessCommunicatorBase extends CommunicatorBase {
+    +send_to(self, target_ip: IPvAnyAddress, data: bytes) -> int:
+    +receive_from(self, size: int) -> tuple[bytes, IPvAnyAddress]:
+}
+
+interface RawSocketCommunicatorBase {
+    +open(self, if_name: str) -> bool:
+    +close(self) -> bool:
+    +send(self, packet: Packet) -> bool:
+    +send_receive_packet(self, packet: Packet, is_answer: Callable[[Packet], bool], timeout: float) -> Optional[Packet]:
+    +receive(self, timeout: float) -> Optional[Packet]:
+}
+
+interface CanCommunicatorBase {
+    +open(self) -> None:
+    +close(self) -> None:
+    +send(self, can_msg: Message, timeout: Optional[float] = None)
+    +send_periodically(self, msgs: Union[Message, 
+    \t\t\tSequence[Message]], period: float,duration: Optional[float])
+    +receive(self, timeout: Optional[float] = None) -> Optional[Message]:
+    +sniff(self, sniff_time: float) -> Optional[list[Message]]
+    +add_to_blacklist(self, canids: Sequence[int])
+    +get_bus(self) -> Type[BusABC]:
+}
+
+abstract IsoTpCommunicatorBase extends CommunicatorBase {
+    +set_address(self, address: isotp.Address)
+}
+
+class DoipUtils {
+    +raw_socket4: Layer3RawSocket
+    +raw_socket6: Layer3RawSocket
+
+    +initiate_vehicle_identity_req(source_address, source_port, target_address, protocol_version) -> VehicleIdentificationResponse
+    +initiate_routing_activation_req(source_address,target_address,client_logical_address,timeout,activation_type) -> RoutingActivationResponse
+    +req_entity_status(source_address, source_port, target_address, protocol_version) -> EntityStatusResponse
+    +{static}initiate_routing_activation_req_bound(communicatior,client_logical_address,timeout,activation_type) -> RoutingActivationResponse
+    +{static}send_uds_request(communicator,payload,client_logical_address, target_logical_address, timeout)
+    +{static}read_uds_response(communicator,timeout)
+    +{static}_pack_doip_message(DoIPMessage, protocol_version) -> bytes
+    +{static}_is_answer(packet, expected_source_port, l4_type, expected_resp_type)
+    +{static}_read_doip(communicator, timeout) -> DoIPMessage
+}
+
+enum UdsSid(IntEnum) {
+DiagnosticSessionControl = 0x10
+EcuReset = 0x11
+SecurityAccess = 0x27
+CommunicationControl = 0x28
+Authentication = 0x29
+TesterPresent = 0x3E
+AccessTimingParameters = 0x83
+SecuredDataTransmission = 0x84
+ControlDtcSettings = 0x85
+ResponseOnEvent = 0x86
+LinkControl = 0x87
+ReadDataByIdentifier = 0x22
+ReadMemoryByAddress = 0x23
+ReadScalingDataByIdentifier = 0x24
+ReadDataByIdentifierPeriodic = 0x2A
+DynamicallyDefineDataIdentifier = 0x2C
+WriteDataByIdentifier = 0x2E
+WriteMemoryByAddress = 0x3D
+ClearDiagnosticInformation = 0x14
+ReadDtcInformation = 0x19
+InputOutputControlByIdentifier = 0x2F
+RoutineControl = 0x31
+RequestDownload = 0x34
+RequestUpload = 0x35
+TransferData = 0x36
+RequestTransferExit = 0x37
+RequestFileTransfer = 0x38
+}
+
+interface UdsUtilsBase {
+    +setup(self)
+    +teardown(self)
+    +session(self,timeout:float, session: int, standard_version: int = udsoncan.latest_standard) -> SessionControlResultData:
+    +transit_to_session(self, route_to_session: list[SESSION_ACCESS], timeout: float, standard_version: int) -> bool
+    +ecu_reset(self,timeout:float, reset_type: int) -> bool:
+    +read_did(self,timeout:float, didlist: Union[int, list[int]]) -> dict[int, str]:
+    +routing_control(self,timeout:float, routine_id: int, control_type: int, data: Optional[bytes] = None) -> RoutingControlResponseData:
+    +tester_present(self) -> bool:
+    +write_did(self,timeout:float, did: int, data: str) -> bool:
+    +security_access(self,timeout:float, level: int, security_algorithm: Type[SECURITY_ALGORITHM_BASE], bytes]) -> bool:
+	+raw_uds_service(self, sid: UdsSid, timeout: float, sub_function: Optional[int] = None, data: Optional[bytes] = None) -> RawUdsResponse:
+}
+
+class UdsUtils implements UdsUtilsBase{
+    -data_link_layer: Union[IsoTpCommunicator, DoipCommunicator]
+    -_split_dids(self, didlist: Union[int, list[int]], data_hex: str) -> dict[int, str]:
+}
+
+interface IDeviceShell {
+    exec_command (self, command: str, testcase_filter: Optional[str] = None) -> Tuple[str, ...]:
+    teardown (self)
+}
+
+class DoipCommunicator implements CommunicatorBase{
+    tcp_communicator: TcpCommunicator
+    client_logical_address: int
+    target_logical_address: int
+    routing_activation_needed: bool
+    _initiate_routing_activation_if_needed(timeout) -> bool
+    _reconnect_tcp_if_needed() -> bool
+}
+
+class IsoTpCommunicator implements IsoTpCommunicatorBase{
+    can_communicator: CanCommunicatorSocketCan
+    rxid: int
+    txid: int
+    padding_byte: Optional[int]
+}
+
+class AdbDeviceShell implements IDeviceShell
+class SerialDeviceShell implements IDeviceShell
+class SshDeviceShell implements IDeviceShell
+class Layer3RawSocket implements RawSocketCommunicatorBase
+class Layer2RawSocket implements RawSocketCommunicatorBase
+class TcpCommunicator implements ConnectionCommunicatorBase
+class MulticastCommunicator implements ConnectionlessCommunicatorBase
+class CanCommunicatorSocketCan implements CanCommunicatorBase
+
+@enduml
