@@ -4,7 +4,8 @@ from udsoncan.Request import Request
 from udsoncan.services import ECUReset, ReadDataByIdentifier, RoutineControl, SecurityAccess, TesterPresent, WriteDataByIdentifier, DiagnosticSessionControl
 from udsoncan.common.DidCodec import DidCodec
 from udsoncan import latest_standard
-from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import UdsSid, NegativeResponse, NoResponse, RoutingControlResponseData, SessionControlResultData, UdsUtilsBase, InvalidResponse, RawUdsResponse
+from udsoncan.exceptions import ConfigError
+from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import UdsSid, NegativeResponse, NoResponse, RoutingControlResponseData, SessionControlResultData, UdsUtilsBase, InvalidResponse, RawUdsResponse, UdsResponseCode
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS
@@ -78,9 +79,9 @@ class UdsUtils(UdsUtilsBase):
         for session in route_to_session:
             try:    
                 change_session_ret = self.session(session=session.id, timeout=timeout, standard_version=standard_version)
-                if change_session_ret.session_echo != session.id:
-                    self.logger.debug(f"Failed to switch to session: {hex(session.id)}")
-                    return False
+                # if change_session_ret.session_echo != session.id:
+                #     self.logger.debug(f"Failed to switch to session: {hex(session.id)}, got {hex(change_session_ret.session_echo)}")
+                #     return False
                 
                 # try to elevate security access if algorithm is provided for this session
                 if session.elevation_info and session.elevation_info.security_algorithm:
@@ -133,8 +134,14 @@ class UdsUtils(UdsUtilsBase):
         response = self._send_and_read_response(request=request, timeout=timeout)
         # attach MyAsciiCodec for every did provided
         didconfig =  {item: MyAsciiCodec() for item in ([didlist] if isinstance(didlist, int) else didlist)}
-        interpreted_response = ReadDataByIdentifier.interpret_response(response=response, didlist=didlist, didconfig=didconfig)
-        return self._split_dids(didlist=didlist, data_hex=list(interpreted_response.service_data.values.values())[0])
+        try:
+            interpreted_response = ReadDataByIdentifier.interpret_response(response=response, didlist=didlist, didconfig=didconfig)
+        except ConfigError as ex:
+            req_dids_str = f"{hex(didlist)}" if isinstance(didlist, int) else ', '.join(hex(did) for did in didlist)
+            self.logger.error(f"Received did {hex(ex.key)} that was not requested in response, requested: {req_dids_str}")
+            raise NegativeResponse(code=UdsResponseCode.GeneralReject, code_name=f"Received did {hex(ex.key)} that was not requested in response")
+        resp_list_values = list(interpreted_response.service_data.values.values())
+        return self._split_dids(didlist=didlist, data_hex=resp_list_values[0] if len(resp_list_values) else b'')
 
     def routing_control(self, routine_id: int, control_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, data: Optional[bytes] = None) -> RoutingControlResponseData:
         """Sends a request for RoutineControl
