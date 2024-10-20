@@ -1,4 +1,5 @@
-from typing import Any, Callable, Optional, Type, Union
+from typing import Any, Optional, Type, Union
+from pydantic import Field
 from udsoncan.BaseService import BaseService
 from udsoncan.Request import Request
 from udsoncan.services import ECUReset, ReadDataByIdentifier, RoutineControl, SecurityAccess, TesterPresent, WriteDataByIdentifier, DiagnosticSessionControl
@@ -18,7 +19,7 @@ class MyAsciiCodec(DidCodec):
     def __init__(self):
         pass
 
-    def encode(self, string_ascii: Any) -> bytes:  # type: ignore
+    def encode(self, string_ascii: Any) -> bytes:
         if not isinstance(string_ascii, str):
             raise ValueError("AsciiCodec requires a string for encoding")
 
@@ -32,6 +33,7 @@ class MyAsciiCodec(DidCodec):
 
 class UdsUtils(UdsUtilsBase):
     data_link_layer: Union[IsoTpCommunicator, DoipCommunicator]
+    attempts: int = Field(default=1, ge=1, description="Number of attempts to perform the UDS operation if no response was received")
 
     def setup(self) -> bool:
         """setup the library
@@ -272,12 +274,18 @@ class UdsUtils(UdsUtilsBase):
         return response
     
     def _send_and_read_raw_response(self, request: Request, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> RawUdsResponse:
-        sent_bytes = self.data_link_layer.send(data=request.get_payload(), timeout=timeout)
-        if sent_bytes < len(request.get_payload()):
-            self.logger.error("Failed to send request")
-            raise RuntimeError("Failed to send request")
-        
-        raw_response = self.data_link_layer.recv(recv_timeout=timeout)
+        raw_response = None
+        for i in range(self.attempts):
+            sent_bytes = self.data_link_layer.send(data=request.get_payload(), timeout=timeout)
+            if sent_bytes < len(request.get_payload()):
+                self.logger.error("Failed to send request")
+                raise RuntimeError("Failed to send request")
+            
+            raw_response = self.data_link_layer.recv(recv_timeout=timeout)
+
+            if not raw_response:
+                self.logger.debug(f"No response for request with SID: {hex(request.service.request_id())}, attempt {i}")
+                continue
 
         if not raw_response:
             raise NoResponse
