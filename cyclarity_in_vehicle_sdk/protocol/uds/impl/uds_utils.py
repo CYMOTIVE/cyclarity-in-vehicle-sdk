@@ -81,9 +81,8 @@ class UdsUtils(UdsUtilsBase):
         for session in route_to_session:
             try:    
                 change_session_ret = self.session(session=session.id, timeout=timeout, standard_version=standard_version)
-                # if change_session_ret.session_echo != session.id:
-                #     self.logger.debug(f"Failed to switch to session: {hex(session.id)}, got {hex(change_session_ret.session_echo)}")
-                #     return False
+                if change_session_ret.session_echo != session.id:
+                    self.logger.warning(f"Unexpected session ID echo, expected: {hex(session.id)}, got {hex(change_session_ret.session_echo)}")
                 
                 # try to elevate security access if algorithm is provided for this session
                 if session.elevation_info and session.elevation_info.security_algorithm:
