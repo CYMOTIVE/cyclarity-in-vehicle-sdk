@@ -103,6 +103,7 @@ interface UdsUtilsBase {
 
 class UdsUtils implements UdsUtilsBase{
     -data_link_layer: Union[IsoTpCommunicator, DoipCommunicator]
+    -attempts: int
     -_split_dids(self, didlist: Union[int, list[int]], data_hex: str) -> dict[int, str]:
 }
 
