@@ -10,6 +10,7 @@ from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 from udsoncan.services.ECUReset import ECUReset
 from udsoncan.services.RoutineControl import RoutineControl
 from udsoncan.services.DiagnosticSessionControl import DiagnosticSessionControl
+from udsoncan.common.dids import DataIdentifier
 
 #  type aliases
 ECUResetType: TypeAlias = ECUReset.ResetType
@@ -18,6 +19,7 @@ SessionControlResultData: TypeAlias = DiagnosticSessionControl.ResponseData
 RawUdsResponse: TypeAlias = Response
 UdsResponseCode: TypeAlias = ResponseCode
 UdsDefinedSessions: TypeAlias = DiagnosticSessionControl.Session
+UdsDid: TypeAlias = DataIdentifier
 
 class UdsSid(IntEnum):
     """The service IDs standardized by UDS.

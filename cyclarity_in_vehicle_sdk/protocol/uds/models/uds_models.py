@@ -49,10 +49,11 @@ class PERMISSION_INFO(BaseModel):
 
 class DID_INFO(BaseModel):
     did: int
+    name: Optional[str]
     accessible: bool
     current_data: Optional[str] = None
     def __str__(self):
-        return f"DID {hex(self.did)}, {'Accessible' if self.accessible else 'Inaccessible'}, {('Data (len=' + str(round(len(self.current_data)/2)) + '): ' + self.current_data[:20]) if self.current_data else ''}"
+        return f"DID {hex(self.did)} ({self.name if self.name else 'Unknown'}), {'Accessible' if self.accessible else 'Inaccessible'}, {('Data (len=' + str(round(len(self.current_data)/2)) + '): ' + self.current_data[:20]) if self.current_data else ''}"
 
 
 class ROUTINE_INFO(BaseModel):
