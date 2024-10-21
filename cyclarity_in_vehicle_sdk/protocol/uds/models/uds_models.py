@@ -49,7 +49,7 @@ class PERMISSION_INFO(BaseModel):
 
 class DID_INFO(BaseModel):
     did: int
-    name: Optional[str]
+    name: Optional[str] = None
     accessible: bool
     current_data: Optional[str] = None
     def __str__(self):

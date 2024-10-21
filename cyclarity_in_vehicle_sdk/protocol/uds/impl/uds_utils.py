@@ -23,7 +23,7 @@ class MyAsciiCodec(DidCodec):
         if not isinstance(string_ascii, str):
             raise ValueError("AsciiCodec requires a string for encoding")
 
-        return string_ascii.encode('ascii')
+        return bytes.fromhex(string_ascii)
 
     def decode(self, string_bin: bytes) -> Any:
         return string_bin.hex()
@@ -207,7 +207,7 @@ class UdsUtils(UdsUtilsBase):
         request = WriteDataByIdentifier.make_request(did=did, value=value, didconfig={did: MyAsciiCodec()})
         response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = WriteDataByIdentifier.interpret_response(response=response)
-        return interpreted_response.service_data.subfunction_echo.did_echo == did
+        return interpreted_response.service_data.did_echo == did
     
     def security_access(self, security_algorithm: Type[SECURITY_ALGORITHM_BASE], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
         """Sends a request for SecurityAccess
