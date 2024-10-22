@@ -33,6 +33,11 @@ class ELEVATION_INFO(BaseModel):
     def __str__(self):
         return f"{'Needs elevation' if self.need_elevation else ''}, {'Elevation Callback is available' if self.security_algorithm else ''}"
 
+class MAYBE_SUPPORTED_ERROR(BaseModel):
+    code: int = Field(description="Error code number")
+    code_name: str = Field(description="Error code name")
+    def __str__(self):
+        return f"({hex(self.code)}) {self.code_name}"
 
 class SERVICE_INFO(BaseModel):
     name: str = Field(default="", description="The name of the UDS service")
@@ -52,8 +57,14 @@ class DID_INFO(BaseModel):
     name: Optional[str] = None
     accessible: bool
     current_data: Optional[str] = None
+    maybe_supported_error: Optional[MAYBE_SUPPORTED_ERROR] = Field(default=None, 
+                                                                   description="The error code if there is uncertainty that this DID is supported")
     def __str__(self):
-        return f"DID {hex(self.did)} ({self.name if self.name else 'Unknown'}), {'Accessible' if self.accessible else 'Inaccessible'}, {('Data (len=' + str(round(len(self.current_data)/2)) + '): ' + self.current_data[:20]) if self.current_data else ''}"
+        return (f"DID {hex(self.did)} ({self.name if self.name else 'Unknown'}), "  
+                f"{'Accessible' if self.accessible else 'Inaccessible'}"  
+                f"{(', Maybe supported error: ' + str(self.maybe_supported_error)) if self.maybe_supported_error else ''}, "  
+                f"{('Data (len=' + str(round(len(self.current_data) / 2)) + '): ' + self.current_data[:20]) if self.current_data else ''}"  
+)  
 
 
 class ROUTINE_INFO(BaseModel):
