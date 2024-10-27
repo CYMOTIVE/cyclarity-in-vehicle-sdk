@@ -295,7 +295,6 @@ class UdsUtils(UdsUtilsBase):
                     raise InvalidResponse(invalid_reason=response.invalid_reason)
                 
                 if response.service.response_id() != request.service.response_id():
-                    self.logger.debug(f"{hex(request.service.request_id())}-{hex(response.service.request_id())}")
                     self.logger.debug(f"Got unexpected response: {response.service.get_name()}, request was {request.service.get_name()}, discarding and trying to receive again")
                     raw_response = None
                     continue
