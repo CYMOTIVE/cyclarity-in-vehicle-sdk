@@ -1,3 +1,4 @@
+import time
 from typing import Any, Optional, Type, Union
 from pydantic import Field
 from udsoncan.BaseService import BaseService
@@ -280,18 +281,34 @@ class UdsUtils(UdsUtilsBase):
                 self.logger.error("Failed to send request")
                 raise RuntimeError("Failed to send request")
             
-            raw_response = self.data_link_layer.recv(recv_timeout=timeout)
+            start = time.time()
+            while True:
+                now = time.time()
+                raw_response = self.data_link_layer.recv(recv_timeout=timeout)
 
-            if not raw_response:
-                self.logger.debug(f"No response for request with SID: {hex(request.service.request_id())}, attempt {i}")
-                continue
+                if not raw_response or (now - start) > timeout:
+                    self.logger.debug(f"No response for request with SID: {hex(request.service.request_id())}, attempt {i}")
+                    break
+
+                response = RawUdsResponse.from_payload(payload=raw_response)
+                if not response.valid:
+                    raise InvalidResponse(invalid_reason=response.invalid_reason)
+                
+                if response.service.response_id() != request.service.response_id():
+                    self.logger.debug(f"{hex(request.service.request_id())}-{hex(response.service.request_id())}")
+                    self.logger.debug(f"Got unexpected response: {response.service.get_name()}, request was {request.service.get_name()}, discarding and trying to receive again")
+                    raw_response = None
+                    continue
+                
+                if not response.positive and response.code == UdsResponseCode.RequestCorrectlyReceived_ResponsePending:
+                    self.logger.debug(f"Got error: {response.code_name}, trying to receive again")
+                    continue
+                else:
+                    return response
+            
 
         if not raw_response:
             raise NoResponse
-        
-        response = RawUdsResponse.from_payload(payload=raw_response)
-        if not response.valid:
-            raise InvalidResponse(invalid_reason=response.invalid_reason)
         
         return response
     
