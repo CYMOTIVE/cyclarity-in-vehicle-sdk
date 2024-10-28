@@ -284,9 +284,13 @@ class UdsUtils(UdsUtilsBase):
             start = time.time()
             while True:
                 now = time.time()
+                if (now - start) > timeout:
+                    self.logger.debug(f"Timeout reading response for request with SID: {hex(request.service.request_id())}, attempt {i}")
+                    break
+
                 raw_response = self.data_link_layer.recv(recv_timeout=timeout)
 
-                if not raw_response or (now - start) > timeout:
+                if not raw_response:
                     self.logger.debug(f"No response for request with SID: {hex(request.service.request_id())}, attempt {i}")
                     break
 
