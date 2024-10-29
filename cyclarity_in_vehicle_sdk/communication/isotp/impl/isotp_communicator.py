@@ -21,6 +21,7 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
         self.close()
 
     def model_post_init(self, *args, **kwargs):
+        super().model_post_init(self, *args, **kwargs)
         mode = AddressingMode.Normal_29bits if (self.rxid > CAN_ID_MAX_NORMAL_11_BITS or self.txid > CAN_ID_MAX_NORMAL_11_BITS) else AddressingMode.Normal_11bits
         self._address = Address(rxid=self.rxid, txid=self.txid, addressing_mode=mode)
         if self.padding_byte:
