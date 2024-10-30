@@ -1,10 +1,13 @@
-from typing import Any, Callable, Optional, Type, Union
+import time
+from typing import Any, Optional, Type, Union
+from pydantic import Field
 from udsoncan.BaseService import BaseService
 from udsoncan.Request import Request
 from udsoncan.services import ECUReset, ReadDataByIdentifier, RoutineControl, SecurityAccess, TesterPresent, WriteDataByIdentifier, DiagnosticSessionControl
 from udsoncan.common.DidCodec import DidCodec
 from udsoncan import latest_standard
-from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import UdsSid, NegativeResponse, NoResponse, RoutingControlResponseData, SessionControlResultData, UdsUtilsBase, InvalidResponse, RawUdsResponse
+from udsoncan.exceptions import ConfigError
+from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import UdsSid, NegativeResponse, NoResponse, RoutingControlResponseData, SessionControlResultData, UdsUtilsBase, InvalidResponse, RawUdsResponse, UdsResponseCode
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS
@@ -17,11 +20,11 @@ class MyAsciiCodec(DidCodec):
     def __init__(self):
         pass
 
-    def encode(self, string_ascii: Any) -> bytes:  # type: ignore
+    def encode(self, string_ascii: Any) -> bytes:
         if not isinstance(string_ascii, str):
             raise ValueError("AsciiCodec requires a string for encoding")
 
-        return string_ascii.encode('ascii')
+        return bytes.fromhex(string_ascii)
 
     def decode(self, string_bin: bytes) -> Any:
         return string_bin.hex()
@@ -31,6 +34,7 @@ class MyAsciiCodec(DidCodec):
 
 class UdsUtils(UdsUtilsBase):
     data_link_layer: Union[IsoTpCommunicator, DoipCommunicator]
+    attempts: int = Field(default=1, ge=1, description="Number of attempts to perform the UDS operation if no response was received")
 
     def setup(self) -> bool:
         """setup the library
@@ -79,8 +83,7 @@ class UdsUtils(UdsUtilsBase):
             try:    
                 change_session_ret = self.session(session=session.id, timeout=timeout, standard_version=standard_version)
                 if change_session_ret.session_echo != session.id:
-                    self.logger.debug(f"Failed to switch to session: {hex(session.id)}")
-                    return False
+                    self.logger.warning(f"Unexpected session ID echo, expected: {hex(session.id)}, got {hex(change_session_ret.session_echo)}")
                 
                 # try to elevate security access if algorithm is provided for this session
                 if session.elevation_info and session.elevation_info.security_algorithm:
@@ -133,8 +136,14 @@ class UdsUtils(UdsUtilsBase):
         response = self._send_and_read_response(request=request, timeout=timeout)
         # attach MyAsciiCodec for every did provided
         didconfig =  {item: MyAsciiCodec() for item in ([didlist] if isinstance(didlist, int) else didlist)}
-        interpreted_response = ReadDataByIdentifier.interpret_response(response=response, didlist=didlist, didconfig=didconfig)
-        return self._split_dids(didlist=didlist, data_hex=list(interpreted_response.service_data.values.values())[0])
+        try:
+            interpreted_response = ReadDataByIdentifier.interpret_response(response=response, didlist=didlist, didconfig=didconfig)
+        except ConfigError as ex:
+            req_dids_str = f"{hex(didlist)}" if isinstance(didlist, int) else ', '.join(hex(did) for did in didlist)
+            self.logger.error(f"Received did {hex(ex.key)} that was not requested in response, requested: {req_dids_str}")
+            raise NegativeResponse(code=UdsResponseCode.GeneralReject, code_name=f"Received did {hex(ex.key)} that was not requested in response")
+        resp_list_values = list(interpreted_response.service_data.values.values())
+        return self._split_dids(didlist=didlist, data_hex=resp_list_values[0] if len(resp_list_values) else b'')
 
     def routing_control(self, routine_id: int, control_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, data: Optional[bytes] = None) -> RoutingControlResponseData:
         """Sends a request for RoutineControl
@@ -199,7 +208,7 @@ class UdsUtils(UdsUtilsBase):
         request = WriteDataByIdentifier.make_request(did=did, value=value, didconfig={did: MyAsciiCodec()})
         response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = WriteDataByIdentifier.interpret_response(response=response)
-        return interpreted_response.service_data.subfunction_echo.did_echo == did
+        return interpreted_response.service_data.did_echo == did
     
     def security_access(self, security_algorithm: Type[SECURITY_ALGORITHM_BASE], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
         """Sends a request for SecurityAccess
@@ -265,19 +274,44 @@ class UdsUtils(UdsUtilsBase):
         return response
     
     def _send_and_read_raw_response(self, request: Request, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> RawUdsResponse:
-        sent_bytes = self.data_link_layer.send(data=request.get_payload(), timeout=timeout)
-        if sent_bytes < len(request.get_payload()):
-            self.logger.error("Failed to send request")
-            raise RuntimeError("Failed to send request")
-        
-        raw_response = self.data_link_layer.recv(recv_timeout=timeout)
+        raw_response = None
+        for i in range(self.attempts):
+            sent_bytes = self.data_link_layer.send(data=request.get_payload(), timeout=timeout)
+            if sent_bytes < len(request.get_payload()):
+                self.logger.error("Failed to send request")
+                raise RuntimeError("Failed to send request")
+            
+            start = time.time()
+            while True:
+                now = time.time()
+                if (now - start) > timeout:
+                    self.logger.debug(f"Timeout reading response for request with SID: {hex(request.service.request_id())}, attempt {i}")
+                    break
+
+                raw_response = self.data_link_layer.recv(recv_timeout=timeout)
+
+                if not raw_response:
+                    self.logger.debug(f"No response for request with SID: {hex(request.service.request_id())}, attempt {i}")
+                    break
+
+                response = RawUdsResponse.from_payload(payload=raw_response)
+                if not response.valid:
+                    raise InvalidResponse(invalid_reason=response.invalid_reason)
+                
+                if response.service.response_id() != request.service.response_id():
+                    self.logger.debug(f"Got unexpected response: {response.service.get_name()}, request was {request.service.get_name()}, discarding and trying to receive again")
+                    raw_response = None
+                    continue
+                
+                if not response.positive and response.code == UdsResponseCode.RequestCorrectlyReceived_ResponsePending:
+                    self.logger.debug(f"Got error: {response.code_name}, trying to receive again")
+                    continue
+                else:
+                    return response
+            
 
         if not raw_response:
             raise NoResponse
-        
-        response = RawUdsResponse.from_payload(payload=raw_response)
-        if not response.valid:
-            raise InvalidResponse(invalid_reason=response.invalid_reason)
         
         return response
     

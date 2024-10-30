@@ -33,13 +33,21 @@ class ELEVATION_INFO(BaseModel):
     def __str__(self):
         return f"{'Needs elevation' if self.need_elevation else ''}, {'Elevation Callback is available' if self.security_algorithm else ''}"
 
+class ERROR_CODE_AND_NAME(BaseModel):
+    code: int = Field(description="Error code number")
+    code_name: str = Field(description="Error code name")
+    def __str__(self):
+        return f"({hex(self.code)}) {self.code_name}"
 
 class SERVICE_INFO(BaseModel):
-    name: str = Field(default="", description="The name of the UDS service")
-    supported: bool = Field(default=False, description="Whether this UDS service is supported")
-    maybe_supported_error: Optional[str] = Field(default=None, description="The error code if there is uncertainty that this service is supported")
-    elevation_info: Optional[ELEVATION_INFO] = Field(default=None, description="The elevation info if needed for this service")
-
+    sid: int = Field(description="The SID of the UDS service")
+    name: str = Field(description="The name of the UDS service")
+    error: Optional[ERROR_CODE_AND_NAME] = Field(default=None, description="The error code if exists")
+    accessible: bool = Field(default=False, description="Whether this UDS service is accessible")
+    def __str__(self):
+        return (f"{self.name} ({hex(self.sid)})"
+                f"{', Accessible' if self.accessible else ', Inaccessible'}"
+                f"{', Error: ' + str(self.error) if self.error else ''}")
 
 class PERMISSION_INFO(BaseModel):
     accessible: bool = False
@@ -48,9 +56,18 @@ class PERMISSION_INFO(BaseModel):
 
 
 class DID_INFO(BaseModel):
-    read_permission: Optional[PERMISSION_INFO] = None
-    write_permission: Optional[PERMISSION_INFO] = None
+    did: int
+    name: Optional[str] = None
+    accessible: bool
     current_data: Optional[str] = None
+    maybe_supported_error: Optional[ERROR_CODE_AND_NAME] = Field(default=None, 
+                                                                   description="The error code if there is uncertainty that this DID is supported")
+    def __str__(self):
+        return (f"DID {hex(self.did)} ({self.name if self.name else 'Unknown'}), "  
+                f"{'Accessible' if self.accessible else 'Inaccessible'}"  
+                f"{(', Maybe supported error: ' + str(self.maybe_supported_error)) if self.maybe_supported_error else ''}, "  
+                f"{('Data (len=' + str(round(len(self.current_data) / 2)) + '): ' + self.current_data[:20]) if self.current_data else ''}"  
+)  
 
 
 class ROUTINE_INFO(BaseModel):

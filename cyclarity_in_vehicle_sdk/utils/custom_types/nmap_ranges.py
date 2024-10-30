@@ -47,7 +47,7 @@ class NmapRanges():
                 start = stop = int(t, 16)
 
             ranges.append(range(start, stop + 1))
-        return ranges
+        return sorted(ranges, key=lambda x: x.stop)
 
     @classmethod
     def __get_pydantic_core_schema__(
