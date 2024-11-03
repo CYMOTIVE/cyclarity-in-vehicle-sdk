@@ -1,9 +1,10 @@
 from abc import abstractmethod
 import asyncio
-from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
+from typing import Callable
+from cyclarity_sdk.expert_builder.runnable.runnable import ContextParsable
 
 
-class PluginBase(ParsableModel):
+class PluginBase(ContextParsable):
     @abstractmethod
     def setup(self) -> None:
         """Setup the plugin
@@ -17,7 +18,9 @@ class PluginBase(ParsableModel):
         pass
 
 
-class NonInteractivePluginBase(PluginBase):
+class BackgroundPluginBase(PluginBase):
+    """Base for plugins that shall run in the background
+    """
     _task: asyncio.Task = None
 
     @abstractmethod  
@@ -45,3 +48,21 @@ class NonInteractivePluginBase(PluginBase):
             self._task.cancel()  
             await self._task
             self._task = None  
+
+class EventNotifierPluginBase(PluginBase):
+    """Base for plugins that shall notify the user upon occurring events
+    """
+    _event_notifier_cb: Callable[[], None] = None
+
+    def set_notifier(self, on_event_callback: Callable[[], None]):
+        """Sets a callback to be used for notification upon occurring events
+        Args:
+            on_event_callback (Callable[[], None]): the callback to be called upon events
+        """
+        self._event_notifier_cb = on_event_callback
+
+
+class InteractivePluginBase(PluginBase):
+    """Base for plugins that require interaction (API calls) by the using entity
+    """
+    pass

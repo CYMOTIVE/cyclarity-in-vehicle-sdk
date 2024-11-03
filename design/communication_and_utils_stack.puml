@@ -139,4 +139,53 @@ class TcpCommunicator implements ConnectionCommunicatorBase
 class MulticastCommunicator implements ConnectionlessCommunicatorBase
 class CanCommunicatorSocketCan implements CanCommunicatorBase
 
+package plugins {
+
+interface PluginBase extends ContextParsable{
+    +{abstract}setup()
+    +{abstract}teardown()
+}
+
+abstract BackgroundPluginBase extends PluginBase {
+    -_task: asyncio.Task
+    +start()
+    +async stop()
+    +{abstract}async run()
+    -async _run_wrapper()
+}
+
+abstract EventNotifierPluginBase extends PluginBase {
+    +{abstract}set_notifier(Callable[[], None])
+}
+
+abstract InteractivePluginBase extends PluginBase
+
+abstract ResetPluginBase extends InteractivePluginBase {
+    +{abstract}reset()
+}
+
+
+class RelayResetPlugin implements ResetPluginBase{
+    -reset_pin: int
+    -gpio_chip: str
+}
+
+class UdsBasedEcuResetPlugin implements ResetPluginBase{
+    -uds_utils: UdsUtils
+}
+
+class TesterPresentSenderPlugin implements BackgroundPluginBase {
+    -uds_utils: UdsUtils
+    -intervals: float
+}
+
+class Klam15SenderPlugin implements BackgroundPluginBase {
+    -uds_utils: UdsUtils
+    -intervals: float
+}
+
+class EcuCrashDetectorUdsBasedPlugin implements BackgroundPluginBase, EventNotifierPluginBase {
+    -uds_utils: UdsUtils
+}
+}
 @enduml

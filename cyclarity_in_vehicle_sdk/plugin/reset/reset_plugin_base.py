@@ -1,8 +1,8 @@
 from abc import abstractmethod
-from cyclarity_in_vehicle_sdk.plugin.plugin_base import PluginBase
+from cyclarity_in_vehicle_sdk.plugin.plugin_base import InteractivePluginBase
 
 
-class ResetPluginBase(PluginBase):
+class ResetPluginBase(InteractivePluginBase):
     @abstractmethod
     def reset(self):
         pass
