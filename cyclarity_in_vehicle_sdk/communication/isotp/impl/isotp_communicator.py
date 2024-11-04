@@ -12,6 +12,8 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
     rxid: int = Field(description="Receive CAN id.")
     txid: int = Field(description="Transmit CAN id.")
     padding_byte: Optional[int] = Field(default=None, ge=0, le=0xFF, description="Optional byte to pad TX messages with, defaults to None meaning no padding, should be in range 0x00-0xFF")
+    bitrate_switch: Optional[bool] = Field(default=False, description="BRS, defaults to False")
+    can_fd: Optional[bool] = Field(default=False, description="whether it is can FD, defaults to False")
 
     _is_open = False
     _address = None
@@ -26,6 +28,10 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
         self._address = Address(rxid=self.rxid, txid=self.txid, addressing_mode=mode)
         if self.padding_byte:
             self._params.update({"tx_padding":self.padding_byte})
+        if self.bitrate_switch:
+            self._params.update({"bitrate_switch":self.bitrate_switch})
+        if self.can_fd:
+            self._params.update({"can_fd":self.can_fd})
 
     def set_address(self, address: Address):
         self._address = address
