@@ -1,10 +1,9 @@
 from abc import abstractmethod
 import asyncio
 from typing import Callable
-from cyclarity_sdk.expert_builder.runnable.runnable import ContextParsable
+from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 
-
-class PluginBase(ContextParsable):
+class PluginBase(ParsableModel):
     @abstractmethod
     def setup(self) -> None:
         """Setup the plugin

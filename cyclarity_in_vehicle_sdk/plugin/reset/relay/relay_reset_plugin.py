@@ -1,7 +1,7 @@
 import time
 import gpiod
 from pydantic import Field
-from cyclarity_in_vehicle_sdk.plugin.reset.reset_plugin_base import ResetPluginBase
+from cyclarity_in_vehicle_sdk.plugin.base.reset_plugin_base import ResetPluginBase
 
 class RelayResetPlugin(ResetPluginBase):
     reset_pin: int = Field(ge=0, description="Reset relay gpio pin")

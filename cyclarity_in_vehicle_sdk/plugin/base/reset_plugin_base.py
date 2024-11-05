@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from cyclarity_in_vehicle_sdk.plugin.plugin_base import InteractivePluginBase
+from cyclarity_in_vehicle_sdk.plugin.base.plugin_base import InteractivePluginBase
 
 
 class ResetPluginBase(InteractivePluginBase):
