@@ -126,6 +126,8 @@ class IsoTpCommunicator implements IsoTpCommunicatorBase{
     rxid: int
     txid: int
     padding_byte: Optional[int]
+    bitrate_switch: Optional[bool]
+    can_fd: Optional[bool]
 }
 
 class AdbDeviceShell implements IDeviceShell
