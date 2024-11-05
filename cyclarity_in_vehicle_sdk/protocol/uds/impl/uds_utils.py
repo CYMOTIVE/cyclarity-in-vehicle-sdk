@@ -90,7 +90,7 @@ class UdsUtils(UdsUtilsBase):
                     self.security_access(security_algorithm=session.elevation_info.security_algorithm, timeout=timeout)
 
             except Exception as ex:
-                self.logger.debug(f"Failed to switch to session: {hex(session.id)}, what: {ex}")
+                self.logger.warning(f"Failed to switch to session: {hex(session.id)}, what: {ex}")
                 return False
 
         return True
