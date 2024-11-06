@@ -53,12 +53,14 @@ class EventNotifierPluginBase(PluginBase):
     """
     _event_notifier_cb: Callable[[], None] = None
 
-    def set_notifier(self, on_event_callback: Callable[[], None]):
+    def set_notifier(self, on_event_callback: Callable[[], None], on_error_callback: Callable[[], None]):
         """Sets a callback to be used for notification upon occurring events
         Args:
             on_event_callback (Callable[[], None]): the callback to be called upon events
+            on_error_callback (Callable[[], None]): the callback to be called upon errors
         """
         self._event_notifier_cb = on_event_callback
+        self._error_notifier_cb = on_error_callback
 
 
 class InteractivePluginBase(PluginBase):
