@@ -19,9 +19,14 @@ class RelayResetPlugin(ResetPluginBase):
         if hasattr(self, "relay"):
             self.relay.release()
 
-    def reset(self):
-        self.logger.debug("ECU reset")
-        self.relay.set_value(self.reset_pin, gpiod.line.Value.ACTIVE)
-        time.sleep(1)
-        self.relay.set_value(self.reset_pin, gpiod.line.Value.INACTIVE)
-        time.sleep(1)
+    def reset(self) -> bool:
+        if hasattr(self, "relay"):
+            self.logger.debug("Trying to reset the ECU")
+            self.relay.set_value(self.reset_pin, gpiod.line.Value.ACTIVE)
+            time.sleep(1)
+            self.relay.set_value(self.reset_pin, gpiod.line.Value.INACTIVE)
+            time.sleep(1)
+            return True
+        else: 
+            self.logger.error("relay is not available, either setup() was no performed or it has failed")
+            return False
