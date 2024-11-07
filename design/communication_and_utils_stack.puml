@@ -141,7 +141,7 @@ class CanCommunicatorSocketCan implements CanCommunicatorBase
 
 package plugins {
 
-interface PluginBase extends ContextParsable{
+interface PluginBase extends ParsabeModel{
     +{abstract}setup()
     +{abstract}teardown()
 }
@@ -176,12 +176,16 @@ class UdsBasedEcuResetPlugin implements ResetPluginBase{
     -operation_timeout: float
 }
 
-class TesterPresentSenderPlugin implements BackgroundPluginBase {
+abstract TesterPresentSenderPluginBase extends BackgroundPluginBase
+
+class TesterPresentSenderPlugin implements TesterPresentSenderPluginBase {
     -uds_utils: UdsUtils
     -intervals: float
 }
 
-class Klam15SenderPlugin implements BackgroundPluginBase {
+abstract Klam15SenderPluginBase extends BackgroundPluginBase
+
+class Klam15SenderPlugin implements Klam15SenderPluginBase {
     -uds_utils: UdsUtils
     -intervals: float
 }
@@ -194,5 +198,5 @@ class SessionChangeCrashDetector implements CrashDetectionPluginBase {
     -inquiry_interval: float
     -operation_timeout: float
 }
-
+}
 @enduml
