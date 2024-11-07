@@ -155,7 +155,7 @@ abstract BackgroundPluginBase extends PluginBase {
 }
 
 abstract EventNotifierPluginBase extends PluginBase {
-    +{abstract}set_notifier(Callable[[], None])
+    +{abstract}set_notifier(on_event_callback, on_error_callback)
 }
 
 abstract InteractivePluginBase extends PluginBase
@@ -172,6 +172,8 @@ class RelayResetPlugin implements ResetPluginBase{
 
 class UdsBasedEcuResetPlugin implements ResetPluginBase{
     -uds_utils: UdsUtils
+    -reset_type: int
+    -operation_timeout: float
 }
 
 class TesterPresentSenderPlugin implements BackgroundPluginBase {
@@ -184,8 +186,13 @@ class Klam15SenderPlugin implements BackgroundPluginBase {
     -intervals: float
 }
 
-class EcuCrashDetectorUdsBasedPlugin implements BackgroundPluginBase, EventNotifierPluginBase {
+abstract CrashDetectionPluginBase extends BackgroundPluginBase, EventNotifierPluginBase
+
+class SessionChangeCrashDetector implements CrashDetectionPluginBase {
     -uds_utils: UdsUtils
+    -current_session: int
+    -inquiry_interval: float
+    -operation_timeout: float
 }
-}
+
 @enduml
