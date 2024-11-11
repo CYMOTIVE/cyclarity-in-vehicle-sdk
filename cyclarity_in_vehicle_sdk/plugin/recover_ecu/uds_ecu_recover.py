@@ -1,8 +1,8 @@
+from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import NegativeResponse
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SESSION_INFO
 from pydantic import Field
 from cyclarity_in_vehicle_sdk.plugin.base.recover_ecu_base import RecoverEcuPluginBase
 from cyclarity_in_vehicle_sdk.protocol.uds.impl.uds_utils import UdsUtils, DEFAULT_UDS_OPERATION_TIMEOUT
-from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import ECUResetType
 
 class UdsEcuRecoverPlugin(RecoverEcuPluginBase):
     uds_utils: UdsUtils
@@ -17,6 +17,15 @@ class UdsEcuRecoverPlugin(RecoverEcuPluginBase):
         self.uds_utils.teardown()
 
     def recover(self) -> bool:
+        if self.session_info.elevation_info:
+            try:
+                self.uds_utils.security_access(security_algorithm=self.session_info.elevation_info.security_algorithm,
+                                               timeout=self.operation_timeout)     
+            except NegativeResponse as nr:
+                self.logger.warning(f"Got negative response trying to elevate security with the provided algorithm. error: {nr.code_name}")
+            except Exception as ex:
+                self.logger.warning(f"Failed to elevate security with the provided algorithm. error: {ex}")
+                
         return self.uds_utils.transit_to_session(route_to_session=self.session_info.route_to_session, 
                                                  standard_version=self.uds_standard_version, 
                                                  timeout=self.operation_timeout)

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import struct
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -29,7 +29,7 @@ class SECURITY_ALGORITHM_PIN(SECURITY_ALGORITHM_BASE):
 
 class ELEVATION_INFO(BaseModel):
     need_elevation: Optional[bool] = Field(default=None, description="Whether this session requires elevation")
-    security_algorithm: Optional[SECURITY_ALGORITHM_BASE] = Field(default=None, description="The security elevation algorithm")
+    security_algorithm: Optional[Union[SECURITY_ALGORITHM_XOR, SECURITY_ALGORITHM_PIN]] = Field(default=None, description="The security elevation algorithm")
     def __str__(self):
         return f"{'Needs elevation' if self.need_elevation else ''}, {'Elevation Callback is available' if self.security_algorithm else ''}"
 
