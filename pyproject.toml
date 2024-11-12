@@ -15,7 +15,7 @@ doipclient = "^1.1.1"
 can-isotp = "^2.0.6"
 udsoncan = "^1.23.1"
 cmake = "^3.30.2"
-python-can = { git = "https://github.com/CYMOTIVE/python-can.git", branch="CC-2174_over8_adaptations"}  
+python-can = "*"
 py-pcapplusplus = "^1.0.1"
 gpiod = "*"
 jsonargparse = "*"
