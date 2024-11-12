@@ -1,8 +1,10 @@
 from pydantic import Field
 from cyclarity_in_vehicle_sdk.plugin.base.crash_detection_plugin_base import InteractiveCrashDetectionPluginBase
+from cyclarity_in_vehicle_sdk.plugin.base.crash_detection_plugin_base import InteractiveCrashDetectionPluginBase
 from cyclarity_in_vehicle_sdk.protocol.uds.impl.uds_utils import UdsUtils, DEFAULT_UDS_OPERATION_TIMEOUT
 from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import NegativeResponse, NoResponse, UdsDid
 
+class SessionChangeCrashDetector(InteractiveCrashDetectionPluginBase):
 class SessionChangeCrashDetector(InteractiveCrashDetectionPluginBase):
     uds_utils: UdsUtils
     current_session: int = Field(gt=1, le=0x7F, description="Session ID of current session")
