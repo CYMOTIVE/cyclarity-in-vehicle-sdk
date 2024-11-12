@@ -1,7 +1,8 @@
 from abc import abstractmethod
-import asyncio
+import threading
 from typing import Callable
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
+from pydantic import PrivateAttr
 
 class PluginBase(ParsableModel):
     @abstractmethod
@@ -20,33 +21,36 @@ class PluginBase(ParsableModel):
 class BackgroundPluginBase(PluginBase):
     """Base for plugins that shall run in the background
     """
-    _task: asyncio.Task = None
+    _thread: threading.Thread = None
+    _stop_event: threading.Event = PrivateAttr(default_factory=threading.Event)    
 
     @abstractmethod  
-    async def run(self) -> None:
-        """To be implemented by concrete Non interactive plugins
+    def run(self) -> None:
+        """To be implemented by concrete background plugins
+        `_stop_event` must be used to identify and respond to `stop` requests
+        e.g.
+        ```
+        def run(self) -> None:
+            while not self._stop_event.is_set():
+                do_stuff..
+        ```
         """
         pass
 
-    async def _run_wrapper(self):
-        try:  
-            await self.run()  
-        except asyncio.CancelledError:  
-            pass
-  
     def start(self):  
         """Will run the derived run() operation in an async manner
         """
-        if self._task is None:  
-            self._task = asyncio.create_task(self._run_wrapper())
+        if self._thread is None: 
+            self._thread = threading.Thread(target=self.run)
+            self._thread.start()
   
-    async def stop(self):  
+    def stop(self):  
         """Will stop the async operation started in start() if still needed
-        """  
-        if self._task is not None:  
-            self._task.cancel()  
-            await self._task
-            self._task = None  
+        """ 
+        if self._thread is not None:
+            self._stop_event.set()  
+            self._thread.join()
+            self._thread = None
 
 class EventNotifierPluginBase(PluginBase):
     """Base for plugins that shall notify the user upon occurring events
