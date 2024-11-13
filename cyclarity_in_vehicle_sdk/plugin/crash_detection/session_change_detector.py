@@ -10,7 +10,7 @@ class SessionChangeCrashDetector(InteractiveCrashDetectionPluginBase):
 
     def check_crash(self) -> bool:
         try:
-            res = self.uds_utils.read_did(didlist=UdsDid.ActiveDiagnosticSession)
+            res = self.uds_utils.read_did(didlist=UdsDid.ActiveDiagnosticSession, timeout=self.operation_timeout)
             active_session = int(res[UdsDid.ActiveDiagnosticSession])
             if active_session != self.current_session:
                 self.logger.debug(f"Active session has changed from {hex(self.current_session)} to {hex(active_session)} assuming ECU has crashed")
