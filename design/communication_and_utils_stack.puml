@@ -190,13 +190,22 @@ class Klam15SenderPlugin implements Klam15SenderPluginBase {
     -intervals: float
 }
 
-abstract CrashDetectionPluginBase extends BackgroundPluginBase, EventNotifierPluginBase
+abstract InteractiveCrashDetectionPluginBase extends InteractivePluginBase {
+    +{abstract}check_crash() -> bool
+}
 
-class SessionChangeCrashDetector implements CrashDetectionPluginBase {
+abstract BackgroundCrashDetectionPluginBase extends BackgroundPluginBase, EventNotifierPluginBase
+
+class SessionChangeCrashDetector implements InteractiveCrashDetectionPluginBase {
     -uds_utils: UdsUtils
     -current_session: int
-    -inquiry_interval: float
     -operation_timeout: float
 }
+
+UnrespondedTesterPresentCrashDetector implements InteractiveCrashDetectionPluginBase {
+    -uds_utils: UdsUtils
+    -operation_timeout: float
+}
+
 }
 @enduml
