@@ -6,25 +6,29 @@ from cyclarity_in_vehicle_sdk.plugin.base.reset_plugin_base import ResetPluginBa
 class RelayResetPlugin(ResetPluginBase):
     reset_pin: int = Field(ge=0, description="Reset relay gpio pin")
     gpio_chip: str = Field(description="The gpio chip connected to the relay e.g. /dev/gpiochip4")
+    _relay: gpiod.LineRequest = None
 
     def setup(self) -> None:
-        self.relay = gpiod.request_lines(self.gpio_chip, consumer="relay", config={
-            self.reset_pin: gpiod.LineSettings(
-                direction=gpiod.line.Direction.OUTPUT,
-                output_value=gpiod.line.Value.INACTIVE
-            )
-        })        
+        try:
+            self._relay = gpiod.request_lines(self.gpio_chip, consumer="relay", config={
+                self.reset_pin: gpiod.LineSettings(
+                    direction=gpiod.line.Direction.OUTPUT,
+                    output_value=gpiod.line.Value.INACTIVE
+                )
+            })
+        except Exception as ex:
+            self.logger.error(f"Failed setting up RelayResetPlugin, error: {ex}")
 
     def teardown(self) -> None:
-        if hasattr(self, "relay"):
-            self.relay.release()
+        if self._relay:
+            self._relay.release()
 
     def reset(self) -> bool:
-        if hasattr(self, "relay"):
+        if self._relay:
             self.logger.debug("Trying to reset the ECU")
-            self.relay.set_value(self.reset_pin, gpiod.line.Value.ACTIVE)
+            self._relay.set_value(self.reset_pin, gpiod.line.Value.ACTIVE)
             time.sleep(1)
-            self.relay.set_value(self.reset_pin, gpiod.line.Value.INACTIVE)
+            self._relay.set_value(self.reset_pin, gpiod.line.Value.INACTIVE)
             time.sleep(1)
             return True
         else: 
