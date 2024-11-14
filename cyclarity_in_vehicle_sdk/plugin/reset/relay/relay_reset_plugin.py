@@ -1,11 +1,19 @@
+from enum import Enum
 import time
+from typing import Union
 import gpiod
 from pydantic import Field
 from cyclarity_in_vehicle_sdk.plugin.base.reset_plugin_base import ResetPluginBase
 
+class GpioChip(str, Enum):
+    PI4 = "/dev/gpiochip0"
+    PI5 = "/dev/gpiochip4"
+
 class RelayResetPlugin(ResetPluginBase):
     reset_pin: int = Field(ge=0, description="Reset relay gpio pin")
-    gpio_chip: str = Field(description="The gpio chip connected to the relay e.g. /dev/gpiochip4")
+    gpio_chip: Union[GpioChip, str] = Field(description="The gpio chip connected to the relay e.g. /dev/gpiochip4")
+    shutdown_sleep: float = Field(default=1, gt=0, description="Sleep after shutdown request, default to 1 second")
+    boot_sleep: float = Field(default=1, gt=0, description="Sleep after boot request, default to 1 second")
     _relay: gpiod.LineRequest = None
 
     def setup(self) -> None:
