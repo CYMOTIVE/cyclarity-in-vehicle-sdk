@@ -148,3 +148,8 @@ class RawSocketCommunicatorBase(ParsableModel):
         """ 
         return self.send_receive_packets(None, is_answer, timeout)
 
+    def __del__(self):
+        if self.is_open():
+            self.logger.error(f"Destructor of raw socket {self.__class__.__name__} called without closing it first. Forcly closing the socket.")
+            self.close()
+
