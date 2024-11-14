@@ -1,6 +1,6 @@
 import socket
 import asyncio
-from typing import Callable, Optional
+from typing import Callable, Sequence
 from enum import Enum
 
 from cyclarity_in_vehicle_sdk.communication.ip.base.raw_socket_base import RawSocketCommunicatorBase
@@ -14,77 +14,139 @@ class IpVersion(str, Enum):
 # This class was just partially tested, and not in use by runnables ATM, do not use blindly
 class Layer2RawSocket(RawSocketCommunicatorBase):
     if_name: str = Field(description="Name of ethernet interface to work with. (e.g. eth0, eth1 etc...)")
+    _raw_socket: RawSocket | None = None
 
     def open(self) -> bool:
-        self.raw_socket: RawSocket = RawSocket(self.if_name)
+        self._raw_socket: RawSocket = RawSocket(self.if_name)
         return True
     
     def close(self) -> bool:
+        self._raw_socket = None
         return True
     
-    def send(self, packet: Packet) -> bool:
-        if self.raw_socket:
-            return self.raw_socket.send_packet(packet)
+    def is_open(self) -> bool:
+        return self._raw_socket is not None
 
-    def send_receive_packet(self, packet: Packet, is_answer: Callable[[Packet], bool], timeout: int = 2) -> Optional[Packet]:
-        if self.raw_socket:
-            found_packet: Packet = None
-        
+    def send_packet(self, packet: Packet) -> bool:
+        if self._raw_socket:
+            return self._raw_socket.send_packet(packet)
+        else:
+            self.logger.error("Attempting to send a packet without openning the socket.")
+            return False
+    
+    def send_packets(self, packets: Sequence[Packet]) -> bool:
+        if self._raw_socket:
+            return self._raw_socket.send_packets(packets)
+        else:
+            self.logger.error("Attempting to send packets without openning the socket.")
+            return False
+
+    def send_receive_packet(self, packet: Packet | Sequence[Packet] | None, is_answer: Callable[[Packet], bool], timeout: float = 2) -> Packet | None:
+        found_packets = self._send_receive_packets(packet, is_answer, timeout, max_answers=1)
+        if found_packets:
+            return found_packets[0] # Get first valid answer
+        else:
+            return None
+    
+    def send_receive_packets(self, packet: Packet | Sequence[Packet] | None, is_answer: Callable[[Packet], bool], timeout: float = 2) -> list[Packet]:
+        return self._send_receive_packets(packet, is_answer, timeout)
+
+    def _send_receive_packets(self, packet: Packet | Sequence[Packet] | None, is_answer: Callable[[Packet], bool], timeout: float, max_answers=0) -> list[Packet]:
+        if self._raw_socket:
+            found_packets: list[Packet] = []
+
             async def find_packet(in_socket: RawSocket, timeout: int):
-                nonlocal found_packet
+                nonlocal found_packets
                 nonlocal is_answer
+                # TODO: find a better way to sniff and check packets in parallel
                 sniffed_packets = in_socket.sniff(timeout=timeout)
                 for sniffed_packet in sniffed_packets:
                     if is_answer(sniffed_packet):
-                        found_packet = sniffed_packet
+                        found_packets.append(sniffed_packet)
+                        if max_answers and max_answers <= len(found_packets):
+                            break
             
             loop = asyncio.new_event_loop()
-            find_packet_task = loop.create_task(find_packet(self.raw_socket, timeout))
-            self.send(packet)
+            find_packet_task = loop.create_task(find_packet(self._raw_socket, timeout))
+            if packet:
+                self.send(packet)
             loop.run_until_complete(find_packet_task)
-            return found_packet
+            return found_packets
+        else:
+            self.logger.error("Attempting to send packets without openning the socket.")
+            raise Exception("Attempt transmitting over a closed Layer2 Raw Socket.")
     
-    def receive(self, timeout: int) -> Optional[Packet]:
-        if self.raw_socket:
+    def receive(self, timeout: float = 2) -> Packet | None:
+        if self._raw_socket:
             if timeout > 0:
-                return self.raw_socket.receive_packet(blocking=False, timeout=timeout)
+                return self._raw_socket.receive_packet(blocking=False, timeout=timeout)
             else:
-                return self.raw_socket.receive_packet()
-            
+                return self._raw_socket.receive_packet()
+        else:
+            self.logger.error("Attempting to receive packets without openning the socket.")
+            raise Exception("Attempt to read from a closed Layer2 Raw Socket.")
+    
+    def receive_answer(self, is_answer: Callable[[Packet], bool], timeout: float = 2) -> Packet | None:
+        return self.send_receive_packet(None, is_answer, timeout)
+    
+    def receive_answers(self, is_answer: Callable[[Packet], bool], timeout: float = 2) -> Packet | None:
+        return self.send_receive_packets(None, is_answer, timeout)
 
 
 class Layer3RawSocket(RawSocketCommunicatorBase):
     if_name: str = Field(description="Name of ethernet interface to work with. (e.g. eth0, eth1 etc...)")
     ip_version: IpVersion = Field(description="IP version. IPv4/IPv6")
+    _in_socket: RawSocket | None = None
+    _out_socket: socket.socket | None = None
 
     def open(self) -> bool:
         if self.ip_version == IpVersion.IPv4:
-            self.out_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
-            self.out_socket.setsockopt(socket.SOL_IP, socket.IP_HDRINCL, 1)
+            self._out_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
+            self._out_socket.setsockopt(socket.SOL_IP, socket.IP_HDRINCL, 1)
+        elif self.ip_version == IpVersion.IPv6:
+            self._out_socket = socket.socket(socket.AF_INET6, socket.SOCK_RAW, socket.IPPROTO_RAW)
         else:
-            self.out_socket = socket.socket(socket.AF_INET6, socket.SOCK_RAW, socket.IPPROTO_RAW)
-        self.in_socket = RawSocket(self.if_name)
+            self.logger.error(f"Unexpected ip version {self.ip_version} set as type.")
+            return False
+        self._in_socket = RawSocket(self.if_name)
         return True
 
     def close(self) -> bool:
-        self.out_socket.close()
+        self._in_socket = None
+        self._out_socket.close()
+        return True
 
-    def send(self, packet: Packet) -> bool:
-        # dst_addr:str
-        ipv4_layer: IPv4Layer = packet.get_layer(LayerType.IPv4Layer)
-        if not ipv4_layer:
-            ipv6_layer: IPv6Layer = packet.get_layer(LayerType.IPv6Layer)
-            if not ipv6_layer:
-                self.logger.error("Can't send packets without destination address")
-                return False
+    def is_open(self) -> bool:
+        return self._in_socket is not None
+
+    def send_packet(self, packet: Packet) -> bool:
+        if not self.is_open():
+            self.logger.error("Attempt sending packet to a closed socket.")
+            return False
+        
+        if self.ip_version == IpVersion.IPv4:
+            ipv4_layer: IPv4Layer = packet.get_layer(LayerType.IPv4Layer)
+            if ipv4_layer:
+                dst_addr = ipv4_layer.dst_ip
             else:
+                self.logger.error("Attempt transmittion of non ipv4 packet")
+                self.logger.debug(f"packet = {packet}")
+                return False
+        elif self.ip_version == IpVersion.IPv6:
+            ipv6_layer: IPv6Layer = packet.get_layer(LayerType.IPv6Layer)
+            if ipv6_layer:
                 dst_addr = ipv6_layer.dst_ip
+            else:
+                self.logger.error("Attempt transmittion of non ipv4 packet")
+                self.logger.debug(f"packet = {packet}")
+                return False
         else:
-            dst_addr = ipv4_layer.dst_ip
+            self.logger.error(f"Unexpected ip version {self.ip_version} set as type.")
+            return False
+        
+        return self._out_socket.sendto(bytes(packet), (dst_addr, 0))
 
-        return self.out_socket.sendto(bytes(packet), (dst_addr, 0))
-
-    def send_receive_packet(self, packet: Packet, is_answer: Callable[[Packet], bool], timeout: float = 2) -> Optional[Packet]:
+    def send_receive_packets(self, packet: Packet | Sequence[Packet] | None, is_answer: Callable[[Packet], bool], timeout: float = 2) -> Packet | None:
         found_packet = None
         
         async def find_packet(in_socket: RawSocket, timeout: float):
@@ -96,11 +158,15 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
                     found_packet = sniffed_packet
         
         loop = asyncio.new_event_loop()
-        find_packet_task = loop.create_task(find_packet(self.in_socket, timeout))
+        find_packet_task = loop.create_task(find_packet(self._in_socket, timeout))
         self.send(packet)
         loop.run_until_complete(find_packet_task)
         return found_packet
                 
-    def receive(self, timeout: float = 2) -> Optional[Packet]:
-        return self.in_socket.receive_packet(blocking=True, timeout=timeout)
+    def receive(self, timeout: float = 2) -> Packet | None:
+        if self._in_socket is None:
+            self.logger.error("Attempt to read from a closed socket.")
+            return None
+        
+        return self._in_socket.receive_packet(blocking=True, timeout=timeout)
     
