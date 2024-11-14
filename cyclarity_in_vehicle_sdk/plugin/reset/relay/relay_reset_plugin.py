@@ -35,9 +35,9 @@ class RelayResetPlugin(ResetPluginBase):
         if self._relay:
             self.logger.debug("Trying to reset the ECU")
             self._relay.set_value(self.reset_pin, gpiod.line.Value.ACTIVE)
-            time.sleep(1)
+            time.sleep(self.shutdown_sleep)
             self._relay.set_value(self.reset_pin, gpiod.line.Value.INACTIVE)
-            time.sleep(1)
+            time.sleep(self.boot_sleep)
             return True
         else: 
             self.logger.error("relay is not available, either setup() was no performed or it has failed")
