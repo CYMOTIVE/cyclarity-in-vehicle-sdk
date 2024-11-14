@@ -2,6 +2,7 @@ import socket
 import asyncio
 from typing import Callable, Sequence
 from enum import Enum
+import time
 
 from cyclarity_in_vehicle_sdk.communication.ip.base.raw_socket_base import RawSocketCommunicatorBase
 from pydantic import Field
@@ -58,13 +59,17 @@ class Layer2RawSocket(RawSocketCommunicatorBase):
             async def find_packet(in_socket: RawSocket, timeout: int):
                 nonlocal found_packets
                 nonlocal is_answer
-                # TODO: find a better way to sniff and check packets in parallel
-                sniffed_packets = in_socket.sniff(timeout=timeout)
-                for sniffed_packet in sniffed_packets:
-                    if is_answer(sniffed_packet):
-                        found_packets.append(sniffed_packet)
+                time_spent = 0
+                start_time = time.time()
+                while time_spent < timeout:
+                    packet = in_socket.receive_packet(timeout=timeout-time_spent)
+                    if not packet:
+                        break
+                    if is_answer(packet):
+                        found_packets.append(packet)
                         if max_answers and max_answers <= len(found_packets):
                             break
+                    time_spent = time.time()-start_time
             
             loop = asyncio.new_event_loop()
             find_packet_task = loop.create_task(find_packet(self._raw_socket, timeout))
@@ -89,7 +94,7 @@ class Layer2RawSocket(RawSocketCommunicatorBase):
     def receive_answer(self, is_answer: Callable[[Packet], bool], timeout: float = 2) -> Packet | None:
         return self.send_receive_packet(None, is_answer, timeout)
     
-    def receive_answers(self, is_answer: Callable[[Packet], bool], timeout: float = 2) -> Packet | None:
+    def receive_answers(self, is_answer: Callable[[Packet], bool], timeout: float = 2) -> list[Packet]:
         return self.send_receive_packets(None, is_answer, timeout)
 
 
