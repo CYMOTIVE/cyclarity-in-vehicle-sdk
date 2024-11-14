@@ -29,7 +29,7 @@ class RawSocketCommunicatorBase(ParsableModel):
         raise NotImplementedError
     
     @abstractmethod
-    def send(self, packet: Packet | Sequence[Packet]) -> bool:
+    def send_packet(self, packet: Packet) -> bool:
         """send a packet or a sequence of packets to the raw socket
 
         Args:
@@ -39,6 +39,42 @@ class RawSocketCommunicatorBase(ParsableModel):
             bool: True if sent successfully, False otherwise
         """
         raise NotImplementedError
+    
+    def send_packets(self, packets: Sequence[Packet]) -> bool:
+        """send a sequence of packets to the raw socket
+        
+        Note: This function uses the implementation of 'send_packet', 
+        Optionally override this function to have a better implementation.
+
+        Args:
+            packet (Packet | Sequence[Packet]): packet/packets to send.
+
+        Returns:
+            bool: True if sent successfully, False otherwise
+        """
+        for i, packet in enumerate(packets):
+            if not self.send_packet(packet):
+                self.logger.error(f"Could not send packet {i} of of {len(packets)}")
+                return False
+        return True
+        
+    def send(self, packet: Packet | Sequence[Packet]) -> bool:
+        """send a packet or a sequence of packets to the raw socket
+
+        Args:
+            packet (Packet | Sequence[Packet]): packet/packets to send.
+
+        Returns:
+            bool: True if sent successfully, False otherwise
+        """
+        if self.is_open():
+            if isinstance(packet, Sequence):
+                return self.send_packets(packet)
+            else:
+                return self.send_packet(packet)
+        else:
+            self.logger.error("Attempting to send packets without openning the socket.")
+            return False
 
     def send_receive_packet(self, packet: Packet | Sequence[Packet] | None, is_answer: Callable[[Packet], bool], timeout: float) -> Packet | None:
         """send packet or a sequence of packets and read an answer
