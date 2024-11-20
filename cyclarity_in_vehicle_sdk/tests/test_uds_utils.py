@@ -32,14 +32,23 @@ class IntegrationTestIsoTpBased(TestCase):
     ):
         ret = self.uds_utils.read_did(didlist=0xf187)
         self.assertTrue(len(ret) == 1)
-        self.assertTrue(0xf187 in ret)
+        self.assertTrue(0xf187 in [did_tuple.did for did_tuple in ret])
 
     def test_read_did_multiple(
          self
     ):
         ret = self.uds_utils.read_did(didlist=[0xf187, 0xf189, 0x719e])
         self.assertTrue(len(ret) == 3)
-        self.assertTrue(all(item in ret for item in [0xf187, 0xf189, 0x719e]))
+        ret_dids = [did_tuple.did for did_tuple in ret]
+        self.assertTrue(all(item in ret_dids for item in [0xf187, 0xf189, 0x719e]))
+
+    def test_read_did_multiple_same(
+         self
+    ):
+        ret = self.uds_utils.read_did(didlist=[0xf187, 0xf187, 0xf187])
+        self.assertTrue(len(ret) == 3)
+        ret_dids = [did_tuple.did for did_tuple in ret]
+        self.assertTrue(all(item in ret_dids for item in [0xf187]))
     
     def test_read_did_single_not_exists(
          self
@@ -81,14 +90,23 @@ class IntegrationTestDoipBased(TestCase):
     ):
         ret = self.uds_utils.read_did(didlist=0xF15B)
         self.assertTrue(len(ret) == 1)
-        self.assertTrue(0xF15B in ret)
+        self.assertTrue(0xF15B in [did_tuple.did for did_tuple in ret])
 
     def test_read_did_multiple(
         self
     ):
         ret = self.uds_utils.read_did(didlist=[0xF15B, 0xAB01, 0xAB02])
         self.assertTrue(len(ret) == 3)
-        self.assertTrue(all(item in ret for item in [0xF15B, 0xAB01, 0xAB02]))
+        ret_dids = [did_tuple.did for did_tuple in ret]
+        self.assertTrue(all(item in ret_dids for item in [0xF15B, 0xAB01, 0xAB02]))
+
+    def test_read_did_multiple_same(
+        self
+    ):
+        ret = self.uds_utils.read_did(didlist=[0xF15B, 0xF15B, 0xF15B])
+        self.assertTrue(len(ret) == 3)
+        ret_dids = [did_tuple.did for did_tuple in ret]
+        self.assertTrue(all(item in ret_dids for item in [0xF15B]))
     
     def test_read_did_single_not_exists(
         self
