@@ -93,7 +93,7 @@ interface UdsUtilsBase {
     +session(self,timeout:float, session: int, standard_version: int = udsoncan.latest_standard) -> SessionControlResultData:
     +transit_to_session(self, route_to_session: list[SESSION_ACCESS], timeout: float, standard_version: int) -> bool
     +ecu_reset(self,timeout:float, reset_type: int) -> bool:
-    +read_did(self,timeout:float, didlist: Union[int, list[int]]) -> dict[int, str]:
+    +read_did(self,timeout:float, didlist: Union[int, list[int]]) -> list[RdidDataTuple(did, data)]:
     +routing_control(self,timeout:float, routine_id: int, control_type: int, data: Optional[bytes] = None) -> RoutingControlResponseData:
     +tester_present(self) -> bool:
     +write_did(self,timeout:float, did: int, data: str) -> bool:
@@ -104,7 +104,7 @@ interface UdsUtilsBase {
 class UdsUtils implements UdsUtilsBase{
     -data_link_layer: Union[IsoTpCommunicator, DoipCommunicator]
     -attempts: int
-    -_split_dids(self, didlist: Union[int, list[int]], data_hex: str) -> dict[int, str]:
+    -_split_dids(self, didlist: Union[int, list[int]], data_hex: str) -> list[RdidDataTuple(did, data)]:
 }
 
 interface IDeviceShell {
