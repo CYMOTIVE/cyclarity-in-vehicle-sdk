@@ -12,6 +12,15 @@ else
     poetry version prerelease
 fi
 
+#check lock file
+if [ -e "poetry.lock" ]; then  
+  # Remove the file  
+  rm "poetry.lock"  
+  echo "File poetry.lock has been removed."  
+else  
+  echo "File poetry.lock does not exist."  
+fi
+
 poetry install
 poetry build
 poetry config pypi-token.pypi $PYPI_TOKEN
