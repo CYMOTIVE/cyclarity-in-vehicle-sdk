@@ -21,6 +21,7 @@ UdsResponseCode: TypeAlias = ResponseCode
 UdsDefinedSessions: TypeAlias = DiagnosticSessionControl.Session
 UdsDid: TypeAlias = DataIdentifier
 RdidDataTuple = NamedTuple("RdidDataTuple", did=int, data=str)
+ControlTypeType: TypeAlias = RoutineControl.ControlType
 
 class UdsSid(IntEnum):
     """The service IDs standardized by UDS.

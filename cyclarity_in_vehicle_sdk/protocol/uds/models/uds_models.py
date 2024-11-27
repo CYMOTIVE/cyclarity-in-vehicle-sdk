@@ -72,11 +72,26 @@ class DID_INFO(BaseModel):
                 f"{('Data (len=' + str(round(len(self.current_data) / 2)) + '): ' + self.current_data[:20]) if self.current_data else ''}"  
 )  
 
+class ROUTINE_OPERATION_INFO(BaseModel):
+    control_type: int
+    maybe_supported_error: Optional[ERROR_CODE_AND_NAME] = Field(default=None,
+                                                                 description="The error code if there is uncertainty that this routine control type is supported")
+    routine_status_record: Optional[str] = Field(default=None,
+                                                 description="Additional data associated with the response.")
+    def __str__(self):
+        return (f"Routine control type {hex(self.control_type)}, "
+                f"{(', Maybe supported error: ' + str(self.maybe_supported_error)) if self.maybe_supported_error else ''}"  
+                f"{(', Routine status record (len=' + str(round(len(self.routine_status_record) / 2)) + '): ' + self.routine_status_record[:20]) if self.routine_status_record else ''}"  
+                )
 
 class ROUTINE_INFO(BaseModel):
-    operations: dict[int, PERMISSION_INFO] = Field(
-        default_factory=dict[int, PERMISSION_INFO]
-    )
+    routine_id: int
+    accessible: bool
+    operations: list[ROUTINE_OPERATION_INFO]
+    def __str__(self):
+        operations_str = '\n'.join(str(operation) for operation in self.operations)
+        return (f"Routine ID {hex(self.routine_id)} {'Accessible' if self.accessible else 'Inaccessible'}, Sub Operations:\n"
+                f"{operations_str}\n\n")
 
 class SESSION_ACCESS(BaseModel):
     id: int = Field(description="ID of this UDS session")
