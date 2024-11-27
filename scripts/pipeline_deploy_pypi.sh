@@ -35,6 +35,7 @@ git config --local user.email bitbucket@ci
 
 git pull
 git add pyproject.toml
+git add poetry.lock
 git add ${VERSION_FILE_NAME}
 git commit -m "[skip ci] ${new_version}"
 git tag ${new_version}
