@@ -1,0 +1,55 @@
+@startuml plugin flow
+autoactivate on
+
+actor Backend
+actor ExecutionManager
+actor MyRunnable
+note left of MyRunnable
+defined with:
+MyPluginModel()
+    reset: ResetPluginBase
+end note
+actor Runnable
+actor PluginManager
+actor MyResetPlugin
+actor MyBackgroundPlugin
+
+Backend -> ExecutionManager: plugin_data(runnable_plugins_data(MyResetPlugin)\n,background_plugins_data(MyBackgroundPlugin))\nstep_data(MyRunnable))
+return
+ExecutionManager -> ExecutionManager: dynamic import for plugin type
+return
+ExecutionManager -> ExecutionManager: instansiate MyResetPlugin
+return
+ExecutionManager -> MyResetPlugin: __init__
+return
+ExecutionManager -> ExecutionManager: instansiate MyBackgroundPlugin
+return
+ExecutionManager -> MyBackgroundPlugin: __init__
+return
+ExecutionManager -> PluginManager: add_plugin(MyResetPlugin)
+return
+ExecutionManager -> PluginManager: add_plugin(MyBackgroundPlugin, background=True)
+return
+ExecutionManager -> MyRunnable: instanciate
+return
+ExecutionManager -> Runnable: get_plugin_model_type()
+return type MyPluginModel
+ExecutionManager -> PluginManager: get_plugin_model(type MyPluginModel)
+return populated MyPluginModel
+ExecutionManager -> Runnable: set_plugin_model(populated MyPluginModel)
+Runnable -> Runnable: cls.plugins = populated MyPluginModel
+return
+return
+ExecutionManager -> PluginManager: start_background_plugins()
+PluginManager -> MyBackgroundPlugin: start()
+return
+return
+ExecutionManager -> MyRunnable: run()
+MyRunnable -> MyResetPlugin: self.plugins.reset()
+return
+return results
+ExecutionManager -> PluginManager: stop_background_plugins()
+PluginManager -> MyBackgroundPlugin: stop()
+return
+return
+@enduml
