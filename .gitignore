@@ -98,4 +98,3 @@ venv.bak/
 
 #vscode
 .vscode/*
-poetry.lock

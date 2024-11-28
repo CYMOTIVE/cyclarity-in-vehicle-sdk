@@ -6,6 +6,8 @@ import inspect
 import sys
 import zipfile
 import jsonargparse
+from cyclarity_sdk.expert_builder import run_from_cli
+
 
 def start(runnable_zip_path: str, cli_args: str, package_name: str, class_name: str):
 
@@ -48,24 +50,6 @@ def _dynamic_import(module_name, entrypoint_runnable_class):
     
     del sys.modules[module_name]
     del module
-
-def run_from_cli(runnable, cli_args: Optional[str] = None):
-    parser = jsonargparse.ArgumentParser()
-    parser.add_argument("--config", action="config")
-    parser.add_class_arguments(runnable)
-
-    if isinstance(cli_args, str):
-        args_list = shlex.split(cli_args)  
-    else:
-        args_list=cli_args
-
-    args = parser.parse_args(args_list)
-    instances = parser.instantiate_classes(args)
-
-    runner = runnable(**instances)
-    with runner:
-        results = runner()   
-        print(results.description)
 
 def main():
 
