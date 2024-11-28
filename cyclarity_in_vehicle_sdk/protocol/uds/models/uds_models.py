@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 import struct
 from typing import Optional, Union
-from typing import Optional, Union
 
 from pydantic import BaseModel, Field
 
