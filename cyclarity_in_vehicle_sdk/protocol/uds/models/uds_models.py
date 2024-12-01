@@ -79,7 +79,7 @@ class ROUTINE_OPERATION_INFO(BaseModel):
     routine_status_record: Optional[str] = Field(default=None,
                                                  description="Additional data associated with the response.")
     def __str__(self):
-        return (f"Routine control type {hex(self.control_type)}, "
+        return (f"Routine control type {hex(self.control_type)}"
                 f"{(', Maybe supported error: ' + str(self.maybe_supported_error)) if self.maybe_supported_error else ''}"  
                 f"{(', Routine status record (len=' + str(round(len(self.routine_status_record) / 2)) + '): ' + self.routine_status_record[:20]) if self.routine_status_record else ''}"  
                 )
