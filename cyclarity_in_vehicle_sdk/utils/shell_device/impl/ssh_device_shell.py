@@ -1,3 +1,4 @@
+import os
 from cyclarity_in_vehicle_sdk.utils.shell_device.base.device_shell_exception import DeviceShellException
 from cyclarity_in_vehicle_sdk.utils.shell_device.base.IDeviceShell import IDeviceShell
 import paramiko
@@ -30,6 +31,7 @@ class SshDeviceShell (IDeviceShell):
         default=None,
         description="private key for shell interface in base64",
     )
+    _sftp: paramiko.SFTPClient = None
 
 
     def model_post_init (self, *args, **kwargs):
@@ -115,6 +117,8 @@ class SshDeviceShell (IDeviceShell):
                     f"Unrecognized logging_interface_authentication_method {self.ssh_authentication_method}")
                 raise DeviceShellException (
                     f"Unrecognized logging_interface_authentication_method {self.ssh_authentication_method}")
+            
+            self._sftp = self.ssh.open_sftp()
         except Exception as e:
             self.logger.error (f"ssh connection failed with: {str (e)}", exc_info=True)
             raise DeviceShellException (str (e))
@@ -130,3 +134,14 @@ class SshDeviceShell (IDeviceShell):
         except Exception as e:
             self.logger.error (f"ssh closing failed with: {e}", exc_info=True)
             raise e
+        
+    def open_file(self, filepath, mode='r', bufsize=-1):
+        return self._sftp.file(filepath, mode=mode, bufsize=bufsize)
+
+    def push_file(self, filepath):
+        permissions = os.stat(filepath).st_mode
+        self._sftp.put(filepath, filepath)
+        self._sftp.chmod(filepath, permissions)
+
+    def pull_file(self, remote_filepath, local_filepath):
+        self._sftp.get(remote_filepath, local_filepath)
