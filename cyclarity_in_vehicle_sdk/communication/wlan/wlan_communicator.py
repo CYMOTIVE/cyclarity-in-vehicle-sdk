@@ -14,6 +14,21 @@ from cyclarity_in_vehicle_sdk.communication.ip.base.raw_socket_base import RawSo
 from .mac_parsing import wifi_frame_header, FrameType, DataSubtype
 from .radiotap_prasing import parse_radiotap, convert_channel_to_freq
 
+ETH_P_ALL = 0x0003
+
+IW_MODE_MONITOR = 6
+
+# Define necessary constants
+SIOCSIFFLAGS = 0x8914
+IFF_UP = 0x1
+IFF_BROADCAST = 0x2
+IFF_PROMISC = 0x100
+IFF_ALLMULTI = 0x200
+ETH_P_ALL = 0x0003
+SIOCGIWMODE = 0x8B07
+SIOCSIWMODE = 0x8B06  # Command to set the mode of a wireless interface
+SIOCGIFFLAGS = 0x8913  # Get the active flag word of the device.
+SIOCSIFFLAGS = 0x8914  # Set the active flag word of the device.
 
 
 class WiFiPacket():
@@ -22,27 +37,26 @@ class WiFiPacket():
         self.data = data
         self.radiotap_header, self.packet_data = parse_radiotap(data)
         self.parsed_data = wifi_frame_header.parse(self.packet_data)
-    
 
     def get_payload(self) -> Packet | None:
         if self.parsed_data.type == FrameType.DATA and self.parsed_data.subtype in [
-                DataSubtype.DATA,
-                #DataSubtype.DATA_CF_ACK,
-                #DataSubtype.DATA_CF_POLL,
-                #DataSubtype.DATA_CF_ACK_CF_POLL,
-                #DataSubtype.NULL_FUNCTION,
-                #DataSubtype.CF_ACK,
-                #DataSubtype.CF_POLL,
-                #DataSubtype.CF_ACK_CF_POLL,
-                DataSubtype.QOS_DATA,
-                #DataSubtype.QOS_DATA_CF_ACK,
-                #DataSubtype.QOS_DATA_CF_POLL,
-                #DataSubtype.QOS_DATA_CF_ACK_CF_POLL,
-                #DataSubtype.QOS_NULL,
-                #DataSubtype.RESERVED_13,
-                #DataSubtype.QOS_CF_POLL_NO_DATA,
-                #DataSubtype.QOS_CF_ACK_CF_POLL_NO_DATA,
-            ]:
+            DataSubtype.DATA,
+            # DataSubtype.DATA_CF_ACK,
+            # DataSubtype.DATA_CF_POLL,
+            # DataSubtype.DATA_CF_ACK_CF_POLL,
+            # DataSubtype.NULL_FUNCTION,
+            # DataSubtype.CF_ACK,
+            # DataSubtype.CF_POLL,
+            # DataSubtype.CF_ACK_CF_POLL,
+            DataSubtype.QOS_DATA,
+            # DataSubtype.QOS_DATA_CF_ACK,
+            # DataSubtype.QOS_DATA_CF_POLL,
+            # DataSubtype.QOS_DATA_CF_ACK_CF_POLL,
+            # DataSubtype.QOS_NULL,
+            # DataSubtype.RESERVED_13,
+            # DataSubtype.QOS_CF_POLL_NO_DATA,
+            # DataSubtype.QOS_CF_ACK_CF_POLL_NO_DATA,
+        ]:
 
             packet = Packet()
             payload_layer = PayloadLayer(data=self.parsed_data.frame_body)
@@ -50,18 +64,20 @@ class WiFiPacket():
             return packet
         return None
 
+
 class RawWiFiSocketCommunicatorBase(RawSocketCommunicatorBase):
     @abstractmethod
     def send_packet(self, packet: WiFiPacket) -> bool:
         raise NotImplementedError
-    
+
     def send_packets(self, packets: Sequence[WiFiPacket]) -> bool:
         for i, packet in enumerate(packets):
             if not self.send_packet(packet):
-                self.logger.error(f"Could not send packet {i} of of {len(packets)}")
+                self.logger.error(
+                    f"Could not send packet {i} of of {len(packets)}")
                 return False
         return True
-        
+
     def send(self, packet: WiFiPacket | Sequence[WiFiPacket]) -> bool:
         if self.is_open():
             if isinstance(packet, Sequence):
@@ -69,16 +85,17 @@ class RawWiFiSocketCommunicatorBase(RawSocketCommunicatorBase):
             else:
                 return self.send_packet(packet)
         else:
-            self.logger.error("Attempting to send packets without openning the socket.")
+            self.logger.error(
+                "Attempting to send packets without openning the socket.")
             return False
 
     def send_receive_packet(self, packet: WiFiPacket | Sequence[WiFiPacket] | None, is_answer: Callable[[WiFiPacket], bool], timeout: float) -> Packet | None:
         found_packets = self.send_receive_packets(packet, is_answer, timeout)
         if found_packets:
-            return found_packets[0] # Get first valid answer
+            return found_packets[0]  # Get first valid answer
         else:
             return None
-    
+
     @abstractmethod
     def send_receive_packets(self, packet: WiFiPacket | Sequence[WiFiPacket] | None, is_answer: Callable[[WiFiPacket], bool], timeout: float) -> list[WiFiPacket]:
         raise NotImplementedError
@@ -89,118 +106,28 @@ class RawWiFiSocketCommunicatorBase(RawSocketCommunicatorBase):
 
     def receive_answer(self, is_answer: Callable[[WiFiPacket], bool], timeout: float) -> WiFiPacket | None:
         return self.send_receive_packet(None, is_answer, timeout)
-    
+
     def receive_answers(self, is_answer: Callable[[WiFiPacket], bool], timeout: float) -> WiFiPacket | None:
         return self.send_receive_packets(None, is_answer, timeout)
 
+
 class WiFiRawSocket(RawWiFiSocketCommunicatorBase):
-    if_name: str = Field(description="Name of wlan interface to work with. (e.g. wlan0, wlan1 etc...)")
+    if_name: str = Field(
+        description="Name of wlan interface to work with. (e.g. wlan0, wlan1 etc...)")
     _raw_socket: socket.socket | None = None
 
     def open(self) -> bool:
         ETH_P_ALL = 0x0003
+        self._raw_socket = socket.socket(
+            socket.AF_PACKET, socket.SOCK_RAW, socket.htons(ETH_P_ALL))
 
-        IW_MODE_MONITOR = 6    # Monitor mode  
-        
-        # Define necessary constants  
-        SIOCGIFINDEX = 0x8933  
-        SIOCGIFHWADDR = 0x8927  
-        SIOCSIFFLAGS = 0x8914  
-        IFF_UP = 0x1  
-        IFF_BROADCAST = 0x2  
-        IFF_NOTRAILERS = 0x20  
-        IFF_RUNNING = 0x40  
-        IFF_PROMISC = 0x100  
-        IFF_ALLMULTI = 0x200  
-        ETH_P_ALL = 0x0003  
-        SOL_PACKET = 263  
-        PACKET_ADD_MEMBERSHIP = 1  
-        PACKET_MR_PROMISC = 1  
-        SIOCGIWMODE = 0x8B07
-        SIOCSIWMODE = 0x8B06  # Command to set the mode of a wireless interface 
-        SIOCGIFFLAGS = 0x8913  # Get the active flag word of the device.  
-        SIOCSIFFLAGS = 0x8914  # Set the active flag word of the device.   
-        
-        # Convert interface name to index  
-        def if_nametoindex(sock, ifname):  
-            ifreq = struct.pack('16sH14s', ifname.encode('utf-8'), 0, b'')   
-            res = fcntl.ioctl(sock.fileno(), SIOCGIFINDEX, ifreq)  
-            ifindex = struct.unpack('16sH14s', res)[1]  
-            return ifindex  
-        
-        # Get the hardware (MAC) address  
-        def get_hwaddr(sock, ifname):  
-            ifreq = fcntl.ioctl(sock.fileno(), SIOCGIFHWADDR, struct.pack('16sH14s', ifname.encode('utf-8'), 0, b''))  
-            hwaddr = struct.unpack('16sH14s', ifreq)[2]  
-            #return ':'.join(['%02x' % b for b in hwaddr[:6]])  
-            return hwaddr[:6]
-        
-        # Utility functions to perform ioctl calls  
-        def get_if_flags(sock, ifname):  
-            ifreq = struct.pack('16sH', ifname.encode('utf-8'), 0)  
-            flags = struct.unpack('16sH', fcntl.ioctl(sock, SIOCGIFFLAGS, ifreq))[1]  
-            return flags  
-        
-        def set_if_flags(sock, ifname, flags):  
-            ifreq = struct.pack('16sH', ifname.encode('utf-8'), flags)  
-            fcntl.ioctl(sock, SIOCSIFFLAGS, ifreq)  
-        
-        def update_sock_flags(sock, ifname, set_flags=0, clear_flags=0):  
-            # Get the current flags  
-            flags = get_if_flags(sock, ifname)   
-            new_flags = (flags | set_flags) & 0xffff
-            new_flags = (flags & ~clear_flags) & 0xffff
-            set_if_flags(sock, ifname, new_flags)  
-        
-        def set_dev_up():
-            subprocess.run(["ip", "link", "set", "dev", self.if_name, "up"])
-        def set_dev_down():
-            subprocess.run(["ip", "link", "set", "dev", self.if_name, "up"])
+        self._raw_socket.bind((self.if_name, ETH_P_ALL))
 
-        set_dev_down()
-
-        # Create a packet socket  
-        self._raw_socket = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(ETH_P_ALL))  
-
-        iface = self.if_name.encode('utf-8') 
-        ifreq = struct.pack('16sH14s', iface, IW_MODE_MONITOR, b'\x00'*14)  
-  
-        # Set the interface mode to monitor mode  
-        try:  
-            fcntl.ioctl(self._raw_socket.fileno(), SIOCSIWMODE, ifreq)  
-        except OSError as e:  
-            self.logger.error("Could not set the wireless mode:", e)  
-        else:  
-            self.logger.debug(f"Successfully set {iface.decode('utf-8')} to monitor mode.")   
-
-        update_sock_flags(self._raw_socket, self.if_name, set_flags=IFF_BROADCAST|IFF_PROMISC|IFF_ALLMULTI)  
-        
-        self._raw_socket.bind((self.if_name, ETH_P_ALL))  
-        
-        ifindex = if_nametoindex( self._raw_socket, self.if_name) 
-        hwaddr = get_hwaddr( self._raw_socket, self.if_name)  
-
-        packet_mreq = struct.pack("IHH8s", ifindex, PACKET_MR_PROMISC, 0, hwaddr)  
-        #self._raw_socket.setsockopt(SOL_PACKET, PACKET_ADD_MEMBERSHIP, packet_mreq)  
-
-        set_dev_up()
-        return True
-        start_time = time.time()
-        while time.time() - start_time < 10:
-            flags = get_if_flags(self._raw_socket, self.if_name)   
-            if flags & IFF_UP:
-                return True
-            
-            time.sleep(0.2)
-
-        self.logger.error("Decive was not set to up for 10 seconds.")
-        return False
-    
     def close(self) -> bool:
         self._raw_socket.close()
         self._raw_socket = None
         return True
-    
+
     def is_open(self) -> bool:
         return self._raw_socket is not None
 
@@ -208,16 +135,18 @@ class WiFiRawSocket(RawWiFiSocketCommunicatorBase):
         if self._raw_socket:
             return self._raw_socket.send(WiFiPacket.data)
         else:
-            self.logger.error("Attempting to send a packet without openning the socket.")
+            self.logger.error(
+                "Attempting to send a packet without openning the socket.")
             return False
 
     def send_receive_packet(self, packet: WiFiPacket | Sequence[WiFiPacket] | None, is_answer: Callable[[WiFiPacket], bool], timeout: float = 2) -> WiFiPacket | None:
-        found_packets = self._send_receive_packets(packet, is_answer, timeout, max_answers=1)
+        found_packets = self._send_receive_packets(
+            packet, is_answer, timeout, max_answers=1)
         if found_packets:
-            return found_packets[0] # Get first valid answer
+            return found_packets[0]  # Get first valid answer
         else:
             return None
-    
+
     def send_receive_packets(self, packet: WiFiPacket | Sequence[WiFiPacket] | None, is_answer: Callable[[WiFiPacket], bool], timeout: float = 2) -> list[WiFiPacket]:
         return self._send_receive_packets(packet, is_answer, timeout)
 
@@ -231,7 +160,8 @@ class WiFiRawSocket(RawWiFiSocketCommunicatorBase):
                 time_spent = 0
                 start_time = time.time()
                 while time_spent < timeout:
-                    received_data, received_from = in_socket.recvfrom(65565, timeout=timeout-time_spent)
+                    received_data, received_from = in_socket.recvfrom(
+                        65565, timeout=timeout-time_spent)
                     if not received_data:
                         break
                     recived_packet = WiFiPacket(received_data)
@@ -240,73 +170,36 @@ class WiFiRawSocket(RawWiFiSocketCommunicatorBase):
                         if max_answers and max_answers <= len(found_packets):
                             break
                     time_spent = time.time()-start_time
-            
+
             loop = asyncio.new_event_loop()
-            find_packet_task = loop.create_task(find_packet(self._raw_socket, timeout))
+            find_packet_task = loop.create_task(
+                find_packet(self._raw_socket, timeout))
             if packet:
                 self.send(packet)
             loop.run_until_complete(find_packet_task)
             return found_packets
         else:
-            self.logger.error("Attempting to send packets without openning the socket.")
-            raise Exception("Attempt transmitting over a closed wlan interface.")
-    
+            self.logger.error(
+                "Attempting to send packets without openning the socket.")
+            raise Exception(
+                "Attempt transmitting over a closed wlan interface.")
+
     def switch_channel(self, channel: int) -> bool:
         import subprocess
         try:
             subprocess.run(
                 ["iwconfig", self.if_name, "channel", str(channel)],
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,  
-                check=True,  
+                stderr=subprocess.PIPE,
+                check=True,
                 text=True,
             )
         except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to change channel: {e}") 
-            return False
-
-        return True 
-    
-    def switch_channel2(self, channel: int) -> bool:
-        SIOCSIWFREQ = 0x8B04
-        IFNAMSIZ = 16  
-        
-        try:
-            frequency = convert_channel_to_freq(channel) * 1e9
-        except ValueError as e:
-            self.logger.error(str(e))
-            return False
-        
-        m = frequency  
-        e = 0  
-        if frequency > 1e9:
-            import math
-            e = int(math.log10(frequency))  
-            m = int(frequency / (10**e))  
-        
-        i = 0
-        flags = 0
-
-        iwreq_data = struct.pack('=lhbB', m, e, i, flags)
-        
-        # Interface name should be set here (e.g., 'wlan0')  
-        iface = self.if_name.encode('utf-8')  
-        iface = iface.ljust(IFNAMSIZ, b'\x00')  # Pad with null bytes to IFNAMSIZ  
-        
-        # Combine the interface name and iw_freq structure for the ioctl call  
-        iwreq = iface + iwreq_data  
-
-        try:  
-            self.logger.debug(f"{iwreq=}")  
-            fcntl.ioctl(self._raw_socket, SIOCSIWFREQ, iwreq)  
-            self.logger.debug(f"Channel changed to {channel} successfully")  
-        except IOError as e:  
-            self.logger.error(f"Failed to change channel: {e}")  
+            self.logger.error(f"Failed to change channel: {e}")
             return False
 
         return True
-        
-        
+
     def receive(self, timeout: float = 2) -> WiFiPacket | None:
         if self._raw_socket:
             data, recived_from = self._raw_socket.recvfrom(65565)
@@ -324,12 +217,14 @@ class WiFiRawSocket(RawWiFiSocketCommunicatorBase):
                 self.logger.debug(f"unparsable data: {inner_data}")
                 return None
         else:
-            self.logger.error("Attempting to receive packets without openning the socket.")
-            raise Exception("Attempt transmitting over a closed wlan interface.")
-    
+            self.logger.error(
+                "Attempting to receive packets without openning the socket.")
+            raise Exception(
+                "Attempt transmitting over a closed wlan interface.")
+
     def receive_answer(self, is_answer: Callable[[WiFiPacket], bool], timeout: float = 2) -> WiFiPacket | None:
         return self.send_receive_packet(None, is_answer, timeout)
-    
+
     def receive_answers(self, is_answer: Callable[[WiFiPacket], bool], timeout: float = 2) -> list[WiFiPacket]:
         return self.send_receive_packets(None, is_answer, timeout)
 
