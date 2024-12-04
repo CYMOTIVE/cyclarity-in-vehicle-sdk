@@ -91,7 +91,7 @@ class ROUTINE_INFO(BaseModel):
     def __str__(self):
         operations_str = '\n'.join(str(operation) for operation in self.operations)
         return (f"Routine ID {hex(self.routine_id)} {'Accessible' if self.accessible else 'Inaccessible'}, Sub Operations:\n"
-                f"{operations_str}\n\n")
+                f"{operations_str}\n")
 
 class SESSION_ACCESS(BaseModel):
     id: int = Field(description="ID of this UDS session")
