@@ -6,6 +6,7 @@ from abc import abstractmethod
 from typing import Sequence, Callable
 import socket
 import subprocess
+import select
 from pydantic import Field
 import construct
 
@@ -123,6 +124,8 @@ class WiFiRawSocket(RawWiFiSocketCommunicatorBase):
 
         self._raw_socket.bind((self.if_name, ETH_P_ALL))
 
+        self._flush_recv_bufffer()
+
     def close(self) -> bool:
         self._raw_socket.close()
         self._raw_socket = None
@@ -150,6 +153,19 @@ class WiFiRawSocket(RawWiFiSocketCommunicatorBase):
     def send_receive_packets(self, packet: WiFiPacket | Sequence[WiFiPacket] | None, is_answer: Callable[[WiFiPacket], bool], timeout: float = 2) -> list[WiFiPacket]:
         return self._send_receive_packets(packet, is_answer, timeout)
 
+    def _flush_recv_bufffer(self):
+        self._raw_socket.setblocking(False)
+
+        # Read and discard all available packets
+        while True:
+            ready = select.select([self._raw_socket], [], [], 0.01)[0]
+            if ready:
+                packet = self._raw_socket.recv(65535)
+            else:
+                break  # No more packets available, buffer is "flushed"
+
+        self._raw_socket.setblocking(True)
+
     def _send_receive_packets(self, packet: WiFiPacket | Sequence[WiFiPacket] | None, is_answer: Callable[[WiFiPacket], bool], timeout: float, max_answers=0) -> list[WiFiPacket]:
         if self._raw_socket:
             found_packets: list[WiFiPacket] = []
@@ -164,11 +180,18 @@ class WiFiRawSocket(RawWiFiSocketCommunicatorBase):
                         65565, timeout=timeout-time_spent)
                     if not received_data:
                         break
-                    recived_packet = WiFiPacket(received_data)
-                    if is_answer():
-                        found_packets.append(recived_packet)
-                        if max_answers and max_answers <= len(found_packets):
-                            break
+                    if received_from[0] == self.if_name:
+                        self.logger.debug(
+                            f"Received Packet: {received_data[:10]}")
+                        recived_packet = WiFiPacket(received_data)
+                        if is_answer():
+                            found_packets.append(recived_packet)
+                            if max_answers and max_answers <= len(found_packets):
+                                break
+                    else:
+                        self.logger.warning(
+                            f"Data received from unexpected interface {received_from[0]} instead of {self.if_name}")
+
                     time_spent = time.time()-start_time
 
             loop = asyncio.new_event_loop()
@@ -202,20 +225,25 @@ class WiFiRawSocket(RawWiFiSocketCommunicatorBase):
 
     def receive(self, timeout: float = 2) -> WiFiPacket | None:
         if self._raw_socket:
-            data, recived_from = self._raw_socket.recvfrom(65565)
-            try:
-                return WiFiPacket(data)
-            except construct.core.StreamError as e:
+            while True:
+                data, received_from = self._raw_socket.recvfrom(65565)
+                if received_from[0] != self.if_name:
+                    self.logger.warning(
+                        f"Data received from unexpected interface {received_from[0]} instead of {self.if_name}")
+                    continue
                 try:
-                    header, inner_data = parse_radiotap(data)
-                except construct.core.StreamError:
-                    header = None
-                    inner_data = None
-                self.logger.error(f"could not parse packet: {e}")
-                self.logger.debug(f"unparsable data: {data}")
-                self.logger.debug(f"unparsable data: {header}")
-                self.logger.debug(f"unparsable data: {inner_data}")
-                return None
+                    return WiFiPacket(data)
+                except construct.core.StreamError as e:
+                    try:
+                        header, inner_data = parse_radiotap(data)
+                    except construct.core.StreamError:
+                        header = None
+                        inner_data = None
+                    self.logger.error(f"could not parse packet: {e}")
+                    self.logger.debug(f"unparsable data: {data}")
+                    self.logger.debug(f"unparsable data: {header}")
+                    self.logger.debug(f"unparsable data: {inner_data}")
+                    return None
         else:
             self.logger.error(
                 "Attempting to receive packets without openning the socket.")
@@ -339,6 +367,8 @@ class WiFiRawMonitorSocket(WiFiRawSocket):
             return False
 
         self._raw_socket.bind((self.if_name, ETH_P_ALL))
+
+        self._flush_recv_bufffer()
 
         return True
 
