@@ -11,6 +11,7 @@ from pydantic import Field
 import construct
 
 from py_pcapplusplus import Packet, PayloadLayer
+from cyclarity_sdk.platform_api.logger import ClarityLoggerFactory, LogHandlerType
 from cyclarity_in_vehicle_sdk.communication.ip.base.raw_socket_base import RawSocketCommunicatorBase
 from .mac_parsing import wifi_frame_header, FrameType, DataSubtype
 from .radiotap_prasing import parse_radiotap, convert_channel_to_freq
@@ -36,8 +37,19 @@ class WiFiPacket():
 
     def __init__(self, data: bytes):
         self.data = data
+        self.logger = ClarityLoggerFactory.get_logger(
+            "WiFiPacket", handler_type=LogHandlerType.SCREEN)
         self.radiotap_header, self.packet_data = parse_radiotap(data)
-        self.parsed_data = wifi_frame_header.parse(self.packet_data)
+        try:
+            self.parsed_data = wifi_frame_header.parse(self.packet_data)
+            rebuild_data = wifi_frame_header.build(self.parsed_data)
+            if rebuild_data != self.packet_data:
+                self.logger.warning(
+                    f"Incorrect parsing of packet:\n Original: {self.packet_data}\n Rebuild: {rebuild_data}\n full_packet: {self.data}")
+        except construct.core.ConstructError as e:
+            self.logger.error(f"Error parsing packet: {e}")
+            self.logger.info(f"packet: {self.packet_data}")
+            self.logger.info(f"full_packet: {self.data}")
 
     def get_payload(self) -> Packet | None:
         if self.parsed_data.type == FrameType.DATA and self.parsed_data.subtype in [
