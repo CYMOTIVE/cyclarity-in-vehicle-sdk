@@ -7,14 +7,24 @@ from typing import Sequence, Callable
 import socket
 import subprocess
 import select
+from enum import Enum, auto
 from pydantic import Field
 import construct
 
 from py_pcapplusplus import Packet, PayloadLayer
 from cyclarity_sdk.platform_api.logger import ClarityLoggerFactory, LogHandlerType
 from cyclarity_in_vehicle_sdk.communication.ip.base.raw_socket_base import RawSocketCommunicatorBase
-from .mac_parsing import wifi_frame_header, FrameType, DataSubtype
-from .radiotap_prasing import parse_radiotap, convert_channel_to_freq
+from .mac_parsing import (
+    wifi_frame_header,
+    FrameType,
+    DataSubtype,
+    AKMSuites,
+    RSNCipherSuites,
+    IEType,
+    VendorOui,
+    MicrosoftSpecificElementType
+)
+from .radiotap_prasing import parse_radiotap
 
 ETH_P_ALL = 0x0003
 
@@ -31,6 +41,16 @@ SIOCGIWMODE = 0x8B07
 SIOCSIWMODE = 0x8B06  # Command to set the mode of a wireless interface
 SIOCGIFFLAGS = 0x8913  # Get the active flag word of the device.
 SIOCSIFFLAGS = 0x8914  # Set the active flag word of the device.
+
+
+class WiFiSecurity(Enum):
+    UNKNOWN = auto()
+    OPEN = auto()
+    WEP = auto()
+    WPA = auto()
+    WPA2 = auto()
+    WPA3 = auto()
+    WPA3_TRAN = auto()
 
 
 class WiFiPacket():
@@ -50,6 +70,108 @@ class WiFiPacket():
             self.logger.error(f"Error parsing packet: {e}")
             self.logger.info(f"packet: {self.packet_data}")
             self.logger.info(f"full_packet: {self.data}")
+
+        self._parse_ie_elements()
+
+    def _parse_ie_elements(self):
+        self.elements = dict()
+        if self.parsed_data.frame_body:
+            elements = getattr(self.parsed_data.frame_body,
+                               "information_elements", [])
+            for element in elements:
+                try:
+                    if element.id in [IEType.VENDOR_SPECIFIC, IEType.EXTENDED_ID]:
+                        if element.id not in self.elements:
+                            self.elements[element.id] = []
+                        self.elements[element.id].append(element)
+                    else:
+                        if element.id in self.elements:
+                            self.logger.warning(
+                                f"element {element.id} was defined twice {element} and {self.elements[element.id]}")
+                            continue
+                        self.elements[element.id] = element
+                except AttributeError as e:
+                    self.logger.error(f"Could not parse element: {e}")
+
+    @property
+    def ssid(self):
+        ssid_element = self.elements.get(IEType.SSID, None)
+        if ssid_element:
+            return getattr(ssid_element.info, "ssid", "")
+        return None
+
+    @property
+    def security(self) -> list[WiFiSecurity]:
+        security: list[WiFiSecurity] = []
+        if (
+            IEType.VENDOR_SPECIFIC in self.elements
+            and any(
+                e.info.oui == VendorOui.MICROSOFT_CORP
+                and e.info.vendor_specific_content.type == MicrosoftSpecificElementType.WPA
+                for e in self.elements[IEType.VENDOR_SPECIFIC]
+            )
+        ):
+            security.append(WiFiSecurity.WPA)
+
+        if rsn_element := self.elements.get(IEType.RSN, None):
+            # WPA3 deine some specific requirements from the RSN configuration.
+            # Following are used to determine the classification but could still
+            # fine tuned for additional vendor specifc requirments
+            #
+            # WPA3-only:
+            # - AP shall at least enable AKM suite selector for IEEE:SAE (00-0F-AC:8)
+            # - AP shall not enable AKM suite selector IEEE:PSK (00-0F-AC:2) and
+            #   IEEE:PSK_SHA256 (00-0F-AC:6)
+            # - AP shall set Management Frame Protection to rquired and capable (MFPC and MFPR to 1)
+            # - AP shall not enable WEP and TKIP
+            #
+            # WPA3-transition:
+            # - AP shall at least enable AKM suite selector IEEE:PSK (00-0F-AC:2)
+            #   and IEEE:SAE (00-0F-AC:8)
+            # - AP shall set Management Frame Protection to capable only (MFPC to 1 and MFPR to 0)
+            rsn = rsn_element.info
+            wpa3_must_auth = [AKMSuites.IEEE_SAE]
+            wpa3_bad_auth = [AKMSuites.IEEE_PSK, AKMSuites.IEEE_PSK_SHA256]
+            wpa3_bad_ciphers = [
+                RSNCipherSuites.IEEE_WEP40,
+                RSNCipherSuites.IEEE_TKIP,
+                RSNCipherSuites.IEEE_WEP104,
+            ]
+            wpa3_tran_must_auth = [AKMSuites.IEEE_PSK, AKMSuites.IEEE_SAE]
+            ciphers = [rsn.GroupCipherSuite] + rsn.PairwiseCipherSuites
+            if rsn.GroupManagmentCipherSuite is not None:
+                ciphers.append(rsn.GroupManagmentCipherSuite)
+            if (
+                rsn.RSNCapabilities is not None
+                and rsn.RSNCapabilities.ManagementFrameProtectionRequired
+                and rsn.RSNCapabilities.ManagementFrameProtectionCapable
+                and any(akm in wpa3_must_auth for akm in rsn.AKMSuites)
+                and all(akm not in wpa3_bad_auth for akm in rsn.AKMSuites)
+                and all(cipher not in wpa3_bad_ciphers for cipher in ciphers)
+            ):
+                security.append(WiFiSecurity.WPA3)
+            elif (
+                rsn.RSNCapabilities is not None
+                and not rsn.RSNCapabilities.ManagementFrameProtectionRequired
+                and rsn.RSNCapabilities.ManagementFrameProtectionCapable
+                and any(akm in wpa3_tran_must_auth for akm in rsn.AKMSuites)
+            ):
+                security.append(WiFiSecurity.WPA3_TRAN)
+            else:
+                security.append(WiFiSecurity.WPA2)
+
+        if not security:
+            cap_info = None
+            if (
+                self.parsed_data.frame_body and
+                self.parsed_data.frame_body.capability_info and
+                self.parsed_data.frame_body.capability_info.privacy
+            ):
+                security.append(WiFiSecurity.WEP)
+            else:
+                security.append(WiFiSecurity.OPEN)
+
+        return security
 
     def get_payload(self) -> Packet | None:
         if self.parsed_data.type == FrameType.DATA and self.parsed_data.subtype in [
