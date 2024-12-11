@@ -46,7 +46,8 @@ class TcpCommunicator(ConnectionCommunicatorBase):
             return False
     
     def close(self) -> bool:
-        self.socket.shutdown(socket.SHUT_RDWR)
+        if self.is_open():
+            self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
         return True
     
@@ -57,11 +58,11 @@ class TcpCommunicator(ConnectionCommunicatorBase):
             if e.errno == 32:
                 if not retry:
                     self.logger.debug("Broken pipe, reconnecting socket")
-                    self.close()
+                    self.socket.close()
                     time.sleep(1)
                     self.open()
                     self.connect()
-                    self.send(data=data, retry=True)
+                    return self.send(data=data, retry=True)
         except Exception as ex:
             self.logger.error(str(ex))
 
