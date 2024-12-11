@@ -1,6 +1,7 @@
 from ipaddress import ip_address
 import select
 import socket
+import time
 from typing import Optional
 from types import TracebackType
 from pydantic import Field
@@ -49,9 +50,18 @@ class TcpCommunicator(ConnectionCommunicatorBase):
         self.socket.close()
         return True
     
-    def send(self, data: bytes, timeout: Optional[float] = None) -> int:
+    def send(self, data: bytes, retry: bool = False, timeout: Optional[float] = None) -> int:
         try:
             return self.socket.send(data)
+        except socket.error as e:  
+            if e.errno == 32:
+                if not retry:
+                    self.logger.debug("Broken pipe, reconnecting socket")
+                    self.close()
+                    time.sleep(1)
+                    self.open()
+                    self.connect()
+                    self.send(data=data, retry=True)
         except Exception as ex:
             self.logger.error(str(ex))
 
