@@ -5,8 +5,10 @@ import paramiko
 import io
 import base64
 from pydantic import Field
-from typing import Optional, Literal, Tuple, NoReturn
+from typing import Optional, Literal, Tuple, NoReturn, TypeAlias
 from pydantic.networks import IPvAnyAddress
+
+SFTPFile: TypeAlias = paramiko.SFTPFile
 
 class SshDeviceShell (IDeviceShell):
     ssh_ip: IPvAnyAddress = Field (
@@ -135,7 +137,7 @@ class SshDeviceShell (IDeviceShell):
             self.logger.error (f"ssh closing failed with: {e}", exc_info=True)
             raise e
         
-    def open_file(self, filepath, mode='r', bufsize=-1):
+    def open_file(self, filepath, mode='r', bufsize=-1) -> paramiko.SFTPFile:
         return self._sftp.file(filepath, mode=mode, bufsize=bufsize)
 
     def push_file(self, filepath):
