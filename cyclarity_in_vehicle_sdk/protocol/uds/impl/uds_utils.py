@@ -326,21 +326,18 @@ class UdsUtils(UdsUtilsBase):
         if isinstance(didlist, int):  
             didlist = [didlist]  
     
-        # Convert all ids to hex strings  
-        didlist = ['{:04x}'.format(did) for did in didlist]  
-    
         dids_values = []  
         data_hex_len = len(data_hex)  
+        next_position = -1
     
-        for i in range(len(didlist)):  
-            curr_did_hex = didlist[i]  
-            curr_did_int = int(curr_did_hex, 16)  
+        for i, curr_did_int in enumerate(didlist):  
+            curr_did_hex = '{:04x}'.format(curr_did_int)
             curr_position = data_hex.find(curr_did_hex) if i == 0 else next_position  
             if curr_position == -1:  
                 self.logger.warning(f"Unexpected DID: {curr_did_hex}, not found in the data.")  
                 continue  
             if i < len(didlist) - 1:  # If it's not the last id  
-                next_did_hex = didlist[i + 1]  
+                next_did_hex = '{:04x}'.format(didlist[i + 1])
                 next_position = data_hex.find(next_did_hex, curr_position + 4)  
                 if next_position == -1:  
                     data = data_hex[curr_position + 4:]
