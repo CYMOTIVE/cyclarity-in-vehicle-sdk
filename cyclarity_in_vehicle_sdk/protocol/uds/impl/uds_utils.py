@@ -327,8 +327,7 @@ class UdsUtils(UdsUtilsBase):
             didlist = [didlist]  
     
         dids_values = []  
-        data_hex_len = len(data_hex)  
-        next_position = -1
+        next_position = 0
     
         for i, curr_did_int in enumerate(didlist):  
             curr_did_hex = '{:04x}'.format(curr_did_int)
@@ -344,7 +343,7 @@ class UdsUtils(UdsUtilsBase):
                 else:
                     data = data_hex[curr_position + 4: next_position]  
             else:  # If it's the last id  
-                data = data_hex[curr_position + 4: data_hex_len]  
+                data = data_hex[curr_position + 4:]  
     
             dids_values.append(RdidDataTuple(did=curr_did_int, data=data))  
     
