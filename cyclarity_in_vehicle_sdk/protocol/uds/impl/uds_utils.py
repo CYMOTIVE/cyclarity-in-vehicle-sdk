@@ -149,8 +149,7 @@ class UdsUtils(UdsUtilsBase):
         """
         request = ReadDataByIdentifier.make_request(didlist=didlist, didconfig=None)
         response = self._send_and_read_response(request=request, timeout=timeout)
-        data_hex_str = response.data.hex() if response.data else ''
-        return self._split_dids(didlist=didlist, data_hex=data_hex_str) if len(data_hex_str) >= 4 else []
+        return self._split_dids(didlist=didlist, data=response.data)
 
     def routing_control(self, routine_id: int, control_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, data: Optional[bytes] = None) -> RoutingControlResponseData:
         """Sends a request for RoutineControl
@@ -322,28 +321,26 @@ class UdsUtils(UdsUtilsBase):
         
         return response
     
-    def _split_dids(self, didlist: Union[int, list[int]], data_hex: str) -> list[RdidDataTuple]:  
+    def _split_dids(self, didlist: Union[int, list[int]], data_bytes: bytes) -> list[RdidDataTuple]:  
         if isinstance(didlist, int):  
             didlist = [didlist]  
     
         dids_values = []  
         next_position = 0
     
-        for i, curr_did_int in enumerate(didlist):  
-            curr_did_hex = '{:04x}'.format(curr_did_int)
-            curr_position = data_hex.find(curr_did_hex) if i == 0 else next_position  
+        for i, curr_did_int in enumerate(didlist):
+            curr_position = data_bytes.find(curr_did_int.to_bytes(length=2, byteorder='big')) if i == 0 else next_position  
             if curr_position == -1:  
-                self.logger.warning(f"Unexpected DID: {curr_did_hex}, not found in the data.")  
+                self.logger.warning(f"Unexpected DID: {hex(curr_did_int)}, not found in the data.")  
                 continue  
             if i < len(didlist) - 1:  # If it's not the last id  
-                next_did_hex = '{:04x}'.format(didlist[i + 1])
-                next_position = data_hex.find(next_did_hex, curr_position + 4)  
+                next_position = data_bytes.find(didlist[i + 1].to_bytes(length=2, byteorder='big'), curr_position + 2)  
                 if next_position == -1:  
-                    data = data_hex[curr_position + 4:]
+                    data = data_bytes[curr_position + 2:]
                 else:
-                    data = data_hex[curr_position + 4: next_position]  
+                    data = data_bytes[curr_position + 2: next_position]  
             else:  # If it's the last id  
-                data = data_hex[curr_position + 4:]  
+                data = data_bytes[curr_position + 2:]  
     
             dids_values.append(RdidDataTuple(did=curr_did_int, data=data))  
     

@@ -214,25 +214,23 @@ class UdsUtilsUTs(TestCase):
     def test_split_dids_single(self):  
         did1 = 0x123  
         data_len = 15  
-        did1_hex = '{:04x}'.format(did1)  
-        did1_data = secrets.token_hex(data_len)  
+        did1_data = secrets.token_bytes(data_len)  
         dids = [did1]  
-        input_data = did1_hex + did1_data  
+        input_data = did1.to_bytes(length=2, byteorder='big') + did1_data  
         expected_res = [RdidDataTuple(did=did1, data=did1_data)]  
-        res = self.uds_utils._split_dids(didlist=dids, data_hex=input_data)  
+        res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
 
     def test_split_dids_multiple_same_did(self):
         did1 = 0x123
         did1_number = 3
         data_len = 15
-        did1_hex = '{:04x}'.format(did1)
-        did1_data = secrets.token_hex(data_len) 
+        did1_data = secrets.token_bytes(data_len) 
         dids = [did1] * did1_number
-        input_data = (did1_hex + did1_data) * did1_number
+        input_data = (did1.to_bytes(length=2, byteorder='big') + did1_data) * did1_number
         expected_res = [RdidDataTuple(did=did1, data=did1_data)] * did1_number 
 
-        res = self.uds_utils._split_dids(didlist=dids, data_hex=input_data)
+        res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)
 
         self.assertEqual(res, expected_res)
 
@@ -240,83 +238,76 @@ class UdsUtilsUTs(TestCase):
         did1 = 0x123  
         did2 = 0x456  
         data_len = 15  
-        did1_hex = '{:04x}'.format(did1)  
-        did2_hex = '{:04x}'.format(did2)  
-        did1_data = secrets.token_hex(data_len)  
-        did2_data = secrets.token_hex(data_len)  
+        did1_data = secrets.token_bytes(data_len)  
+        did2_data = secrets.token_bytes(data_len)  
         dids = [did1, did2]  
-        input_data = did1_hex + did1_data + did2_hex + did2_data  
+        input_data = did1.to_bytes(length=2, byteorder='big') + did1_data + did2.to_bytes(length=2, byteorder='big') + did2_data  
         expected_res = [  
             RdidDataTuple(did=did1, data=did1_data),  
             RdidDataTuple(did=did2, data=did2_data)  
         ]  
-        res = self.uds_utils._split_dids(didlist=dids, data_hex=input_data)  
+        res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
 
     def test_split_dids_not_found(self):  
         did1 = 0x123  
         data_len = 15  
-        did1_hex = '{:04x}'.format(did1)  
-        did1_data = secrets.token_hex(data_len)  
+        did1_data = secrets.token_bytes(data_len)  
         dids = [0x999]  # DID not present in the data  
-        input_data = did1_hex + did1_data  
+        input_data = did1.to_bytes(length=2, byteorder='big') + did1_data  
         expected_res = []  
-        res = self.uds_utils._split_dids(didlist=dids, data_hex=input_data)  
+        res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
 
     def test_split_dids_partly_not_found_first(self):  
         did1 = 0x123  
         data_len = 15  
-        did1_hex = '{:04x}'.format(did1)  
-        did1_data = secrets.token_hex(data_len)  
+        did1_data = secrets.token_bytes(data_len)  
         dids = [0x999, did1]  # DID not present in the data  
-        input_data = did1_hex + did1_data  
+        input_data = did1.to_bytes(length=2, byteorder='big') + did1_data  
         expected_res = [
             RdidDataTuple(did=did1, data=did1_data)
         ]  
-        res = self.uds_utils._split_dids(didlist=dids, data_hex=input_data)  
+        res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
 
     def test_split_dids_partly_not_found_second(self):  
         did1 = 0x123  
         data_len = 15  
-        did1_hex = '{:04x}'.format(did1)  
-        did1_data = secrets.token_hex(data_len)  
+        did1_data = secrets.token_bytes(data_len)  
         dids = [did1, 0x999]  # DID not present in the data  
-        input_data = did1_hex + did1_data  
+        input_data = did1.to_bytes(length=2, byteorder='big') + did1_data  
         expected_res = [
             RdidDataTuple(did=did1, data=did1_data)
         ]  
-        res = self.uds_utils._split_dids(didlist=dids, data_hex=input_data)  
+        res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
 
     def test_split_dids_empty_list(self):  
         dids = []  
         input_data = ""  
         expected_res = []  
-        res = self.uds_utils._split_dids(didlist=dids, data_hex=input_data)  
+        res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
 
     def test_split_dids_empty_data(self):  
         dids = [0x123]  
-        input_data = ""  
+        input_data = b''  
         expected_res = []  
-        res = self.uds_utils._split_dids(didlist=dids, data_hex=input_data)  
+        res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
 
     def test_split_dids_overlapping(self):  
         did1 = 0x123  
         did2 = 0x1234  
-        data_len = 15  
-        did1_hex = '{:04x}'.format(did1)  
-        did2_hex = '{:04x}'.format(did2)  
-        did1_data = secrets.token_hex(data_len)  
-        did2_data = secrets.token_hex(data_len)  
+        data_len = 15    
+        did1_data = secrets.token_bytes(data_len)  
+        did2_data = secrets.token_bytes(data_len)  
         dids = [did1, did2]  
-        input_data = did1_hex + did1_data + did2_hex + did2_data  
+        input_data = did1.to_bytes(length=2, byteorder='big') + did1_data + did2.to_bytes(length=2, byteorder='big') + did2_data  
         expected_res = [  
             RdidDataTuple(did=did1, data=did1_data),  
             RdidDataTuple(did=did2, data=did2_data)  
         ]  
-        res = self.uds_utils._split_dids(didlist=dids, data_hex=input_data)  
+        res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
