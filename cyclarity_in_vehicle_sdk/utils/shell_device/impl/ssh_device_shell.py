@@ -140,10 +140,10 @@ class SshDeviceShell (IDeviceShell):
     def open_file(self, filepath, mode='r', bufsize=-1) -> paramiko.SFTPFile:
         return self._sftp.file(filepath, mode=mode, bufsize=bufsize)
 
-    def push_file(self, filepath):
-        permissions = os.stat(filepath).st_mode
-        self._sftp.put(filepath, filepath)
-        self._sftp.chmod(filepath, permissions)
+    def push_file(self, localpath, remotepath):
+        permissions = os.stat(localpath).st_mode
+        self._sftp.put(localpath, remotepath)
+        self._sftp.chmod(remotepath, permissions)   
 
     def pull_file(self, remote_filepath, local_filepath):
         self._sftp.get(remote_filepath, local_filepath)
