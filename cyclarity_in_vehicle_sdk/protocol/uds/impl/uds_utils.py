@@ -149,7 +149,7 @@ class UdsUtils(UdsUtilsBase):
         """
         request = ReadDataByIdentifier.make_request(didlist=didlist, didconfig=None)
         response = self._send_and_read_response(request=request, timeout=timeout)
-        return self._split_dids(didlist=didlist, data=response.data)
+        return self._split_dids(didlist=didlist, data_bytes=response.data)
 
     def routing_control(self, routine_id: int, control_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, data: Optional[bytes] = None) -> RoutingControlResponseData:
         """Sends a request for RoutineControl
@@ -342,6 +342,6 @@ class UdsUtils(UdsUtilsBase):
             else:  # If it's the last id  
                 data = data_bytes[curr_position + 2:]  
     
-            dids_values.append(RdidDataTuple(did=curr_did_int, data=data))  
+            dids_values.append(RdidDataTuple(did=curr_did_int, data=data.hex()))  
     
         return dids_values  
