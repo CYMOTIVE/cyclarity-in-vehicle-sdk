@@ -7,6 +7,7 @@ from construct import (
     Struct,
     Int64ul,
     Int32ub,
+    Int32ul,
     Int16ub,
     Int16ul,
     BytesInteger,
@@ -228,6 +229,10 @@ IEType = ConEnum(
     # ...
     SSID_LIST=84,
     # ...
+    INTERNETWORKING=107,
+    # ...
+    EXTENDED_CAPABILITIES=127,
+    # ...
     VENDOR_SPECIFIC=221,
     # ...
     RSN_EXTENSION=244,
@@ -235,6 +240,12 @@ IEType = ConEnum(
     # Refer to the 802.11 standard for a complete list of IE types
     EXTENDED_ID=255,
 )
+repeating_element_types = [
+    IEType.VENDOR_SPECIFIC, 
+    IEType.EXTENDED_ID, 
+    IEType.INTERNETWORKING,
+    IEType.EXTENDED_CAPABILITIES,
+]
 
 # Define parsers for different types of Information Elements
 ssid_element = Struct(
@@ -491,13 +502,31 @@ InformationElement = Struct(
     "info" / If(this.len > 0, IfThenElse(this.id == IEType.EXTENDED_ID,
                                          Bytes(this.len-1),
                                          Switch(this.id, ie_elements,
-                                                default=Bytes(this.len))
+                                         default=Bytes(this.len))
                                          ),  # Use a default case for unknown or unhandled IEs
                 ),
 )
 
 # Define a generic structure to parse multiple IEs
 InformationElements = GreedyRange(InformationElement)
+
+QoSControl = BitStruct(
+    "tid" / BitsInteger(4),  # Traffic Identifier
+    "eos" / Flag,            # End of Service Period
+    "ack_policy" / BitsInteger(2),
+    "amsdu_present" / Flag,
+    "txop_dur_req" / BitsInteger(8),
+)
+
+DataFrameHeader = Struct(
+    "address4" / If(this._._.frame_control.to_ds &
+                    this._._.frame_control.from_ds, AddressField),
+    "qos_control" / If(this._._.frame_control.subtype >=
+                       DataSubtype.QOS_DATA, QoSControl),
+    # Assuming 32-bit HT Control field
+    "ht_control" / If(this._._.frame_control.subtype >=
+                      DataSubtype.QOS_DATA and this._._.frame_control.order_or_pHTC, Int32ul),
+)
 
 # Define parsers for each management frame subtype
 management_subtype_parsers = {
@@ -562,6 +591,37 @@ management_subtype_parsers = {
     # Additional subtypes, if defined, would go here.
 }
 
+# Data frame structure that includes a data body
+DataFrameWithBody = Struct(
+    "header" / DataFrameHeader,
+    "data" / GreedyBytes,
+)
+
+# Data frame structure that does not include a data body (e.g., for null or control frames)
+DataFrameWithoutBody = Struct(
+    "header" / DataFrameHeader,
+)
+
+# Now map the subtypes to the appropriate structures using the refactored structures
+data_subtype_parsers = {
+    DataSubtype.DATA: DataFrameWithBody,
+    DataSubtype.DATA_CF_ACK: DataFrameWithBody,
+    DataSubtype.DATA_CF_POLL: DataFrameWithBody,
+    DataSubtype.DATA_CF_ACK_CF_POLL: DataFrameWithBody,
+    DataSubtype.NULL_FUNCTION: DataFrameWithoutBody,
+    DataSubtype.CF_ACK: DataFrameWithoutBody,
+    DataSubtype.CF_POLL: DataFrameWithoutBody,
+    DataSubtype.CF_ACK_CF_POLL: DataFrameWithoutBody,
+    DataSubtype.QOS_DATA: DataFrameWithBody,
+    DataSubtype.QOS_DATA_CF_ACK: DataFrameWithBody,
+    DataSubtype.QOS_DATA_CF_POLL: DataFrameWithBody,
+    DataSubtype.QOS_DATA_CF_ACK_CF_POLL: DataFrameWithBody,
+    DataSubtype.QOS_NULL: DataFrameWithoutBody,
+    DataSubtype.RESERVED_13: GreedyBytes,  # Reserved subtype, no specific structure
+    DataSubtype.QOS_CF_POLL_NO_DATA: DataFrameWithoutBody,
+    DataSubtype.QOS_CF_ACK_CF_POLL_NO_DATA: DataFrameWithoutBody,
+}
+
 frame_type_parsers = {
     # Management frame types (subtype-specific parsing would go here)
     FrameType.MANAGEMENT: Switch(
@@ -574,8 +634,10 @@ frame_type_parsers = {
         "control_frame" / GreedyBytes,  # Simplified control frame structure
     ),
     # Data frame types (simplified)
-    FrameType.DATA: Struct(
-        "data_frame" / GreedyBytes,  # Simplified data frame structure
+    FrameType.DATA: Switch(
+        this.frame_control.subtype,  # Based on subtype
+        data_subtype_parsers,
+        default=GreedyBytes,  # Default case if subtype is not found
     ),
 }
 
