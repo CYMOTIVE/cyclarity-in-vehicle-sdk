@@ -25,6 +25,7 @@ from .mac_parsing import (
     MicrosoftSpecificElementType
 )
 from .radiotap_prasing import parse_radiotap
+from .crypto_utils import CCMPWifiEncAlgorithm
 
 ETH_P_ALL = 0x0003
 
@@ -72,6 +73,18 @@ class WiFiPacket():
             self.logger.info(f"full_packet: {self.data}")
 
         self._parse_ie_elements()
+    
+    @property
+    def is_encrypted(self):
+        return self.parsed_data.frame_control.protected_frame
+
+    def decrypt(self, key, validate_llc=False, verify=True):
+        algorithm = CCMPWifiEncAlgorithm(self.parsed_data, self.parsed_data.frame_body.data)
+        decrypted_data = algorithm.decrypt(key, verify=verify)
+        if decrypted_data is not None and validate_llc:
+            if not decrypted_data.startswith(b"\xAA\xAA\x03\x00\x00\x00"):
+                return None
+        return decrypted_data
 
     def _parse_ie_elements(self):
         self.elements = dict()
