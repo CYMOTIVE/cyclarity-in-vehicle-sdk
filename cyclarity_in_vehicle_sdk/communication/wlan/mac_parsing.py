@@ -15,8 +15,6 @@ from construct import (
     Bytes,
     GreedyBytes,
     GreedyRange,
-    PaddedString,
-    Padding,
     BitsSwapped,
     BitStruct,
     BitsInteger,
@@ -25,6 +23,7 @@ from construct import (
     IfThenElse,
     Switch,
     Computed,
+    ConstructError,
 )
 
 
@@ -69,6 +68,44 @@ class RateAdapter(Adapter):
             rate_raw |= 0x80
         return rate_raw
 
+class FallbackStringAdapter(Adapter):  
+    def __init__(self, length, encodings=["utf-8", "utf-16-le", "utf-16-be"], allow_bytestring=True):  
+        super().__init__(Bytes(length))  
+        self.length = length
+        self.encodings = encodings
+  
+    def _decode(self, obj, context, path):  
+        for encoding in self.encodings:
+            try:  
+                return obj.decode(encoding)
+            except UnicodeDecodeError:  
+                pass
+
+        if self.allow_bytestring:
+            return obj
+        
+        raise ConstructError(f"Object cannot be decoded with any of {self.encodings}")  
+  
+    def _encode(self, obj, context, path):  
+        if isinstance(obj, bytes):
+            return obj
+        
+        length = self.length(context) if callable(self.length) else self.length
+
+        for encoding in self.encodings:
+            try:  
+                s = obj.encode(encoding)  
+                if len(s) == length:
+                    return s
+            except UnicodeEncodeError:  
+                pass
+
+        raise ConstructError(f"Object cannot be encoded with any of {self.encodings}")  
+
+    #def _build(self, obj, stream, context, path):
+    #    obj2 = self._encode(obj, context, path)
+    #    buildret = self.subcon._build(obj2, stream, context, path)
+    #    return buildret
 
 FrameType = ConEnum(
     SwapBitsAdapter(BitsInteger(2)),
@@ -249,7 +286,7 @@ repeating_element_types = [
 
 # Define parsers for different types of Information Elements
 ssid_element = Struct(
-    "ssid" / PaddedString(this._.len, "utf-8")  # this._.len, "utf8")
+    "ssid" / FallbackStringAdapter(this._.len)
 )
 
 supported_rates_element = Struct(
@@ -261,7 +298,7 @@ supported_rates_element = Struct(
 SsidElement = Struct(
     "id" / Const(IEType.SSID, IEType),
     "len" / Byte,
-    "ssid" / PaddedString(this.len, "utf-8"),
+    "ssid" / FallbackStringAdapter(this.len),
 )
 
 ssid_list_element = Struct(
