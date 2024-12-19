@@ -22,7 +22,8 @@ from .mac_parsing import (
     RSNCipherSuites,
     IEType,
     VendorOui,
-    MicrosoftSpecificElementType
+    MicrosoftSpecificElementType,
+    repeating_element_types,
 )
 from .radiotap_prasing import parse_radiotap
 from .crypto_utils import CCMPWifiEncAlgorithm
@@ -93,7 +94,7 @@ class WiFiPacket():
                                "information_elements", [])
             for element in elements:
                 try:
-                    if element.id in [IEType.VENDOR_SPECIFIC, IEType.EXTENDED_ID]:
+                    if element.id in repeating_element_types:
                         if element.id not in self.elements:
                             self.elements[element.id] = []
                         self.elements[element.id].append(element)
