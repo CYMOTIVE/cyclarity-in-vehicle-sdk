@@ -544,6 +544,12 @@ InformationElement = Struct(
                 ),
 )
 
+VendorSpecificElement = Struct(
+    "id" / Byte,
+    "len" / Byte,
+    "content" / Bytes(this.len),
+)
+
 # Define a generic structure to parse multiple IEs
 InformationElements = GreedyRange(InformationElement)
 
@@ -604,9 +610,12 @@ management_subtype_parsers = {
         "beacon_interval" / Int16ul,
         "capability_info" / CapabilityInfo,
         "information_elements" / InformationElements,
+        "MME" / GreedyBytes,
     ),
     ManagementSubtype.DISASSOCIATION: Struct(
         "reason_code" / Int16ul,
+        "vendor_specific_elements" / GreedyRange(VendorSpecificElement),
+        "MME" / GreedyBytes,
     ),
     ManagementSubtype.AUTHENTICATION: Struct(
         "auth_algorithm_number" / Int16ul,
@@ -616,6 +625,8 @@ management_subtype_parsers = {
     ),
     ManagementSubtype.DEAUTHENTICATION: Struct(
         "reason_code" / Int16ul,
+        "vendor_specific_elements" / GreedyRange(VendorSpecificElement),
+        "MME" / GreedyBytes,
     ),
     ManagementSubtype.ACTION: Struct(
         "category" / Byte,
