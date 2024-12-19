@@ -4,7 +4,7 @@ import serial
 import re
 import time
 from pydantic import Field
-from typing import Optional, Literal, Tuple
+from typing import Optional, Literal, Tuple, Union
 
 READ_BLOCK_SIZE = 10000
 COMMAND_DONE_STRING = 'clarity_command_done'

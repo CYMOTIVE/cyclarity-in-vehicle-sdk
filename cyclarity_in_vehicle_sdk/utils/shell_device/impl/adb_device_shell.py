@@ -10,7 +10,7 @@ from cyclarity_in_vehicle_sdk.utils.shell_device.base.IDeviceShell import IDevic
 
 from pydantic import Field, field_validator
 from pydantic.networks import IPvAnyAddress
-from typing import Optional, Literal, Tuple
+from typing import Optional, Literal, Tuple, Union
 
 
 

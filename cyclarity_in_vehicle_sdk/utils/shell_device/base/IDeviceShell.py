@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 
 
 class IDeviceShell (ParsableModel, metaclass=ABCMeta):
