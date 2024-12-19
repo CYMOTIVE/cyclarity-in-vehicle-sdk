@@ -29,7 +29,6 @@ class CCMPWifiEncAlgorithm(WifiEncAlgorithmBase):
     def __init__(self, mac_header, payload):
         self.ccmp_payload = CCMP.parse(payload)
         self.pn = self._get_pn()
-        print(f"{self.pn=}")
         self.key_id = self.ccmp_payload.key_id
         self.nonce = self._create_nonce(mac_header, self.pn)
         self.aad = self._create_aad(mac_header)
