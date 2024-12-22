@@ -19,6 +19,8 @@ python-can = "*"
 py-pcapplusplus = "^1.0.1"
 gpiod = "*"
 jsonargparse = "*"
+construct = "*"
+radiotap = {git = "https://github.com/radiotap/python-radiotap.git"}
 
 [build-system]
 requires = ["poetry-core"]
