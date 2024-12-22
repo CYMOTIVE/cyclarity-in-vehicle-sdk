@@ -15,4 +15,4 @@ def hex_bytes_validator(val: Any) -> bytes:
         return bytes.fromhex(val)
     raise errors.BytesError()
 
-HexBytes = Annotated[bytes, PlainValidator(hex_bytes_validator), PlainSerializer(lambda v: v.hex()), WithJsonSchema({'type': 'str'})]
+HexBytes = Annotated[bytes, PlainValidator(hex_bytes_validator), PlainSerializer(lambda v: v.hex()), WithJsonSchema({'type': 'string'})]
