@@ -100,8 +100,9 @@ class WiFiPacket():
                         self.elements[element.id].append(element)
                     else:
                         if element.id in self.elements:
-                            self.logger.warning(
-                                f"element {element.id} was defined twice {element} and {self.elements[element.id]}")
+                            if self.elements[element.id] != element:
+                                self.logger.warning(
+                                    f"element {element.id} was defined more than once {element} and {self.elements[element.id]}")
                             continue
                         self.elements[element.id] = element
                 except AttributeError as e:
