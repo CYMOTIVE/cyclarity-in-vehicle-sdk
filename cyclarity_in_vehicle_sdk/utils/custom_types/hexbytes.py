@@ -3,6 +3,7 @@ from pydantic import (
     PlainSerializer,
     PlainValidator,
     errors,
+    WithJsonSchema,
 )
 
 def hex_bytes_validator(val: Any) -> bytes:
@@ -14,4 +15,4 @@ def hex_bytes_validator(val: Any) -> bytes:
         return bytes.fromhex(val)
     raise errors.BytesError()
 
-HexBytes = Annotated[bytes, PlainValidator(hex_bytes_validator), PlainSerializer(lambda v: v.hex())]
+HexBytes = Annotated[bytes, PlainValidator(hex_bytes_validator), PlainSerializer(lambda v: v.hex()), WithJsonSchema({'type': 'str'})]
