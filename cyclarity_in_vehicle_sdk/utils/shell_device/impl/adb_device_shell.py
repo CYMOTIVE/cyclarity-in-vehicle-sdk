@@ -96,7 +96,7 @@ class AdbDeviceShell (IDeviceShell):
         """  
         This method executes a given command via adb interface and returns the output.  
         If a testcase_filter is provided, it only returns lines that contain the filter string.  
-        If return_stderr is True, it also returns the stderr content.  
+        If return_stderr is True, it also returns the stderr content (Not yet implemented!!!).  
     
         :param command: String that represents the command to be executed.  
         :param testcase_filter: Optional string used to filter the command's output.  

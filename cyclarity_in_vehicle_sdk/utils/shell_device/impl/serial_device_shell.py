@@ -129,13 +129,15 @@ class SerialDeviceShell(IDeviceShell):
         """  
         This method executes a given command via serial interface and returns the output.  
         If a testcase_filter is provided, it only returns lines that contain the filter string.  
-        If return_stderr is True, it also returns the stderr content.  
+        If return_stderr is True, it also returns the stderr content (Not yet implemented!!!).  
     
         :param command: String that represents the command to be executed.  
         :param testcase_filter: Optional string used to filter the command's output.  
         :param return_stderr: Optional boolean used to determine if stderr should be returned.  
         :return: A tuple containing the command's output lines that match the testcase_filter and optionally stderr content.  
-                If no filter is provided, it returns all output lines.  
+                If no filter is provided, it returns all output lines. 
+
+         
         """  
 
         if return_stderr:
