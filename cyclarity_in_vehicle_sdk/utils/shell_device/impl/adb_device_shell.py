@@ -104,7 +104,7 @@ class AdbDeviceShell (IDeviceShell):
         :return: A tuple containing the command's output lines that match the testcase_filter and optionally stderr content.  
                 If no filter is provided, it returns all output lines.  
         """  
-
+        #todo implement stderr return
         if return_stderr:
             self.logger.warning ("stderr monitoring in adb interface is not implemented")    
 

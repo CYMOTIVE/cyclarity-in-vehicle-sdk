@@ -139,7 +139,7 @@ class SerialDeviceShell(IDeviceShell):
 
          
         """  
-
+        #todo implement stderr return
         if return_stderr:
             self.logger.warning ("stderr monitoring, in serial interface, is not implemented")    
 
