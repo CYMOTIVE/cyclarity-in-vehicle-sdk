@@ -202,10 +202,10 @@ class SessionChangeCrashDetector implements InteractiveCrashDetectionPluginBase 
     -operation_timeout: float
 }
 
-UnrespondedTesterPresentCrashDetector implements InteractiveCrashDetectionPluginBase {
+class UnrespondedTesterPresentCrashDetector implements InteractiveCrashDetectionPluginBase {
     -uds_utils: UdsUtils
     -operation_timeout: float
 }
 
-}
+
 @enduml
