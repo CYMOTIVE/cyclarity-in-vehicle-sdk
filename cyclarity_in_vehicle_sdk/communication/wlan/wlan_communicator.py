@@ -53,6 +53,8 @@ class WiFiSecurity(Enum):
     WPA2 = auto()
     WPA3 = auto()
     WPA3_TRAN = auto()
+    def __str__(self):
+        return self.name
 
 
 class WiFiPacket():
@@ -438,7 +440,7 @@ class WiFiRawSocket(RawWiFiSocketCommunicatorBase):
         try:
             fcntl.ioctl(self._raw_socket.fileno(), SIOCSIWMODE, ifreq)
         except OSError as e:
-            self.logger.error("Could not set the wireless mode:", str(e))
+            self.logger.error(f"Could not set the wireless mode: {e}")
             return False
         else:
             self.logger.debug(
@@ -453,7 +455,7 @@ class WiFiRawSocket(RawWiFiSocketCommunicatorBase):
             ioctl_response = fcntl.ioctl(
                 self._raw_socket.fileno(), SIOCGIWMODE, ifreq)
         except OSError as e:
-            self.logger.error("Could not set the wireless mode:", e)
+            self.logger.error(f"Could not set the wireless mode: {e}")
             return None
         else:
             _, mode, _ = struct.unpack("16sH14s", ioctl_response)
