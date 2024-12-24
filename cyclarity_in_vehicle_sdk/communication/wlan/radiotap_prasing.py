@@ -1,5 +1,4 @@
-import radiotap
-
+import cyclarity_in_vehicle_sdk.external.python_radiotap.radiotap as radiotap
 
 def convert_channel_to_freq(channel):
     if 1 <= channel <= 14:
