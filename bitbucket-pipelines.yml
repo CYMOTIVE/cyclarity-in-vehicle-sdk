@@ -13,7 +13,7 @@ steps:
           - mkdir -p ~/.pip  
           - echo -e "[global]\nindex-url = https://pypi.org/simple" > ~/.pip/pip.conf
           - pip install --upgrade pip
-          - pip install pytest
+          - pip install pytest mock
           - pip install -e .
           - pytest -s -v cyclarity_in_vehicle_sdk/tests/* --junitxml=test-reports/report.xml
 
