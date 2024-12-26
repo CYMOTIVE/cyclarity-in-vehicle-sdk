@@ -71,7 +71,7 @@ class SerialDeviceShell(IDeviceShell):
     _last_read = ''
 
     def model_post_init(self, *args, **kwargs):
-        super().model_post_init(self, *args, **kwargs) 
+        super().model_post_init(*args, **kwargs) 
         self.logger.debug ("initializing serial")
         if not self.serial_device_name:
                 raise DeviceShellException('serial_device_name is not defined')
