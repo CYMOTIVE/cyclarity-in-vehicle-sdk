@@ -14,6 +14,7 @@ import construct
 from py_pcapplusplus import Packet, PayloadLayer
 from cyclarity_sdk.platform_api.logger import ClarityLoggerFactory, LogHandlerType
 from cyclarity_in_vehicle_sdk.communication.ip.base.raw_socket_base import RawSocketCommunicatorBase
+from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_enum_by_name
 from .mac_parsing import (
     wifi_frame_header,
     FrameType,
@@ -45,6 +46,7 @@ SIOCGIFFLAGS = 0x8913  # Get the active flag word of the device.
 SIOCSIFFLAGS = 0x8914  # Set the active flag word of the device.
 
 
+@pydantic_enum_by_name
 class WiFiSecurity(Enum):
     UNKNOWN = auto()
     OPEN = auto()

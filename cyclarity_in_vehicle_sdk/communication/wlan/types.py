@@ -1,6 +1,8 @@
 from enum import IntEnum
 from cyclarity_in_vehicle_sdk.communication.wlan.mac_parsing import RSNCipherSuites
+from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_enum_by_name
 
+@pydantic_enum_by_name
 class RSNCipherSuiteType(IntEnum):
     IEEE_WEP40 = RSNCipherSuites.IEEE_WEP40
     IEEE_TKIP = RSNCipherSuites.IEEE_TKIP
