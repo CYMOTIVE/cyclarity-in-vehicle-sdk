@@ -31,3 +31,7 @@ pipelines:
     Deploy to PyPI:
       - step: *build-and-test
       - step: *deploy-pypi
+      
+  pull-requests:
+    '**':
+      - step: *build-and-test
