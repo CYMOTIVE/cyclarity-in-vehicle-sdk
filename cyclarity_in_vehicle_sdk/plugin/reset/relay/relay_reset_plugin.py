@@ -4,7 +4,9 @@ from typing import Union
 import gpiod
 from pydantic import Field
 from cyclarity_in_vehicle_sdk.plugin.base.reset_plugin_base import ResetPluginBase
+from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_enum_by_name
 
+@pydantic_enum_by_name
 class GpioChip(str, Enum):
     PI4 = "/dev/gpiochip0"
     PI5 = "/dev/gpiochip4"

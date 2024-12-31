@@ -10,7 +10,7 @@ from cyclarity_in_vehicle_sdk.utils.shell_device.base.IDeviceShell import IDevic
 
 from pydantic import Field, field_validator
 from pydantic.networks import IPvAnyAddress
-from typing import Optional, Literal, Tuple
+from typing import Optional, Literal, Tuple, Union
 
 
 
@@ -48,7 +48,7 @@ class AdbDeviceShell (IDeviceShell):
             raise ValueError("adb_ip must be either 'usb' or a valid IP address")
 
     def model_post_init(self, *args, **kwargs):
-        super().model_post_init(self, *args, **kwargs) 
+        super().model_post_init(*args, **kwargs) 
         self.logger.info ("initializing adb")
 
         try:
@@ -92,28 +92,41 @@ class AdbDeviceShell (IDeviceShell):
                 f"Connected adb device shell at  {self.adb_ip}:{self.adb_port}")
         return res
 
-    def exec_command (self, command: str, testcase_filter: Optional[str] = None) -> Tuple[str, ...]:
-        """
-        This method executes a given command via adb interface and returns the output.
-        If a testcase_filter is provided, it only returns lines that contain the filter string.
+    def exec_command(self, command: str, testcase_filter: Optional[str] = None, return_stderr: bool = False) -> Union[Tuple[str, ...], Tuple[Tuple[str, ...], str]]:  
+        """  
+        This method executes a given command via adb interface and returns the output.  
+        If a testcase_filter is provided, it only returns lines that contain the filter string.  
+        If return_stderr is True, it also returns the stderr content (Not yet implemented!!!).  
+    
+        :param command: String that represents the command to be executed.  
+        :param testcase_filter: Optional string used to filter the command's output.  
+        :param return_stderr: Optional boolean used to determine if stderr should be returned.  
+        :return: A tuple containing the command's output lines that match the testcase_filter and optionally stderr content.  
+                If no filter is provided, it returns all output lines.  
+        """  
+        #todo implement stderr return
+        if return_stderr:
+            self.logger.warning ("stderr monitoring in adb interface is not implemented")    
 
-        :param command: String that represents the command to be executed.
-        :param testcase_filter: Optional string used to filter the command's output.
-        :return: A tuple containing the command's output lines that match the testcase_filter.
-                 If no filter is provided, it returns all output lines.
-        """
+        stderr_content = ''
 
         # Send a shell command
         stdout_str = self._adb_device_shell.shell (command)
-
+        
         if testcase_filter:
             if testcase_filter in stdout_str:
                 self.logger.debug (f'detect: "{testcase_filter}"')
-                return tuple ([stdout_str.strip ()])
+                out = tuple ([stdout_str.strip ()])
             else:
-                return tuple ()
+                out = tuple ()
         else:
-            return tuple ([stdout_str.strip ()])
+            out = tuple ([stdout_str.strip ()])
+
+        if return_stderr:  
+            return out, stderr_content  
+        else:  
+            return out
+
 
     def teardown (self):
         """
