@@ -1,0 +1,504 @@
+[[package]]
+name = "adb-shell"
+version = "0.4.4"
+description = "A Python implementation of ADB with shell and FileSync functionality."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+cryptography = "*"
+pyasn1 = "*"
+rsa = "*"
+
+[package.extras]
+async = ["aiofiles (>=0.4.0)", "async_timeout (>=3.0.0)"]
+usb = ["libusb1 (>=1.0.16)"]
+
+[[package]]
+name = "annotated-types"
+version = "0.7.0"
+description = "Reusable constraint types to use with typing.Annotated"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
+name = "awscrt"
+version = "0.21.1"
+description = "A common runtime for AWS Python projects"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
+name = "awsiotsdk"
+version = "1.22.0"
+description = "AWS IoT SDK based on the AWS Common Runtime"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+awscrt = "0.21.1"
+
+[[package]]
+name = "bcrypt"
+version = "4.2.1"
+description = "Modern password hashing for your software and your servers"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+tests = ["pytest (>=3.2.1,!=3.3.0)"]
+typecheck = ["mypy"]
+
+[[package]]
+name = "can-isotp"
+version = "2.0.6"
+description = "Module enabling the IsoTP protocol defined by ISO-15765"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+dev = ["mypy", "ipdb", "autopep8", "coverage", "python-can"]
+test = ["mypy", "coverage", "python-can"]
+
+[[package]]
+name = "certifi"
+version = "2024.8.30"
+description = "Python package for providing Mozilla's CA Bundle."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
+name = "cffi"
+version = "1.17.1"
+description = "Foreign Function Interface for Python calling C code."
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+pycparser = "*"
+
+[[package]]
+name = "charset-normalizer"
+version = "3.4.0"
+description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
+category = "main"
+optional = false
+python-versions = ">=3.7.0"
+
+[[package]]
+name = "cmake"
+version = "3.31.1"
+description = "CMake is an open-source, cross-platform family of tools designed to build, test and package software"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+test = ["coverage (>=4.2)", "pytest (>=3.0.3)", "pytest-cov (>=2.4.0)"]
+
+[[package]]
+name = "cryptography"
+version = "43.0.3"
+description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+cffi = {version = ">=1.12", markers = "platform_python_implementation != \"PyPy\""}
+
+[package.extras]
+ssh = ["bcrypt (>=3.1.5)"]
+nox = ["nox"]
+test = ["cryptography-vectors (==43.0.3)", "pytest (>=6.2.0)", "pytest-benchmark", "pytest-cov", "pytest-xdist", "pretend", "certifi"]
+test-randomorder = ["pytest-randomly"]
+docs = ["sphinx (>=5.3.0)", "sphinx-rtd-theme (>=1.1.1)"]
+docstest = ["pyenchant (>=1.6.11)", "readme-renderer", "sphinxcontrib-spelling (>=4.0.1)"]
+sdist = ["build"]
+pep8test = ["ruff", "mypy", "check-sdist", "click"]
+
+[[package]]
+name = "cwe2"
+version = "3.0.0"
+description = "cwe2 is a CWE common weakness enumeration library for Python"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+importlib-resources = ">=5.10.2"
+
+[package.extras]
+docs = ["Sphinx (>=5.0.2)", "sphinx-rtd-theme (>=1.0.0)", "sphinx-reredirects (>=0.1.2)", "doc8 (>=0.11.2)"]
+testing = ["pytest (>=6,!=7.0.0)", "pytest-xdist (>=2)", "aboutcode-toolkit (>=6.0.0)", "pycodestyle (>=2.8.0)", "black (>=22.3.0)", "isort (>=5.10.1)", "doc8 (>=0.11.1)"]
+
+[[package]]
+name = "cyclarity-sdk"
+version = "1.0.67"
+description = ""
+category = "main"
+optional = false
+python-versions = "<4.0,>=3.10"
+
+[package.dependencies]
+awsiotsdk = "*"
+cwe2 = "*"
+jsonargparse = "*"
+pydantic = ">=2.4.0,<2.5.0"
+requests = "*"
+
+[[package]]
+name = "doipclient"
+version = "1.1.4"
+description = "A Diagnostic over IP (DoIP) client implementing ISO-13400-2."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
+name = "gpiod"
+version = "2.2.2"
+description = "Python bindings for libgpiod"
+category = "main"
+optional = false
+python-versions = ">=3.9.0"
+
+[[package]]
+name = "idna"
+version = "3.10"
+description = "Internationalized Domain Names in Applications (IDNA)"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+all = ["ruff (>=0.6.2)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "flake8 (>=7.1.1)"]
+
+[[package]]
+name = "importlib-resources"
+version = "6.4.5"
+description = "Read resources from Python packages"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.extras]
+check = ["pytest-checkdocs (>=2.4)", "pytest-ruff (>=0.2.1)"]
+cover = ["pytest-cov"]
+doc = ["sphinx (>=3.5)", "jaraco.packaging (>=9.3)", "rst.linker (>=1.9)", "furo", "sphinx-lint", "jaraco.tidelift (>=1.4)"]
+enabler = ["pytest-enabler (>=2.2)"]
+test = ["pytest (>=6,<8.1.0 || >=8.2.0)", "zipp (>=3.17)", "jaraco.test (>=5.4)"]
+type = ["pytest-mypy"]
+
+[[package]]
+name = "jsonargparse"
+version = "4.34.0"
+description = "Implement minimal boilerplate CLIs derived from type hints and parse from command line, config files and environment variables."
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+PyYAML = ">=3.13"
+
+[package.extras]
+all = ["jsonargparse", "jsonargparse", "jsonargparse", "jsonargparse", "jsonargparse", "jsonargparse", "jsonargparse", "jsonargparse", "jsonargparse"]
+argcomplete = ["argcomplete (>=3.5.1)"]
+coverage = ["jsonargparse", "pytest-cov (>=4.0.0)"]
+dev = ["jsonargparse", "jsonargparse", "jsonargparse", "pre-commit (>=2.19.0)", "tox (>=3.25.0)", "build (>=0.10.0)"]
+doc = ["Sphinx (>=1.7.9,<8.0.0)", "sphinx-rtd-theme (>=1.2.2)", "autodocsumm (>=0.1.10)", "sphinx-autodoc-typehints (>=1.19.5)"]
+fsspec = ["fsspec (>=0.8.4)"]
+jsonnet = ["jsonnet-binary (>=0.17.0)", "jsonnet (>=0.13.0)", "jsonnet-sdist (==2024.6.23)"]
+jsonschema = ["jsonschema (>=3.2.0)"]
+maintainer = ["bump2version (>=0.5.11)", "twine (>=4.0.2)"]
+omegaconf = ["omegaconf (>=2.1.1)"]
+reconplogger = ["reconplogger (>=4.4.0)"]
+ruyaml = ["ruyaml (>=0.20.0)"]
+shtab = ["shtab (>=1.7.1)"]
+signatures = ["jsonargparse", "docstring-parser (>=0.15)", "typeshed-client (>=2.1.0)"]
+test = ["jsonargparse", "jsonargparse", "jsonargparse", "types-PyYAML (>=6.0.11)", "types-requests (>=2.28.9)", "responses (>=0.12.0)", "pydantic (>=2.3.0)", "attrs (>=22.2.0)"]
+test-no-urls = ["pytest (>=6.2.5)", "pytest-subtests (>=0.8.0)"]
+typing-extensions = ["typing-extensions (>=3.10.0.0)"]
+urls = ["requests (>=2.18.4)"]
+
+[[package]]
+name = "msgpack"
+version = "1.0.8"
+description = "MessagePack serializer"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
+name = "packaging"
+version = "24.2"
+description = "Core utilities for Python packages"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
+name = "paramiko"
+version = "3.5.0"
+description = "SSH2 protocol library"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+bcrypt = ">=3.2"
+cryptography = ">=3.3"
+pynacl = ">=1.5"
+
+[package.extras]
+all = ["pyasn1 (>=0.1.7)", "invoke (>=2.0)", "gssapi (>=1.4.1)", "pywin32 (>=2.1.8)"]
+gssapi = ["pyasn1 (>=0.1.7)", "gssapi (>=1.4.1)", "pywin32 (>=2.1.8)"]
+invoke = ["invoke (>=2.0)"]
+
+[[package]]
+name = "py-pcapplusplus"
+version = "1.0.3"
+description = "Python wrapper module for the Pcap++ library using nanobind"
+category = "main"
+optional = false
+python-versions = ">=3.10"
+
+[[package]]
+name = "pyasn1"
+version = "0.6.1"
+description = "Pure-Python implementation of ASN.1 types and DER/BER/CER codecs (X.208)"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
+name = "pycparser"
+version = "2.22"
+description = "C parser in Python"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
+name = "pydantic"
+version = "2.4.2"
+description = "Data validation using Python type hints"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+annotated-types = ">=0.4.0"
+pydantic-core = "2.10.1"
+typing-extensions = ">=4.6.1"
+
+[package.extras]
+email = ["email-validator (>=2.0.0)"]
+
+[[package]]
+name = "pydantic-core"
+version = "2.10.1"
+description = ""
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
+
+[[package]]
+name = "pynacl"
+version = "1.5.0"
+description = "Python binding to the Networking and Cryptography (NaCl) library"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+cffi = ">=1.4.1"
+
+[package.extras]
+docs = ["sphinx (>=1.6.5)", "sphinx-rtd-theme"]
+tests = ["pytest (>=3.2.1,!=3.3.0)", "hypothesis (>=3.27.0)"]
+
+[[package]]
+name = "pyserial"
+version = "3.5"
+description = "Python Serial Port Extension"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.extras]
+cp2110 = ["hidapi"]
+
+[[package]]
+name = "python-can"
+version = "4.4.2"
+description = "Controller Area Network interface module for Python"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+msgpack = {version = ">=1.0.0,<1.1.0", markers = "platform_system != \"Windows\""}
+packaging = ">=23.1"
+pywin32 = {version = ">=305", markers = "platform_system == \"Windows\" and platform_python_implementation == \"CPython\""}
+typing-extensions = ">=3.10.0.0"
+wrapt = ">=1.10,<2.0"
+
+[package.extras]
+canalystii = ["canalystii (>=0.1.0)"]
+canine = ["python-can-canine (>=0.2.2)"]
+cantact = ["cantact (>=0.0.7)"]
+cvector = ["python-can-cvector"]
+gs-usb = ["gs-usb (>=0.2.1)"]
+lint = ["pylint (>=3.2.0,<3.3.0)", "ruff (==0.4.8)", "black (>=24.4.0,<24.5.0)", "mypy (>=1.10.0,<1.11.0)"]
+mf4 = ["asammdf (>=6.0.0)"]
+neovi = ["filelock", "python-ics (>=2.12)"]
+nixnet = ["nixnet (>=0.3.2)"]
+pcan = ["uptime (>=3.0.1,<3.1.0)"]
+remote = ["python-can-remote"]
+seeedstudio = ["pyserial (>=3.0)"]
+serial = ["pyserial (>=3.0,<4.0)"]
+sontheim = ["python-can-sontheim (>=0.1.2)"]
+viewer = ["windows-curses"]
+
+[[package]]
+name = "pywin32"
+version = "308"
+description = "Python for Window Extensions"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
+name = "pyyaml"
+version = "6.0.2"
+description = "YAML parser and emitter for Python"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
+name = "requests"
+version = "2.32.3"
+description = "Python HTTP for Humans."
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+certifi = ">=2017.4.17"
+charset-normalizer = ">=2,<4"
+idna = ">=2.5,<4"
+urllib3 = ">=1.21.1,<3"
+
+[package.extras]
+socks = ["PySocks (>=1.5.6,!=1.5.7)"]
+use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
+
+[[package]]
+name = "rsa"
+version = "4.9"
+description = "Pure-Python RSA implementation"
+category = "main"
+optional = false
+python-versions = ">=3.6,<4"
+
+[package.dependencies]
+pyasn1 = ">=0.1.3"
+
+[[package]]
+name = "typing-extensions"
+version = "4.12.2"
+description = "Backported and Experimental Type Hints for Python 3.8+"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
+name = "udsoncan"
+version = "1.23.2"
+description = "Implementation of the Unified Diagnostic Service (UDS) protocol (ISO-14229) used in the automotive industry."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+dev = ["mypy", "ipdb", "autopep8", "coverage"]
+test = ["mypy", "coverage"]
+
+[[package]]
+name = "urllib3"
+version = "2.2.3"
+description = "HTTP library with thread-safe connection pooling, file post, and more."
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.extras]
+brotli = ["brotli (>=1.0.9)", "brotlicffi (>=0.8.0)"]
+h2 = ["h2 (>=4,<5)"]
+socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
+zstd = ["zstandard (>=0.18.0)"]
+
+[[package]]
+name = "wrapt"
+version = "1.17.0"
+description = "Module for decorators, wrappers and monkey patching."
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[metadata]
+lock-version = "1.1"
+python-versions = "^3.10"
+content-hash = "fb99922d97c74a0776d89c80c3449505f9681c5eb06143cc977ecc076505e81c"
+
+[metadata.files]
+adb-shell = []
+annotated-types = []
+awscrt = []
+awsiotsdk = []
+bcrypt = []
+can-isotp = []
+certifi = []
+cffi = []
+charset-normalizer = []
+cmake = []
+cryptography = []
+cwe2 = []
+cyclarity-sdk = []
+doipclient = []
+gpiod = []
+idna = []
+importlib-resources = []
+jsonargparse = []
+msgpack = []
+packaging = []
+paramiko = []
+py-pcapplusplus = []
+pyasn1 = []
+pycparser = []
+pydantic = []
+pydantic-core = []
+pynacl = []
+pyserial = []
+python-can = []
+pywin32 = []
+pyyaml = []
+requests = []
+rsa = []
+typing-extensions = []
+udsoncan = []
+urllib3 = []
+wrapt = []
