@@ -1,13 +1,28 @@
 import time
-from typing import Any, Optional, Type, Union
+from typing import Optional, Type, Union
 from pydantic import Field
 from udsoncan.BaseService import BaseService
 from udsoncan.Request import Request
-from udsoncan.services import ECUReset, ReadDataByIdentifier, RoutineControl, SecurityAccess, TesterPresent, WriteDataByIdentifier, DiagnosticSessionControl
+from udsoncan.services import (ECUReset, 
+                               ReadDataByIdentifier, 
+                               RoutineControl, 
+                               SecurityAccess, 
+                               TesterPresent, 
+                               WriteDataByIdentifier, 
+                               DiagnosticSessionControl)
 from udsoncan.common.DidCodec import DidCodec
 from udsoncan import latest_standard
 from udsoncan.exceptions import ConfigError
-from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import UdsSid, NegativeResponse, NoResponse, RoutingControlResponseData, SessionControlResultData, UdsUtilsBase, InvalidResponse, RawUdsResponse, UdsResponseCode
+from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (UdsSid, 
+                                                                       NegativeResponse, 
+                                                                       NoResponse, 
+                                                                       RoutingControlResponseData, 
+                                                                       SessionControlResultData, 
+                                                                       UdsUtilsBase, 
+                                                                       InvalidResponse, 
+                                                                       RawUdsResponse, 
+                                                                       UdsResponseCode,
+                                                                       RdidDataTuple)
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS
@@ -20,13 +35,13 @@ class MyAsciiCodec(DidCodec):
     def __init__(self):
         pass
 
-    def encode(self, string_ascii: Any) -> bytes:
+    def encode(self, string_ascii: str) -> bytes:
         if not isinstance(string_ascii, str):
             raise ValueError("AsciiCodec requires a string for encoding")
 
         return bytes.fromhex(string_ascii)
 
-    def decode(self, string_bin: bytes) -> Any:
+    def decode(self, string_bin: bytes) -> str:
         return string_bin.hex()
 
     def __len__(self) -> int:
@@ -116,7 +131,7 @@ class UdsUtils(UdsUtilsBase):
         interpreted_response = ECUReset.interpret_response(response=response)
         return interpreted_response.service_data.reset_type_echo == reset_type
 
-    def read_did(self, didlist: Union[int, list[int]], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> dict[int, str]:
+    def read_did(self, didlist: Union[int, list[int]], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> list[RdidDataTuple]:
         """	Read Data By Identifier
 
         Args:
@@ -134,16 +149,7 @@ class UdsUtils(UdsUtilsBase):
         """
         request = ReadDataByIdentifier.make_request(didlist=didlist, didconfig=None)
         response = self._send_and_read_response(request=request, timeout=timeout)
-        # attach MyAsciiCodec for every did provided
-        didconfig =  {item: MyAsciiCodec() for item in ([didlist] if isinstance(didlist, int) else didlist)}
-        try:
-            interpreted_response = ReadDataByIdentifier.interpret_response(response=response, didlist=didlist, didconfig=didconfig)
-        except ConfigError as ex:
-            req_dids_str = f"{hex(didlist)}" if isinstance(didlist, int) else ', '.join(hex(did) for did in didlist)
-            self.logger.error(f"Received did {hex(ex.key)} that was not requested in response, requested: {req_dids_str}")
-            raise NegativeResponse(code=UdsResponseCode.GeneralReject, code_name=f"Received did {hex(ex.key)} that was not requested in response")
-        resp_list_values = list(interpreted_response.service_data.values.values())
-        return self._split_dids(didlist=didlist, data_hex=resp_list_values[0] if len(resp_list_values) else b'')
+        return self._split_dids(didlist=didlist, data_bytes=response.data)
 
     def routing_control(self, routine_id: int, control_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, data: Optional[bytes] = None) -> RoutingControlResponseData:
         """Sends a request for RoutineControl
@@ -315,25 +321,27 @@ class UdsUtils(UdsUtilsBase):
         
         return response
     
-    def _split_dids(self, didlist: Union[int, list[int]], data_hex: str) -> dict[int, str]:
-        if isinstance(didlist, int):
-            return {didlist : data_hex}
-        elif isinstance(didlist, list) and len(didlist) == 1:
-            return {didlist[0] : data_hex}
-        
-        # handle first did
-        curr_did = didlist.pop(0) 
-        next_did = didlist.pop(0)
-        curr_position = 0
-        offset = data_hex.find(hex(next_did)[2:], curr_position)
-        dids_values: dict[int, str] = {curr_did: data_hex[curr_position + 2:offset]}
-
-        while len(didlist) > 0:
-            curr_did, next_did = next_did, didlist.pop(0)
-            curr_position, offset = offset, data_hex.find(hex(next_did)[2:], offset)
-            dids_values.update({curr_did : data_hex[curr_position + 2:offset]})
-        
-        # handle last did
-        dids_values.update({next_did : data_hex[offset + 2:]})
-
-        return dids_values
+    def _split_dids(self, didlist: Union[int, list[int]], data_bytes: bytes) -> list[RdidDataTuple]:  
+        if isinstance(didlist, int):  
+            didlist = [didlist]  
+    
+        dids_values = []  
+        next_position = 0
+    
+        for i, curr_did_int in enumerate(didlist):
+            curr_position = data_bytes.find(curr_did_int.to_bytes(length=2, byteorder='big')) if i == 0 else next_position  
+            if curr_position == -1:  
+                self.logger.warning(f"Unexpected DID: {hex(curr_did_int)}, not found in the data.")  
+                continue  
+            if i < len(didlist) - 1:  # If it's not the last id  
+                next_position = data_bytes.find(didlist[i + 1].to_bytes(length=2, byteorder='big'), curr_position + 2)  
+                if next_position == -1:  
+                    data = data_bytes[curr_position + 2:]
+                else:
+                    data = data_bytes[curr_position + 2: next_position]  
+            else:  # If it's the last id  
+                data = data_bytes[curr_position + 2:]  
+    
+            dids_values.append(RdidDataTuple(did=curr_did_int, data=data.hex()))  
+    
+        return dids_values  

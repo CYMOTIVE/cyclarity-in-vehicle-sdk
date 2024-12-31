@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from enum import IntEnum
-from typing import Optional, Type, TypeAlias, Union
+from typing import NamedTuple, Optional, Type, TypeAlias, Union
 
 import udsoncan
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS
@@ -20,6 +20,7 @@ RawUdsResponse: TypeAlias = Response
 UdsResponseCode: TypeAlias = ResponseCode
 UdsDefinedSessions: TypeAlias = DiagnosticSessionControl.Session
 UdsDid: TypeAlias = DataIdentifier
+RdidDataTuple = NamedTuple("RdidDataTuple", did=int, data=str)
 
 class UdsSid(IntEnum):
     """The service IDs standardized by UDS.
@@ -131,7 +132,7 @@ class UdsUtilsBase(ParsableModel):
         raise NotImplementedError
 
     @abstractmethod
-    def read_did(self, didlist: Union[int, list[int]], timeout: float) -> dict[int, str]:
+    def read_did(self, didlist: Union[int, list[int]], timeout: float) -> list[RdidDataTuple]:
         """	Read Data By Identifier
 
         Args:

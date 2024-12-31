@@ -10,15 +10,18 @@ class CanCommunicatorSocketCan(CanCommunicatorBase):
     support_fd: bool = Field(description="CAN bus supports CAN-FD.")
     blacklist_ids: set[int] = Field(default=set(), description="Incoming CAN IDs to ignore")
 
+    _bus: SocketcanBus = None
+
     def open(self) -> None:
-        if hasattr(self, "bus"):
+        if self._bus:
             raise RuntimeError("CanCommunicatorSocketCan is already open")
         
-        self.bus = SocketcanBus(channel=self.channel, fd=self.support_fd)
+        self._bus = SocketcanBus(channel=self.channel, fd=self.support_fd)
 
     def close(self) -> None:
-        if hasattr(self, "bus"):
-            self.bus.shutdown()
+        if self._bus:
+            self._bus.shutdown()
+            self._bus = None
 
     def __enter__(self):
         self.open()
@@ -29,25 +32,25 @@ class CanCommunicatorSocketCan(CanCommunicatorBase):
         return False
 
     def send(self, can_msg: CanMessage, timeout: Optional[float] = None):
-        if not hasattr(self, "bus"):
+        if not self._bus:
             raise RuntimeError("CanCommunicatorSocketCan has not been opened")
         
-        self.bus.send(msg=can_msg, timeout=timeout)
+        self._bus.send(msg=can_msg, timeout=timeout)
     
     def send_periodically(self, msgs:      Union[CanMessage, Sequence[CanMessage]],
              period:    float,
              duration:  Optional[float] = None):
-        if not hasattr(self, "bus"):
+        if not self._bus:
             raise RuntimeError("CanCommunicatorSocketCan has not been opened")
         
-        self.bus.send_periodic(msgs=msgs, period=period, duration=duration)
+        self._bus.send_periodic(msgs=msgs, period=period, duration=duration)
     
     def receive(self, timeout: Optional[float] = None) -> Optional[CanMessage]:
-        if not hasattr(self, "bus"):
+        if not self._bus:
             raise RuntimeError("CanCommunicatorSocketCan has not been opened")
 
         if not timeout:
-            ret_msg = self.bus.recv()
+            ret_msg = self._bus.recv()
             if ret_msg and ret_msg.arbitration_id not in self.blacklist_ids:
                 return ret_msg
             else:
@@ -57,14 +60,14 @@ class CanCommunicatorSocketCan(CanCommunicatorBase):
         time_past = 0.0
         start_time = time.time()
         while time_past < timeout:
-            ret_msg = self.bus.recv(timeout=timeout)
+            ret_msg = self._bus.recv(timeout=timeout)
             if ret_msg and ret_msg.arbitration_id not in self.blacklist_ids:
                 return ret_msg
             time_past = time.time() - start_time
         return ret_msg
         
     def sniff(self, sniff_time: float) -> Optional[list[CanMessage]]:
-        if not hasattr(self, "bus"):
+        if not self._bus:
             raise RuntimeError("CanCommunicatorSocketCan has not been opened")
         
         ret_msgs: list[CanMessage] = []
@@ -82,6 +85,6 @@ class CanCommunicatorSocketCan(CanCommunicatorBase):
             self.blacklist_ids.add(canid)
 
     def get_bus(self) -> Type[BusABC]:
-        if not hasattr(self, "bus"):
+        if not self._bus:
             raise RuntimeError("CanCommunicatorSocketCan has not been opened")
-        return self.bus
+        return self._bus
