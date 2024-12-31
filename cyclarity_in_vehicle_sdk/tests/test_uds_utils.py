@@ -217,7 +217,7 @@ class UdsUtilsUTs(TestCase):
         did1_data = secrets.token_bytes(data_len)  
         dids = [did1]  
         input_data = did1.to_bytes(length=2, byteorder='big') + did1_data  
-        expected_res = [RdidDataTuple(did=did1, data=did1_data)]  
+        expected_res = [RdidDataTuple(did=did1, data=did1_data.hex())]  
         res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
 
@@ -228,7 +228,7 @@ class UdsUtilsUTs(TestCase):
         did1_data = secrets.token_bytes(data_len) 
         dids = [did1] * did1_number
         input_data = (did1.to_bytes(length=2, byteorder='big') + did1_data) * did1_number
-        expected_res = [RdidDataTuple(did=did1, data=did1_data)] * did1_number 
+        expected_res = [RdidDataTuple(did=did1, data=did1_data.hex())] * did1_number 
 
         res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)
 
@@ -243,8 +243,8 @@ class UdsUtilsUTs(TestCase):
         dids = [did1, did2]  
         input_data = did1.to_bytes(length=2, byteorder='big') + did1_data + did2.to_bytes(length=2, byteorder='big') + did2_data  
         expected_res = [  
-            RdidDataTuple(did=did1, data=did1_data),  
-            RdidDataTuple(did=did2, data=did2_data)  
+            RdidDataTuple(did=did1, data=did1_data.hex()),  
+            RdidDataTuple(did=did2, data=did2_data.hex())  
         ]  
         res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
@@ -266,7 +266,7 @@ class UdsUtilsUTs(TestCase):
         dids = [0x999, did1]  # DID not present in the data  
         input_data = did1.to_bytes(length=2, byteorder='big') + did1_data  
         expected_res = [
-            RdidDataTuple(did=did1, data=did1_data)
+            RdidDataTuple(did=did1, data=did1_data.hex())
         ]  
         res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
@@ -278,7 +278,7 @@ class UdsUtilsUTs(TestCase):
         dids = [did1, 0x999]  # DID not present in the data  
         input_data = did1.to_bytes(length=2, byteorder='big') + did1_data  
         expected_res = [
-            RdidDataTuple(did=did1, data=did1_data)
+            RdidDataTuple(did=did1, data=did1_data.hex())
         ]  
         res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
@@ -306,8 +306,8 @@ class UdsUtilsUTs(TestCase):
         dids = [did1, did2]  
         input_data = did1.to_bytes(length=2, byteorder='big') + did1_data + did2.to_bytes(length=2, byteorder='big') + did2_data  
         expected_res = [  
-            RdidDataTuple(did=did1, data=did1_data),  
-            RdidDataTuple(did=did2, data=did2_data)  
+            RdidDataTuple(did=did1, data=did1_data.hex()),  
+            RdidDataTuple(did=did2, data=did2_data.hex())  
         ]  
         res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
