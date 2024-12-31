@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cyclarity-in-vehicle-sdk"
-version = "1.0.6a3"
+version = "1.0.7a0"
 description = ""
 authors = ["Cymotive <clarity@cymotive.com>"]
 readme = "README.md"
@@ -15,10 +15,12 @@ doipclient = "^1.1.1"
 can-isotp = "^2.0.6"
 udsoncan = "^1.23.1"
 cmake = "^3.30.2"
-python-can = "*"
+python-can = "^4.5.0"
 py-pcapplusplus = "^1.0.1"
-gpiod = "*"
-jsonargparse = "*"
+gpiod = "^2.2.3"
+jsonargparse = "~4.34.0"
+construct = "^2.10.70"
+pycryptodome = "^3.21.0"
 
 [build-system]
 requires = ["poetry-core"]

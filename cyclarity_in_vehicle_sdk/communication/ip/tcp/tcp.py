@@ -16,7 +16,7 @@ class TcpCommunicator(ConnectionCommunicatorBase):
     destination_ip: str = Field(None, description="Destination IP.")
 
     def model_post_init(self, *args, **kwargs):
-        super().model_post_init(self, *args, **kwargs) 
+        super().model_post_init(*args, **kwargs) 
         self.source_ip = ip_address(self.source_ip)
         self.destination_ip = ip_address(self.destination_ip)
 
