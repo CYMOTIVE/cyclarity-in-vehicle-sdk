@@ -4,7 +4,7 @@ import serial
 import re
 import time
 from pydantic import Field
-from typing import Optional, Literal, Tuple
+from typing import Optional, Literal, Tuple, Union
 
 READ_BLOCK_SIZE = 10000
 COMMAND_DONE_STRING = 'clarity_command_done'
@@ -125,17 +125,25 @@ class SerialDeviceShell(IDeviceShell):
         self._ser.flush ()
         time.sleep (0.5)
 
-    def exec_command (self, command: str, testcase_filter: Optional[str] = None) -> Tuple[str, ...]:
-        """
-        This method executes a given command via serial interface and returns the output.
-        If a testcase_filter is provided, it only returns lines that contain the filter string.
+    def exec_command(self, command: str, testcase_filter: Optional[str] = None, return_stderr: bool = False) -> Union[Tuple[str, ...], Tuple[Tuple[str, ...], str]]:  
+        """  
+        This method executes a given command via serial interface and returns the output.  
+        If a testcase_filter is provided, it only returns lines that contain the filter string.  
+        If return_stderr is True, it also returns the stderr content (Not yet implemented!!!).  
+    
+        :param command: String that represents the command to be executed.  
+        :param testcase_filter: Optional string used to filter the command's output.  
+        :param return_stderr: Optional boolean used to determine if stderr should be returned.  
+        :return: A tuple containing the command's output lines that match the testcase_filter and optionally stderr content.  
+                If no filter is provided, it returns all output lines. 
 
-        :param command: String that represents the command to be executed.
-        :param testcase_filter: Optional string used to filter the command's output.
-        :return: A tuple containing the command's output lines that match the testcase_filter.
-                 If no filter is provided, it returns all output lines.
-        """
+         
+        """  
+        #todo implement stderr return
+        if return_stderr:
+            self.logger.warning ("stderr monitoring, in serial interface, is not implemented")    
 
+        stderr_content = ''
 
         if not self._logged_in:
             self.logger.error ("serial connection not logged in")
@@ -164,7 +172,11 @@ class SerialDeviceShell(IDeviceShell):
                 self.logger.error ("serial connection failed with: {e}", exc_info=True)
                 raise e
 
-        return tuple (detections)
+        if return_stderr:  
+            return tuple(detections), stderr_content  
+        else:  
+            return tuple(detections)
+        
 
     def _read_string(self) -> int:
         #todo consider using readline instead of read
