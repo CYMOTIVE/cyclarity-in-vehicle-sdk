@@ -1,6 +1,26 @@
 from enum import IntEnum
+from typing import Optional
+from pydantic import BaseModel
+from cyclarity_in_vehicle_sdk.utils.custom_types.hexbytes import HexBytes
 from cyclarity_in_vehicle_sdk.communication.wlan.mac_parsing import RSNCipherSuites
 from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_enum_by_name
+from cyclarity_in_vehicle_sdk.communication.wlan.wlan_communicator import WiFiSecurity
+
+class BeaconInfo(BaseModel):
+    ssid: str
+    mac: str
+    security: Optional[list[WiFiSecurity]] = None
+    # Use raw representation to not limit additional parsing on the elements for future implementations.
+    raw_information_elements: HexBytes
+    def __str__(self):
+        return ("Beacon info:\n"
+                f"SSID: {self.ssid}, MAC: {self.mac}, securities: {', '.join(str(sec) for sec in self.security)}"
+                "\n"
+                )
+
+class ProbeInfo(BaseModel):
+    ssid: str
+    src_mac: str
 
 @pydantic_enum_by_name
 class RSNCipherSuiteType(IntEnum):
