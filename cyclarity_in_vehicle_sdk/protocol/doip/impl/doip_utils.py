@@ -127,7 +127,10 @@ class DoipUtils(ParsableModel):
             client_logical_address, activation_type, vm_specific=vm_specific
         )
         data = DoipUtils._pack_doip_message(message, protocol_version)
-        communicator.send(data=data, timeout=timeout)
+        bytes_sent = communicator.send(data=data, timeout=timeout)
+        if not bytes_sent:
+            communicator.close()
+            return None
         response = DoipUtils._read_doip(communicator, timeout=timeout)
         if type(response) is messages.RoutingActivationResponse:
             return response
