@@ -1,8 +1,17 @@
 from abc import ABC, abstractmethod
+from enum import IntEnum
 import struct
 from typing import Optional, Union
-
 from pydantic import BaseModel, Field
+from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_enum_by_name
+
+
+@pydantic_enum_by_name
+class UdsStandardVersion(IntEnum):
+    ISO_14229_2006 = 2006
+    ISO_14229_2013 = 2013
+    ISO_14229_2020 = 2020
+
 
 class SECURITY_ALGORITHM_BASE(BaseModel, ABC):
     seed_subfunction: Optional[int] = Field(default=None, description="The subfunction for the get seed operation")
