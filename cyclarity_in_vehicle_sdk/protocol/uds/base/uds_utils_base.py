@@ -21,7 +21,6 @@ UdsResponseCode: TypeAlias = ResponseCode
 UdsDefinedSessions: TypeAlias = DiagnosticSessionControl.Session
 UdsDid: TypeAlias = DataIdentifier
 RdidDataTuple = NamedTuple("RdidDataTuple", did=int, data=str)
-ControlTypeType: TypeAlias = RoutineControl.ControlType
 
 class UdsSid(IntEnum):
     """The service IDs standardized by UDS.
@@ -146,7 +145,7 @@ class UdsUtilsBase(ParsableModel):
         raise NotImplementedError
 
     @abstractmethod
-    def routing_control(self, routine_id: int, control_type: int, timeout: float, data: Optional[bytes] = None) -> RoutingControlResponseData:
+    def routine_control(self, routine_id: int, control_type: int, timeout: float, data: Optional[bytes] = None) -> RoutingControlResponseData:
         """Sends a request for RoutineControl
 
         Args:

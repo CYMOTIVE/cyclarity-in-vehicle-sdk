@@ -151,7 +151,7 @@ class UdsUtils(UdsUtilsBase):
         response = self._send_and_read_response(request=request, timeout=timeout)
         return self._split_dids(didlist=didlist, data_bytes=response.data)
 
-    def routing_control(self, routine_id: int, control_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, data: Optional[bytes] = None) -> RoutingControlResponseData:
+    def routine_control(self, routine_id: int, control_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, data: Optional[bytes] = None) -> RoutingControlResponseData:
         """Sends a request for RoutineControl
 
         Args:
