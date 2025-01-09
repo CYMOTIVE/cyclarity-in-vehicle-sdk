@@ -37,7 +37,7 @@ class SshDeviceShell (IDeviceShell):
 
 
     def model_post_init (self, *args, **kwargs):
-        super ().model_post_init (self, *args, **kwargs)
+        super().model_post_init (*args, **kwargs)
         self.logger.info ("initializing ssh")
 
         try:
