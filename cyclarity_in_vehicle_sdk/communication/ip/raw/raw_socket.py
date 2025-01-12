@@ -151,8 +151,8 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
         
         return self._out_socket.sendto(bytes(packet), (dst_addr, 0))
 
-    def send_receive_packets(self, packet: Packet | Sequence[Packet] | None, is_answer: Callable[[Packet], bool], timeout: float = 2) -> Packet | None:
-        found_packet = None
+    def send_receive_packets(self, packet: Packet | Sequence[Packet] | None, is_answer: Callable[[Packet], bool], timeout: float) -> list[Packet]:
+        found_packet: list[Packet] = []
         
         async def find_packet(in_socket: RawSocket, timeout: float):
             nonlocal found_packet
@@ -160,7 +160,7 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
             sniffed_packets = in_socket.sniff(timeout=timeout)
             for sniffed_packet in sniffed_packets:
                 if is_answer(sniffed_packet):
-                    found_packet = sniffed_packet
+                    found_packet.append(sniffed_packet)
         
         loop = asyncio.new_event_loop()
         find_packet_task = loop.create_task(find_packet(self._in_socket, timeout))

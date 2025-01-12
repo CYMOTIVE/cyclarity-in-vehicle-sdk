@@ -8,16 +8,23 @@ class DOIP_VEHICLE_IDENTIFICATION(BaseModel):
     gid: str
     further_action_required: int
     vin_gid_sync_status: Optional[int]
-    def __repr__(self):
+
+    def __str__(self):
         vin_gid_sync_status_str = f", vin gid sync status: {self.vin_gid_sync_status}" if self.vin_gid_sync_status else ""
-        return f"vin: {self.vin}, eid: {self.eid}, gid: {self.gid}, logical address: {hex(self.target_address)}, further action required: {self.further_action_required}{vin_gid_sync_status_str}"
+        return (f"Vehicle identification:\nvin: {self.vin}, eid: {self.eid},"
+                f" gid: {self.gid}, target logical address: {hex(self.target_address)},"
+                f" further action required: {self.further_action_required}{vin_gid_sync_status_str}\n")
 
 
 class DOIP_ROUTING_ACTIVATION(BaseModel):
+    source_logical_address: int
     response_code: int
-    src_addr_range_desc: Optional[str] = None
-    def __repr__(self):
-        return f"response code: {hex(self.response_code)}" + f"\ndescription of used source address range: {self.src_addr_range_desc}" if self.src_addr_range_desc else ""
+    src_addr_range_desc: str
+
+    def __str__(self):
+        return (f"Routing activation for source logical address: {hex(self.source_logical_address)}\n"
+                f"response code: {hex(self.response_code)}" +
+                f"\ndescription of used source address range: {self.src_addr_range_desc}\n")
 
 
 class DOIP_ENTITY_STATUS(BaseModel):
@@ -25,33 +32,29 @@ class DOIP_ENTITY_STATUS(BaseModel):
     max_concurrent_sockets: int
     currently_open_sockets: int
     max_data_size: int
-    def __repr__(self):
-        return f"node type: {hex(self.node_type)}, max concurrent sockets: {self.max_concurrent_sockets}, currently open sockets: {self.currently_open_sockets}, max data size: {hex(self.max_data_size)}"
 
-class DOIP_DATA(BaseModel):
-    routing_vehicle_id_response: Optional[DOIP_VEHICLE_IDENTIFICATION] = None
-    routing_activation_responses: Optional[dict[int, DOIP_ROUTING_ACTIVATION]] = (
-        None  # src_addr: routing_activation_data
-    )
-    entity_status_response: Optional[DOIP_ENTITY_STATUS] = None
-    def __repr__(self):
-        vehicle_id_str = f"Vehicle identification:\n{repr(self.routing_vehicle_id_response)}\n" if self.routing_vehicle_id_response else ""
-        entity_status_str = f"Entity status:\n{repr(self.entity_status_response)}\n" if self.entity_status_response else ""
-        routing_activation_str = ""
-        if self.routing_activation_responses:
-            for logical_address, routing_activation in self.routing_activation_responses.items():
-                routing_activation_str += f"Routing activation for logical address: {hex(logical_address)}: {repr(routing_activation)}\n"
-        return vehicle_id_str + entity_status_str + routing_activation_str
+    def __str__(self):
+        return (f"Entity status:\n"
+                f"node type: {hex(self.node_type)}, "
+                f"max concurrent sockets: {self.max_concurrent_sockets}, "
+                f"currently open sockets: {self.currently_open_sockets}, "
+                f"max data size: {hex(self.max_data_size)}\n")
+
 
 class DOIP_TARGET(BaseModel):
     target_ip: str
     source_ip: str
     source_port: int
     destination_port: int
-    target_address: int
-    doip_data: DOIP_DATA = Field(default_factory=DOIP_DATA)  # {ip: data}
+    routing_vehicle_id_response: DOIP_VEHICLE_IDENTIFICATION
+    entity_status_response: Optional[DOIP_ENTITY_STATUS] = None
+    routing_activation_response: Optional[DOIP_ROUTING_ACTIVATION] = None
 
-    def __repr__(self):
-        base_target_str = f"DoIP target identified:\nsource: {self.source_ip}:{self.source_port}, target: {self.target_ip}:{self.destination_port}, logical address: {hex(self.target_address)}\n"
-
-        return f"{base_target_str}\n{repr(self.doip_data)}"
+    def __str__(self):
+        return (f"DoIP target identified:\n"
+                f"source: {self.source_ip}:{self.source_port}, "
+                f"target: {self.target_ip}:{self.destination_port}, \n"
+                f"{str(self.routing_vehicle_id_response)}"
+                f"{str(self.routing_activation_response) if self.routing_activation_response else ''}"
+                f"{str(self.entity_status_response) if self.entity_status_response else ''}"
+                )
