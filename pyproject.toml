@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cyclarity-in-vehicle-sdk"
-version = "1.0.8a47794"
+version = "1.0.8a44291"
 description = ""
 authors = ["Cymotive <clarity@cymotive.com>"]
 readme = "README.md"
