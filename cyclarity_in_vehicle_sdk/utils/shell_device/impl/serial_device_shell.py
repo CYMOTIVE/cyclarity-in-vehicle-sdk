@@ -119,13 +119,14 @@ class SerialDeviceShell(IDeviceShell):
         linux_pattern = re.compile (r"(Login incorrect|Permission denied, please try again)")
         return bool (linux_pattern.search (str))
 
-    def _write_string(self, str: str) -> None:
-        self.logger.debug (f"serial write {str}")
+    def _write_string(self, str: str, verbose=False) -> None:
+        if verbose:
+            self.logger.debug (f"serial write {str}")
         self._ser.write (str.encode ())
         self._ser.flush ()
         time.sleep (0.5)
 
-    def exec_command(self, command: str, testcase_filter: Optional[str] = None, return_stderr: bool = False) -> Union[Tuple[str, ...], Tuple[Tuple[str, ...], str]]:  
+    def exec_command(self, command: str, testcase_filter: Optional[str] = None, return_stderr: bool = False, verbose: bool = False) -> Union[Tuple[str, ...], Tuple[Tuple[str, ...], str]]:  
         """  
         This method executes a given command via serial interface and returns the output.  
         If a testcase_filter is provided, it only returns lines that contain the filter string.  
@@ -134,6 +135,7 @@ class SerialDeviceShell(IDeviceShell):
         :param command: String that represents the command to be executed.  
         :param testcase_filter: Optional string used to filter the command's output.  
         :param return_stderr: Optional boolean used to determine if stderr should be returned.  
+        :param verbose: Optional boolean used to log execution data
         :return: A tuple containing the command's output lines that match the testcase_filter and optionally stderr content.  
                 If no filter is provided, it returns all output lines. 
 
@@ -150,7 +152,7 @@ class SerialDeviceShell(IDeviceShell):
             return ['']
 
         try:
-            self._write_string (f'{command} ; echo {COMMAND_DONE_STRING}\n')
+            self._write_string (f'{command} ; echo {COMMAND_DONE_STRING}\n', verbose=verbose)
             self._ser.flush ()
         except Exception as e:
             self.logger.error ("serial connection failed with: {e}")
@@ -162,7 +164,7 @@ class SerialDeviceShell(IDeviceShell):
         detections = []
         while True:
             try:
-                self._read_string ()
+                self._read_string()
                 if testcase_filter in self._last_read:
                     detections.append (self._last_read)
                     break
@@ -178,14 +180,15 @@ class SerialDeviceShell(IDeviceShell):
             return tuple(detections)
         
 
-    def _read_string(self) -> int:
+    def _read_string(self, verbose: bool=False) -> int:
         #todo consider using readline instead of read
         try:
             ser_bytes = self._ser.read (READ_BLOCK_SIZE)
             print(ser_bytes)
             self._last_read = ser_bytes.decode ("utf-8")[:-1]
             if ser_bytes:
-                self.logger.debug (f'serial read: {ser_bytes.decode ("utf-8")[:-1]}')
+                if verbose:
+                    self.logger.debug (f'serial read: {ser_bytes.decode ("utf-8")[:-1]}')
             return len (ser_bytes.decode ("utf-8")[:-1])
         except Exception as e:
             self.logger.error ("Error reading from serial")
