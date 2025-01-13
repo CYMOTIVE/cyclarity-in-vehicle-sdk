@@ -4,23 +4,18 @@ import socket
 import time
 from typing import Optional
 from types import TracebackType
-from pydantic import Field, model_validator
+from cyclarity_in_vehicle_sdk.communication.ip.base.ip_communicator_base import IpConnectionCommunicatorBase, IpVersion
+from pydantic import Field, IPvAnyAddress, model_validator
 
-from cyclarity_in_vehicle_sdk.communication.base.communicator_base import CommunicatorType, ConnectionCommunicatorBase
+from cyclarity_in_vehicle_sdk.communication.base.communicator_base import CommunicatorType
 
 SOCK_DATA_RECV_AMOUNT = 4096
 
-class TcpCommunicator(ConnectionCommunicatorBase):
+class TcpCommunicator(IpConnectionCommunicatorBase):
     sport: int = Field(None, description="Source port.")
     dport: int = Field(None, description="Destination port.")
-    source_ip: str = Field(None, description="Source IP.")
-    destination_ip: str = Field(None, description="Destination IP.")
-
-    @model_validator(mode='after')
-    def validate_ip_addresses(self):
-        self.source_ip = ip_address(self.source_ip)
-        self.destination_ip = ip_address(self.destination_ip)
-        return self
+    source_ip: IPvAnyAddress = Field(None, description="Source IP.")
+    destination_ip: IPvAnyAddress = Field(None, description="Destination IP.")
 
     def open(self) -> bool:
         if self.source_ip.version == 6:
@@ -93,4 +88,7 @@ class TcpCommunicator(ConnectionCommunicatorBase):
     
     def get_type(self) -> CommunicatorType:
         return CommunicatorType.TCP
+    
+    def ip_version(self) -> IpVersion:
+        return IpVersion.IPv6 if self.source_ip.version == 6 else IpVersion.IPv4
     

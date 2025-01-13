@@ -2,14 +2,15 @@ import select
 import socket
 import struct
 from typing import Optional
+from cyclarity_in_vehicle_sdk.communication.ip.base.ip_communicator_base import IpConnectionlessCommunicatorBase, IpVersion
 from pydantic import Field, IPvAnyAddress
 
-from cyclarity_in_vehicle_sdk.communication.base.communicator_base import CommunicatorType, ConnectionlessCommunicatorBase
+from cyclarity_in_vehicle_sdk.communication.base.communicator_base import CommunicatorType
 
 SOCK_DATA_RECV_AMOUNT = 4096
 
 # This class was just partially tested, and not in use by runnables ATM, do not use blindly
-class MulticastCommunicator(ConnectionlessCommunicatorBase):
+class MulticastCommunicator(IpConnectionlessCommunicatorBase):
     sport: int = Field(None, description="Source port.")
     dport: int = Field(None, description="Destination multicast port.")
     source_ip: IPvAnyAddress = Field(None, description="Source IP.")
@@ -78,7 +79,7 @@ class MulticastCommunicator(ConnectionlessCommunicatorBase):
     def send_to(self, target_port: int, target_ip: IPvAnyAddress, data: bytes) -> int:
         return self.socket.sendto(data, (target_ip.exploded, target_port))
     
-    def receive_from(self, recv_timeout: int = 0, size: int = SOCK_DATA_RECV_AMOUNT) -> tuple[bytes, IPvAnyAddress]:
+    def receive_from(self, size: int = SOCK_DATA_RECV_AMOUNT, recv_timeout: int = 0) -> tuple[bytes, IPvAnyAddress]:
         recv_tuple: tuple[bytes, IPvAnyAddress] = (None, None)
         if recv_timeout > 0:
             select.select([self.socket], [], [], recv_timeout)
@@ -89,4 +90,7 @@ class MulticastCommunicator(ConnectionlessCommunicatorBase):
         return recv_tuple
     
     def get_type(self) -> CommunicatorType:
-        return CommunicatorType.UDP
+        return CommunicatorType.MULTICAST
+    
+    def ip_version(self) -> IpVersion:
+        return IpVersion.IPv6 if self.source_ip.version == 6 else IpVersion.IPv4
