@@ -12,29 +12,26 @@ from cyclarity_in_vehicle_sdk.communication.base.communicator_base import Commun
 SOCK_DATA_RECV_AMOUNT = 4096
 
 class TcpCommunicator(IpConnectionCommunicatorBase):
-    sport: int = Field(None, description="Source port.")
-    dport: int = Field(None, description="Destination port.")
-    source_ip: IPvAnyAddress = Field(None, description="Source IP.")
-    destination_ip: IPvAnyAddress = Field(None, description="Destination IP.")
+    _socket: socket.socket = None
 
     def open(self) -> bool:
         if self.source_ip.version == 6:
-            self.socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+            self._socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         else:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.socket.bind((self.source_ip.exploded, self.sport))
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._socket.bind((self.source_ip.exploded, self.sport))
 
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-        self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 1)
-        self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 1)
-        self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 1)
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 1)
+        self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 1)
+        self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 1)
         return True
     
     def is_open(self) -> bool:
         try:
-            data = self.socket.recv(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
+            data = self._socket.recv(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
             return bool(data)
         except BlockingIOError:
             return True  # socket is open and reading from it would block
@@ -48,13 +45,13 @@ class TcpCommunicator(IpConnectionCommunicatorBase):
     
     def close(self) -> bool:
         if self.is_open():
-            self.socket.shutdown(socket.SHUT_RDWR)
-        self.socket.close()
+            self._socket.shutdown(socket.SHUT_RDWR)
+        self._socket.close()
         return True
     
     def send(self, data: bytes, timeout: Optional[float] = None) -> int:
         try:
-            return self.socket.send(data)
+            return self._socket.send(data)
         except Exception as ex:
             self.logger.error(str(ex))
 
@@ -63,11 +60,11 @@ class TcpCommunicator(IpConnectionCommunicatorBase):
     def recv(self, recv_timeout: float = 0, size: int = SOCK_DATA_RECV_AMOUNT) -> bytes:
         recv_data = bytes()
         if recv_timeout > 0:
-            ready = select.select([self.socket], [], [], recv_timeout)
+            ready = select.select([self._socket], [], [], recv_timeout)
             if not ready[0]:
                 return recv_data
         try:
-            recv_data = self.socket.recv(size)
+            recv_data = self._socket.recv(size)
         except ConnectionResetError:
             pass
         return recv_data
@@ -83,12 +80,8 @@ class TcpCommunicator(IpConnectionCommunicatorBase):
         return False
     
     def connect(self):
-        self.socket.connect((self.destination_ip.exploded, self.dport))
+        self._socket.connect((self.destination_ip.exploded, self.dport))
         return True
     
     def get_type(self) -> CommunicatorType:
         return CommunicatorType.TCP
-    
-    def ip_version(self) -> IpVersion:
-        return IpVersion.IPv6 if self.source_ip.version == 6 else IpVersion.IPv4
-    

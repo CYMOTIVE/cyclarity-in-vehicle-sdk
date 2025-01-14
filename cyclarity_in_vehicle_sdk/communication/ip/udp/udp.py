@@ -8,11 +8,6 @@ from pydantic import Field, IPvAnyAddress
 SOCK_DATA_RECV_AMOUNT = 4096
 
 class UdpCommunicator(IpConnectionlessCommunicatorBase):
-    sport: int = Field(description="Source port.")
-    source_ip: IPvAnyAddress = Field(description="Source IP.")
-    dport: int = Field(description="Destination port.")
-    destination_ip: IPvAnyAddress = Field(description="Destination IP.")
-
     _socket: socket.socket = None
         
     def open(self) -> bool:
@@ -64,6 +59,3 @@ class UdpCommunicator(IpConnectionlessCommunicatorBase):
 
     def get_type(self) -> CommunicatorType:
         return CommunicatorType.UDP
-    
-    def ip_version(self) -> IpVersion:
-        return IpVersion.IPv6 if self.source_ip.version == 6 else IpVersion.IPv4

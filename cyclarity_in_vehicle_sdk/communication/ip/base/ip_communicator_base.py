@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from enum import Enum
-from pydantic import IPvAnyAddress
+from pydantic import Field, IPvAnyAddress
 from cyclarity_in_vehicle_sdk.communication.base.communicator_base import CommunicatorBase
 
 class IpVersion(str, Enum):
@@ -8,9 +8,30 @@ class IpVersion(str, Enum):
     IPv6 = "IPv6"
 
 class IpCommunicatorBase(CommunicatorBase):
-    @abstractmethod
-    def ip_version(self) -> IpVersion:
-        raise NotImplementedError
+    sport: int = Field(description="Source port.")
+    source_ip: IPvAnyAddress = Field(description="Source IP.")
+    dport: int = Field(description="Destination port.")
+    destination_ip: IPvAnyAddress = Field(description="Destination IP.")
+    
+    @classmethod
+    def ip_version(cls) -> IpVersion:
+        return IpVersion.IPv6 if cls.source_ip.version == 6 else IpVersion.IPv4
+    
+    @property
+    def source_ip(self) -> IPvAnyAddress:
+        return self.source_ip
+    
+    @property
+    def destination_ip(self) -> IPvAnyAddress:
+        return self.destination_ip
+    
+    @property
+    def source_port(self) -> int:
+        return self.sport
+    
+    @property
+    def destination_port(self) -> int:
+        return self.dport
 
 
 class IpConnectionCommunicatorBase(IpCommunicatorBase):
@@ -28,7 +49,8 @@ class IpConnectionCommunicatorBase(IpCommunicatorBase):
     @abstractmethod
     def is_open(self) -> bool:
         raise NotImplementedError
-    
+
+
 class IpConnectionlessCommunicatorBase(IpCommunicatorBase):
     """base class for communicators that are connection-less
     """
