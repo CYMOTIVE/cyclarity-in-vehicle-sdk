@@ -1,34 +1,26 @@
 import itertools
 from typing import Union
 from cyclarity_in_vehicle_sdk.communication.base.communicator_base import CommunicatorType
+from cyclarity_in_vehicle_sdk.communication.ip.base.ip_communicator_base import IpVersion
 from cyclarity_in_vehicle_sdk.communication.ip.tcp.tcp import TcpCommunicator
 from cyclarity_in_vehicle_sdk.communication.ip.udp.udp import UdpCommunicator
-from cyclarity_in_vehicle_sdk.protocol.someip.models.someip_models import SOMEIP_ENDPOINT_OPTION, SOMEIP_SERVICE_INFO, SomeIpSdOptionFlags
+from cyclarity_in_vehicle_sdk.protocol.someip.models.someip_models import SOMEIP_ENDPOINT_OPTION, SOMEIP_METHOD_INFO, SOMEIP_SERVICE_INFO, SomeIpSdOptionFlags
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 import py_pcapplusplus
+from pydantic import IPvAnyAddress
 
 RET_E_UNKNOWN_SERVICE = 0x02
 RET_E_UNKNOWN_METHOD = 0x03
 
 class SomeipUtils(ParsableModel):
-    # socket: Union[TcpCommunicator, UdpCommunicator]
-
-    # def setup(self):
-    #     self.socket.open()
-    #     if self.socket.get_type() == CommunicatorType.TCP:
-    #         self.socket.connect()
-
-    # def teardown(self):
-    #     self.socket.close()
-
     def find_service(
         self,
-        socket: Union[TcpCommunicator, UdpCommunicator],
+        socket: UdpCommunicator,
         service_id: int,
         recv_retry: int = 1,
         recv_timeout: float = 0.01,
-    ) -> dict[int, SOMEIP_SERVICE_INFO]:
-
+    ) -> list[SOMEIP_SERVICE_INFO]:
+        found_services: list[SOMEIP_SERVICE_INFO] = []
         self.logger.info(f"Testing service ID: {hex(service_id)}")
 
         someip_sd_layer = py_pcapplusplus.SomeIpSdLayer(flags=SomeIpSdOptionFlags.Unicast)
@@ -48,18 +40,16 @@ class SomeipUtils(ParsableModel):
             recv_data = socket.recv(recv_timeout)
 
             if recv_data is not None:
-                curr_found_services = self._parse_find_service_response(recv_data)
+                self._parse_find_service_response(recv_data, found_services)
 
-                return curr_found_services
-
-        return {}
+        return found_services
 
     def _parse_find_service_response(
-        self, recv_data: bytes
-    ) -> dict[int, SOMEIP_SERVICE_INFO]:
-        found_services = {}
-
-        some_ip_sd_layer: py_pcapplusplus.SomeIpSdLayer = py_pcapplusplus.SomeIpSdLayer.from_bytes(recv_data)  # Convert packet to SOME/IP SD
+        self, 
+        recv_data: bytes,
+        found_services: list[SOMEIP_SERVICE_INFO]
+    ):
+        some_ip_sd_layer = py_pcapplusplus.SomeIpSdLayer.from_bytes(recv_data)  # Convert packet to SOME/IP SD
         if (some_ip_sd_layer
             and not some_ip_sd_layer.message_type == py_pcapplusplus.SomeIpMsgType.ERRORS
             and not some_ip_sd_layer.return_code == RET_E_UNKNOWN_SERVICE
@@ -75,7 +65,8 @@ class SomeipUtils(ParsableModel):
                     self.logger.info(f"Found service ID: {hex(entry.service_id)}")
 
                     service_info = SOMEIP_SERVICE_INFO(
-                        inst_id=entry.instance_id,
+                        service_id=entry.service_id,
+                        instance_id=entry.instance_id,
                         major_ver=entry.major_version,
                         minor_ver=entry.minor_version,
                         ttl=entry.ttl,
@@ -83,15 +74,13 @@ class SomeipUtils(ParsableModel):
 
                     self._parse_options_for_offer_service(entry, options, service_info)
 
-                    found_services.update({entry.service_id: service_info})
+                    found_services.append(service_info)
             else:
                 self.logger.error(
                     "Found service ID, but response message is a bit weird. check"
                     " debug log for more info. continuing to next service."
                 )
                 self.logger.debug(f"error in parsing the response: [{recv_data.hex()}]")
-
-        return found_services
     
     def _parse_options_for_offer_service(
         self, 
@@ -121,19 +110,21 @@ class SomeipUtils(ParsableModel):
 
     def subscribe_evtgrp(
         self,
-        socket: Union[TcpCommunicator, UdpCommunicator],
-        service_id: int,
+        socket: UdpCommunicator,
         service_info: SOMEIP_SERVICE_INFO,
         evtgrpid: int,
+        transport_protocol: py_pcapplusplus.SomeIpSdProtocolType,
         recv_timeout: int = 0.01,
     ) -> int | None:
-        """
-        NOTE: before calling this function multiple times, one has to call subscribe_evtgrp_pre once,
-              and pass along the create someip_l layer created by it,
-              after its (someip_l) socket has been created, and 'connect' function was called on it.
-        """
-
-        someip_sd_layer = self._build_evtgrp_layer(service_id, service_info, evtgrpid)
+        found_evtgrpid = None
+        someip_sd_layer = self._build_evtgrp_layer(
+            service_info,
+            evtgrpid,
+            transport_protocol,
+            socket.source_port,
+            socket.source_ip,
+            socket.ip_version()
+            )
 
         # send evtgrp subscribe
         socket.send(bytes(someip_sd_layer))
@@ -142,41 +133,92 @@ class SomeipUtils(ParsableModel):
         recv_data = socket.recv(recv_timeout)
         if recv_data is not None:
             received_someip_sd_layer = py_pcapplusplus.SomeIpSdLayer.from_bytes(recv_data)  # Convert packet to SOME/IP SD
-            if received_someip_sd_layer and len(received_someip_sd_layer.get_entries()) and received_someip_sd_layer.get_entries()[0].ttl != 0:  # if ttl is 0 it means we got a NACK
+            if (received_someip_sd_layer 
+                and len(received_someip_sd_layer.get_entries()) 
+                and received_someip_sd_layer.get_entries()[0].ttl != 0):  # if ttl is 0 it means we got a NACK
                 found_evtgrpid = received_someip_sd_layer.get_entries()[0].event_group_id
 
                 self.logger.info(f"Found eventgroupID: {hex(found_evtgrpid)}")
 
-                return found_evtgrpid
-
-        return None
+        return found_evtgrpid
 
     def _build_evtgrp_layer(
-        self, service_id: int, service_info: SOMEIP_SERVICE_INFO, evtgrpid: int
+        self,
+        service_info: SOMEIP_SERVICE_INFO,
+        evtgrpid: int,
+        transport_protocol: py_pcapplusplus.SomeIpSdProtocolType,
+        source_port: int,
+        source_ip: IPvAnyAddress,
+        ip_version: IpVersion
     ) -> py_pcapplusplus.SomeIpSdLayer:
         # Build base packet.
-        someip_sd_layer = py_pcapplusplus.SomeIpSdLayer(flags=SomeIpSdOptionFlags.Unicast)
-        someip_sd_entry = py_pcapplusplus.SomeIpSdEntry(entry_type=py_pcapplusplus.SomeIpSdEntryType.SubscribeEventgroup,
-                                               service_id=service_id,
-                                               instance_id=service_info.inst_id,
-                                               major_version=service_info.major_ver,
-                                               ttl=service_info.ttl,
-                                               counter=0,
-                                               event_group_id=evtgrpid)
+        someip_sd_layer = py_pcapplusplus.SomeIpSdLayer(
+            flags=SomeIpSdOptionFlags.Unicast
+            )
+        someip_sd_entry = py_pcapplusplus.SomeIpSdEntry(
+            entry_type=py_pcapplusplus.SomeIpSdEntryType.SubscribeEventgroup,
+            service_id=service_info.service_id,
+            instance_id=service_info.instance_id,
+            major_version=service_info.major_ver,
+            ttl=service_info.ttl,
+            counter=0,
+            event_group_id=evtgrpid
+            )
         index = someip_sd_layer.add_entry(someip_sd_entry)
 
-        if self.prev_layer.prev_layer._is_ipv6:
-            someip_sd_option = py_pcapplusplus.SomeIpSdIPv6Option(option_type=py_pcapplusplus.SomeIpSdIPv6OptionType.IPv6Endpoint,
-                                                        ipv6_addr=str(self.prev_layer.prev_layer.source_ip),
-                                                        port=TEMP_LISTEN_PORT,
-                                                        protocol_type=service_info.port_type)
+        if ip_version == IpVersion.IPv6:
+            someip_sd_option = py_pcapplusplus.SomeIpSdIPv6Option(
+                option_type=py_pcapplusplus.SomeIpSdIPv6OptionType.IPv6Endpoint,
+                ipv6_addr=str(source_ip),
+                port=source_port,
+                protocol_type=transport_protocol
+                )
         else:
-            someip_sd_option = py_pcapplusplus.SomeIpSdIPv4Option(option_type=py_pcapplusplus.SomeIpSdIPv4OptionType.IPv4Endpoint,
-                                                        ipv4_addr=str(self.prev_layer.prev_layer.source_ip),
-                                                        port=TEMP_LISTEN_PORT,
-                                                        protocol_type=service_info.port_type)
+            someip_sd_option = py_pcapplusplus.SomeIpSdIPv4Option(
+                option_type=py_pcapplusplus.SomeIpSdIPv4OptionType.IPv4Endpoint,
+                ipv4_addr=str(source_ip),
+                port=source_port,
+                protocol_type=transport_protocol
+                )
 
         someip_sd_layer.add_option_to(index,
                                       someip_sd_option)
 
         return someip_sd_layer
+    
+    def method_invoke(
+        self,
+        socket: Union[TcpCommunicator, UdpCommunicator],
+        service_info: SOMEIP_SERVICE_INFO,
+        method_id: int,
+        recv_timeout: int = 0.01,
+    ) -> SOMEIP_METHOD_INFO | None:
+        found_method_info = None
+        someip_layer = py_pcapplusplus.SomeIpLayer(
+            service_id=service_info.service_id,
+            method_id=method_id,
+            client_id=0x0000,
+            session_id=0x0001,
+            interface_version=service_info.major_ver,
+            msg_type=py_pcapplusplus.SomeIpMsgType.REQUEST
+            )
+
+        self.logger.debug(f"Testing method ID: {hex(method_id)}")
+
+        socket.send(bytes(someip_layer))
+
+        # Read received data and convert it to SOME/IP packet
+        recv_data = socket.recv(recv_timeout)
+        if recv_data is not None:
+            ret_someip_layer = py_pcapplusplus.SomeIpLayer.from_bytes(recv_data)
+            if (ret_someip_layer
+                and ret_someip_layer.return_code != RET_E_UNKNOWN_METHOD
+                ):
+                self.logger.info(f"Received something in method ID: {hex(method_id)}")
+
+                found_method_info = SOMEIP_METHOD_INFO(
+                    method_id=method_id,
+                    payload=ret_someip_layer.payload
+                )
+
+        return found_method_info
