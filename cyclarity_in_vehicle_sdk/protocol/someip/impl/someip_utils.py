@@ -1,10 +1,15 @@
 import itertools
 from typing import Union
-from cyclarity_in_vehicle_sdk.communication.base.communicator_base import CommunicatorType
 from cyclarity_in_vehicle_sdk.communication.ip.base.ip_communicator_base import IpVersion
 from cyclarity_in_vehicle_sdk.communication.ip.tcp.tcp import TcpCommunicator
 from cyclarity_in_vehicle_sdk.communication.ip.udp.udp import UdpCommunicator
-from cyclarity_in_vehicle_sdk.protocol.someip.models.someip_models import SOMEIP_ENDPOINT_OPTION, SOMEIP_METHOD_INFO, SOMEIP_SERVICE_INFO, SomeIpSdOptionFlags
+from cyclarity_in_vehicle_sdk.protocol.someip.models.someip_models import (
+    SOMEIP_ENDPOINT_OPTION,
+    SOMEIP_METHOD_INFO,
+    SOMEIP_SERVICE_INFO,
+    Layer4ProtocolType,
+    SomeIpSdOptionFlags,
+    )
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 import py_pcapplusplus
 from pydantic import IPvAnyAddress
@@ -105,7 +110,11 @@ class SomeipUtils(ParsableModel):
                     SOMEIP_ENDPOINT_OPTION(
                         endpoint_addr = sd_options[opt_idx].addr,
                         port = sd_options[opt_idx].port,
-                        port_type = sd_options[opt_idx].protocol_type
+                        port_type = (Layer4ProtocolType.TCP 
+                                     if sd_options[opt_idx].protocol_type == py_pcapplusplus.SomeIpSdProtocolType.SD_TCP 
+                                     else Layer4ProtocolType.UDP
+                                     )
+
                 ))
 
     def subscribe_evtgrp(

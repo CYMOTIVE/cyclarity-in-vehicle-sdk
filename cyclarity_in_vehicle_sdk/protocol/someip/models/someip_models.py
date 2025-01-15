@@ -1,14 +1,14 @@
 from ipaddress import IPv6Address
 from typing import Optional
-from enum import IntFlag
+from enum import IntEnum, IntFlag
 from pydantic import BaseModel, Field, IPvAnyAddress
 from cyclarity_in_vehicle_sdk.utils.custom_types.hexbytes import HexBytes
-import py_pcapplusplus as pypcap
+from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_enum_by_name
 
-L4_PROTO_TCP = 0x6
-L4_PROTO_UDP = 0x11
-TEMP_LISTEN_PORT = 42700
-
+@pydantic_enum_by_name
+class Layer4ProtocolType(IntEnum):
+    UDP = 0x11
+    TCP = 0x6
 
 class SOMEIP_EVTGROUP_INFO(BaseModel):
     initial_data: Optional[str] = None
@@ -18,13 +18,17 @@ class SOMEIP_METHOD_INFO(BaseModel):
     method_id: int
     payload: HexBytes
 
+    def __str__(self):
+        return (f"Method ID: {hex(self.method_id)}" 
+                + (f", Payload[{len(self.payload)}]: {self.payload[:20]}" if self.payload else ""))
+
 class SOMEIP_ENDPOINT_OPTION(BaseModel):
     endpoint_addr: IPvAnyAddress
     port: int
-    port_type: pypcap.SomeIpSdProtocolType
+    port_type: Layer4ProtocolType
 
     def __str__(self):
-        return f"Endpoint address: {self.endpoint_addr}, Port: {self.port}, Transport type: {'UDP' if self.port_type == pypcap.SomeIpSdProtocolType.SD_UDP else 'TCP'}"
+        return f"Endpoint address: {self.endpoint_addr}, Port: {self.port}, Transport type: {self.port_type.name}"
 
 class SOMEIP_SERVICE_INFO(BaseModel):
     service_id: int
