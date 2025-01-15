@@ -50,7 +50,7 @@ class SshDeviceShell (IDeviceShell):
             self.logger.error (f"ssh initialization failed with: {e}", exc_info=True)
             raise e
 
-    def exec_command(self, command: str, testcase_filter: Optional[str] = None, return_stderr: bool = False) -> Union[Tuple[str, ...], Tuple[Tuple[str, ...], str]]:  
+    def exec_command(self, command: str, testcase_filter: Optional[str] = None, return_stderr: bool = False, verbose: bool = False) -> Union[Tuple[str, ...], Tuple[Tuple[str, ...], str]]:  
         """  
         This method executes a given command via ssh and returns the output.  
         If a testcase_filter is provided, it only returns lines that contain the filter string.  
@@ -59,6 +59,7 @@ class SshDeviceShell (IDeviceShell):
         :param command: String that represents the command to be executed.  
         :param testcase_filter: Optional string used to filter the command's output.  
         :param return_stderr: Optional boolean used to determine if stderr should be returned.  
+        :param verbose: Optional boolean used to log execution data        
         :return: A tuple containing the command's output lines that match the testcase_filter and optionally stderr content.  
                 If no filter is provided, it returns all output lines.  
         """  
@@ -74,10 +75,12 @@ class SshDeviceShell (IDeviceShell):
     
         detections = []  
         for line in stdout.readlines():  
-            self.logger.debug(f'read: "{line}"') 
+            if verbose:
+                self.logger.debug(f'read: "{line}"') 
             if testcase_filter:  
                 if testcase_filter in line:  
-                    self.logger.debug(f'detect: "{testcase_filter}"')  
+                    if verbose:
+                        self.logger.debug(f'detect: "{testcase_filter}"')  
                     detections.append(line)  
                     break  
             else:  
