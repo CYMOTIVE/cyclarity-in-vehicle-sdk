@@ -3,7 +3,7 @@ from unittest import TestCase
 from cyclarity_in_vehicle_sdk.communication.ip.tcp.tcp import TcpCommunicator
 from cyclarity_in_vehicle_sdk.protocol.uds.impl.uds_utils import UdsUtils
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_XOR
-from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import NegativeResponse, ECUResetType, UdsResponseCode, UdsSid, RdidDataTuple
+from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import NegativeResponse, ECUResetType, UdsResponseCode, UdsSid, RdidDataTuple, UdsStandardVersion
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
 from cyclarity_in_vehicle_sdk.communication.can.impl.can_communicator_socketcan import CanCommunicatorSocketCan
@@ -26,7 +26,7 @@ class IntegrationTestIsoTpBased(TestCase):
     def test_session_default_session(
         self
     ):
-        res = self.uds_utils.session(session=1, standard_version=2006)
+        res = self.uds_utils.session(session=1, standard_version=UdsStandardVersion.ISO_14229_2006)
         self.assertEqual(res.session_echo, 1)
 
     def test_read_did_single(
