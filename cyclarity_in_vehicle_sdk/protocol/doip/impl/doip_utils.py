@@ -28,24 +28,18 @@ ActivationType: TypeAlias = messages.RoutingActivationRequest.ActivationType
 DoIPMessage: TypeAlias = messages.DoIPMessage
 
 class DoipUtils(ParsableModel):
-    raw_socket4: Layer3RawSocket
-    raw_socket6: Layer3RawSocket
-
+    raw_socket: Layer3RawSocket
     _tcp_communicators_cache: dict[str, TcpCommunicator] = {}
 
     def setup(self):
-        if not self.raw_socket4.open():
-            self.logger.error("Failed opening IPv4 raw socket")
-            return False
-        if not self.raw_socket6.open():
-            self.logger.error("Failed opening IPv6 raw socket")
+        if not self.raw_socket.open():
+            self.logger.error("Failed opening raw socket")
             return False
         
         return True
 
     def teardown(self) -> bool:
-        self.raw_socket4.close()
-        self.raw_socket6.close()
+        self.raw_socket.close()
         for tcp_con in self._tcp_communicators_cache.values():
             tcp_con.close()
         return True
@@ -80,10 +74,7 @@ class DoipUtils(ParsableModel):
         packet.add_layer(udp_layer)
         doip_layer = PayloadLayer(doip_layer_data)
         packet.add_layer(doip_layer)
-        if source_address.version == 4:
-            resp_packet = self.raw_socket4.send_receive_packet(packet, is_answer_cb, constants.A_PROCESSING_TIME)
-        else:
-            resp_packet = self.raw_socket6.send_receive_packet(packet, is_answer_cb, constants.A_PROCESSING_TIME)
+        resp_packet = self.raw_socket.send_receive_packet(packet, is_answer_cb, constants.A_PROCESSING_TIME)
         if resp_packet:
             parser = Parser()
             parser.reset()
@@ -127,7 +118,10 @@ class DoipUtils(ParsableModel):
             client_logical_address, activation_type, vm_specific=vm_specific
         )
         data = DoipUtils._pack_doip_message(message, protocol_version)
-        communicator.send(data=data, timeout=timeout)
+        bytes_sent = communicator.send(data=data, timeout=timeout)
+        if not bytes_sent:
+            communicator.close()
+            return None
         response = DoipUtils._read_doip(communicator, timeout=timeout)
         if type(response) is messages.RoutingActivationResponse:
             return response
@@ -155,10 +149,7 @@ class DoipUtils(ParsableModel):
         packet.add_layer(udp_layer)
         doip_layer = PayloadLayer(doip_layer_data)
         packet.add_layer(doip_layer)
-        if source_address.version == 4:
-            resp_packet = self.raw_socket4.send_receive_packet(packet, is_answer_cb, constants.A_PROCESSING_TIME)
-        else:
-            resp_packet = self.raw_socket6.send_receive_packet(packet, is_answer_cb, constants.A_PROCESSING_TIME)
+        resp_packet = self.raw_socket.send_receive_packet(packet, is_answer_cb, constants.A_PROCESSING_TIME)
         if resp_packet:
             parser = Parser()
             parser.reset()
@@ -259,8 +250,3 @@ class DoipUtils(ParsableModel):
                 if len(data) == 0:
                     break
         return None
-
-    
-
-
-    

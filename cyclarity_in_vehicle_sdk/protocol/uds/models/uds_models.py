@@ -1,8 +1,17 @@
 from abc import ABC, abstractmethod
+from enum import IntEnum
 import struct
 from typing import Optional, Union
-
 from pydantic import BaseModel, Field
+from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_enum_by_name
+
+
+@pydantic_enum_by_name
+class UdsStandardVersion(IntEnum):
+    ISO_14229_2006 = 2006
+    ISO_14229_2013 = 2013
+    ISO_14229_2020 = 2020
+
 
 class SECURITY_ALGORITHM_BASE(BaseModel, ABC):
     seed_subfunction: Optional[int] = Field(default=None, description="The subfunction for the get seed operation")
@@ -72,11 +81,27 @@ class DID_INFO(BaseModel):
                 f"{('Data (len=' + str(round(len(self.current_data) / 2)) + '): ' + self.current_data[:20]) if self.current_data else ''}"  
 )  
 
+class ROUTINE_OPERATION_INFO(BaseModel):
+    control_type: int
+    accessible: bool
+    maybe_supported_error: Optional[ERROR_CODE_AND_NAME] = Field(default=None,
+                                                                 description="The error code if there is uncertainty that this routine control type is supported")
+    routine_status_record: Optional[str] = Field(default=None,
+                                                 description="Additional data associated with the response.")
+    def __str__(self):
+        return (f"Routine control type {hex(self.control_type)}"
+                f"{', Accessible' if self.accessible else ', Inaccessible'}"
+                f"{(', Maybe supported error: ' + str(self.maybe_supported_error)) if self.maybe_supported_error else ''}"  
+                f"{(', Routine status record (len=' + str(round(len(self.routine_status_record) / 2)) + '): ' + self.routine_status_record[:20]) if self.routine_status_record else ''}"  
+                )
 
 class ROUTINE_INFO(BaseModel):
-    operations: dict[int, PERMISSION_INFO] = Field(
-        default_factory=dict[int, PERMISSION_INFO]
-    )
+    routine_id: int
+    operations: list[ROUTINE_OPERATION_INFO]
+    def __str__(self):
+        operations_str = '\n'.join(str(operation) for operation in self.operations)
+        return (f"Routine ID {hex(self.routine_id)}, Sub Operations:\n"
+                f"{operations_str}\n")
 
 class SESSION_ACCESS(BaseModel):
     id: int = Field(description="ID of this UDS session")

@@ -25,7 +25,7 @@ from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (UdsSid,
                                                                        RdidDataTuple)
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
-from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS
+from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS, UdsStandardVersion
 
 DEFAULT_UDS_OPERATION_TIMEOUT = 2
 RAW_SERVICES_WITH_SUB_FUNC = {value: type(name, (BaseService,), {'_sid':value, '_use_subfunction':True}) for name, value in UdsSid.__members__.items()}  
@@ -61,13 +61,13 @@ class UdsUtils(UdsUtilsBase):
         """
         self.data_link_layer.close()
     
-    def session(self, session: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, standard_version: int = latest_standard) -> SessionControlResultData:
+    def session(self, session: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, standard_version: UdsStandardVersion = UdsStandardVersion.ISO_14229_2020) -> SessionControlResultData:
         """	Diagnostic Session Control
 
         Args:
             timeout (float): timeout for the UDS operation in seconds
             session (int): session to switch into
-            standard_version (int, optional): the version of the UDS standard we are interacting with. Defaults to udsoncan.latest_standard (2020).
+            standard_version (UdsStandardVersion, optional): the version of the UDS standard we are interacting with. Defaults to ISO_14229_2020.
             
         :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
@@ -83,13 +83,13 @@ class UdsUtils(UdsUtilsBase):
         interpreted_response = DiagnosticSessionControl.interpret_response(response=response, standard_version=standard_version)
         return interpreted_response.service_data
     
-    def transit_to_session(self, route_to_session: list[SESSION_ACCESS], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, standard_version: int = latest_standard) -> bool:
+    def transit_to_session(self, route_to_session: list[SESSION_ACCESS], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, standard_version: UdsStandardVersion = UdsStandardVersion.ISO_14229_2020) -> bool:
         """Transit to the UDS session according to route
 
         Args:
             route_to_session (list[SESSION_ACCESS]): list of UDS SESSION_ACCESS objects to follow
             timeout (float): timeout for the UDS operation in seconds
-            standard_version (int, optional): the version of the UDS standard we are interacting with. Defaults to udsoncan.latest_standard (2020).
+            standard_version (UdsStandardVersion, optional): the version of the UDS standard we are interacting with. Defaults to ISO_14229_2020.
 
         Returns:
             bool: True if succeeded to transit to the session, False otherwise 
@@ -151,7 +151,7 @@ class UdsUtils(UdsUtilsBase):
         response = self._send_and_read_response(request=request, timeout=timeout)
         return self._split_dids(didlist=didlist, data_bytes=response.data)
 
-    def routing_control(self, routine_id: int, control_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, data: Optional[bytes] = None) -> RoutingControlResponseData:
+    def routine_control(self, routine_id: int, control_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, data: Optional[bytes] = None) -> RoutingControlResponseData:
         """Sends a request for RoutineControl
 
         Args:

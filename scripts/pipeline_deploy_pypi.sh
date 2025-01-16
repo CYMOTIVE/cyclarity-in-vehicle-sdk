@@ -9,7 +9,9 @@ if [ "$BITBUCKET_BRANCH"  = "release" ]; then
     poetry version patch
 else
     echo "Releasing a prerelease version"
-    poetry version prerelease
+    base_version=$(echo $(poetry version -s) | grep -oP '^\d+\.\d+\.\d+')  
+    new_version="${base_version}a$(shuf -i 10000-99999 -n 1)"
+    poetry version $new_version
 fi
 
 #check lock file
@@ -48,7 +50,7 @@ git add poetry.lock
 git add ${VERSION_FILE_NAME}
 git commit -m "[skip ci] ${new_version}"
 git tag ${new_version}
-git push origin ${new_version}
+git push --follow-tags
 
 echo "Upload finished, stopping script." 
 exit 0             
