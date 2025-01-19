@@ -26,6 +26,17 @@ class SomeipUtils(ParsableModel):
         recv_retry: int = 1,
         recv_timeout: float = 0.01,
     ) -> list[SOMEIP_SERVICE_INFO]:
+        """	SOME/IP Find Service
+
+        Args:
+            socket (UdpCommunicator): A SOME/IP SD socket (UDP) for sending FindService queries
+            service_id (int): The Service ID to try query
+            recv_retry (int): Retries for receiving data from the SD socket. defaults to 1.
+            recv_timeout (float): Timeout in seconds for the read operation. defaults to 0.01
+
+        Returns:
+            list[SOMEIP_SERVICE_INFO] list of found services
+        """
         found_services: list[SOMEIP_SERVICE_INFO] = []
         self.logger.info(f"Testing service ID: {hex(service_id)}")
 
@@ -55,6 +66,12 @@ class SomeipUtils(ParsableModel):
         recv_data: bytes,
         found_services: list[SOMEIP_SERVICE_INFO]
     ):
+        """Helper internal method for parsing SOME/IP SD layer into offered services
+
+        Args:
+            recv_data (bytes): Raw data for the SOME/IP SD layer
+            found_services (list[SOMEIP_SERVICE_INFO]): list of services to append into the parsed info
+        """
         some_ip_sd_layer = py_pcapplusplus.SomeIpSdLayer.from_bytes(recv_data)  # Convert packet to SOME/IP SD
         if (some_ip_sd_layer
             and not some_ip_sd_layer.message_type == py_pcapplusplus.SomeIpMsgType.ERRORS
@@ -94,6 +111,14 @@ class SomeipUtils(ParsableModel):
         sd_options: list[py_pcapplusplus.SomeIpSdOption],
         service_info: SOMEIP_SERVICE_INFO
     ):
+        """	Helper internal method for parsing options for endpoints information
+
+        Args:
+            sd_entry (py_pcapplusplus.SomeIpSdEntry): the parsed SOME/IP SD entry
+            sd_options (list[py_pcapplusplus.SomeIpSdOption]): the entire options from the SOME/IP SD layer
+            service_info (SOMEIP_SERVICE_INFO): service info object to append the discovered endpoints into 
+            
+        """
         combined_sorted_options_idx = sorted(
             itertools.chain(range(sd_entry.index_1, sd_entry.index_1 + sd_entry.n_opt_1),
                             range(sd_entry.index_2, sd_entry.index_2 + sd_entry.n_opt_2))
@@ -127,6 +152,19 @@ class SomeipUtils(ParsableModel):
         transport_protocol: Layer4ProtocolType,
         recv_timeout: int = 0.01,
     ) -> SOMEIP_EVTGROUP_INFO | None:
+        """	Subscribing to an eventgroup and fetch dome initial data
+
+        Args:
+            sd_socket (UdpCommunicator): A SOME/IP SD socket (UDP) for sending FindService queries
+            ep_socket (Union[UdpCommunicator, TcpCommunicator]): the end point communicator for receiving the eventgroup data
+            service_info (SOMEIP_SERVICE_INFO): information regarding the service in which the event group is located
+            evtgrpid (int): the event group ID
+            transport_protocol (Layer4ProtocolType): the layer 4 protocol type UDP/TCP
+            recv_timeout (float): Timeout in seconds for the read operation. defaults to 0.01
+
+        Returns:
+            SOMEIP_EVTGROUP_INFO if found. None otherwise
+        """
         found_evtgrpid = None
         someip_sd_layer = self._build_evtgrp_layer(
             service_info,
@@ -168,6 +206,18 @@ class SomeipUtils(ParsableModel):
         source_port: int,
         source_ip: IPvAnyAddress,
     ) -> py_pcapplusplus.SomeIpSdLayer:
+        """	Helper internal method for creating the SOME/IP SD subscribe eventgroup layer
+
+        Args:
+            service_info (SOMEIP_SERVICE_INFO): information regarding the service in which the event group is located
+            evtgrpid (int): the event group ID
+            transport_protocol (Layer4ProtocolType): the layer 4 protocol type UDP/TCP
+            source_port (int): the source port to configure
+            source_ip (IPvAnyAddress): the source IP to configure.
+
+        Returns:
+            SessionControlResultData
+        """
         # Build base packet.
         someip_sd_layer = py_pcapplusplus.SomeIpSdLayer(
             flags=SomeIpSdOptionFlags.Unicast
@@ -213,6 +263,17 @@ class SomeipUtils(ParsableModel):
         method_id: int,
         recv_timeout: int = 0.01,
     ) -> SOMEIP_METHOD_INFO | None:
+        """	Invoke SOME/IP Method
+
+        Args:
+            socket (Union[UdpCommunicator, TcpCommunicator]): the end point communicator for method request/response
+            service_info (SOMEIP_SERVICE_INFO): information regarding the service in which the method is located
+            method_id (int): The Method ID
+            recv_timeout (float): Timeout in seconds for the read operation. defaults to 0.01
+
+        Returns:
+            SessionControlResultData
+        """
         found_method_info = None
         someip_layer = py_pcapplusplus.SomeIpLayer(
             service_id=service_info.service_id,
