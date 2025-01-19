@@ -11,7 +11,12 @@ class Layer4ProtocolType(IntEnum):
     TCP = 0x6
 
 class SOMEIP_EVTGROUP_INFO(BaseModel):
-    initial_data: Optional[str] = None
+    eventgroup_id: int
+    initial_data: Optional[HexBytes] = None
+    
+    def __str__(self):
+        return (f"Event group ID: {hex(self.eventgroup_id)}" 
+                + (f", Data[{len(self.initial_data)}]: {self.initial_data.hex()[:20]}" if self.initial_data else ""))
 
 
 class SOMEIP_METHOD_INFO(BaseModel):
@@ -20,7 +25,7 @@ class SOMEIP_METHOD_INFO(BaseModel):
 
     def __str__(self):
         return (f"Method ID: {hex(self.method_id)}" 
-                + (f", Payload[{len(self.payload)}]: {self.payload[:20]}" if self.payload else ""))
+                + (f", Payload[{len(self.payload)}]: {self.payload[:20]}"))
 
 class SOMEIP_ENDPOINT_OPTION(BaseModel):
     endpoint_addr: IPvAnyAddress
@@ -46,16 +51,6 @@ class SOMEIP_SERVICE_INFO(BaseModel):
                 + ("Endpoints:\n" + f'\n'.join(str(ep) for ep in self.endpoints)) if self.endpoints else ""
                 )
 
-
-class SOMEIP_TARGET(BaseModel):
-    target_ip: IPv6Address
-    source_ip: str
-    source_port: int
-    destination_port: int
-
-
-class SOMEIP_INFO(BaseModel):
-    someip_targets: list[SOMEIP_TARGET] = Field(default_factory=list[SOMEIP_TARGET])
 
 class SomeIpSdOptionFlags(IntFlag):
     Reboot = 0x80

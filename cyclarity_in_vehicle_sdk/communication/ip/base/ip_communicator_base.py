@@ -13,10 +13,6 @@ class IpCommunicatorBase(CommunicatorBase):
     dport: int = Field(description="Destination port.")
     destination_ip: IPvAnyAddress = Field(description="Destination IP.")
     
-    @classmethod
-    def ip_version(cls) -> IpVersion:
-        return IpVersion.IPv6 if cls.source_ip.version == 6 else IpVersion.IPv4
-    
     @property
     def source_ip(self) -> IPvAnyAddress:
         return self.source_ip

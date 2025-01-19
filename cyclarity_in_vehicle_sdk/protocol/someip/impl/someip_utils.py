@@ -5,6 +5,7 @@ from cyclarity_in_vehicle_sdk.communication.ip.tcp.tcp import TcpCommunicator
 from cyclarity_in_vehicle_sdk.communication.ip.udp.udp import UdpCommunicator
 from cyclarity_in_vehicle_sdk.protocol.someip.models.someip_models import (
     SOMEIP_ENDPOINT_OPTION,
+    SOMEIP_EVTGROUP_INFO,
     SOMEIP_METHOD_INFO,
     SOMEIP_SERVICE_INFO,
     Layer4ProtocolType,
@@ -119,35 +120,43 @@ class SomeipUtils(ParsableModel):
 
     def subscribe_evtgrp(
         self,
-        socket: UdpCommunicator,
+        sd_socket: UdpCommunicator,
+        ep_socket: Union[UdpCommunicator, TcpCommunicator],
         service_info: SOMEIP_SERVICE_INFO,
         evtgrpid: int,
-        transport_protocol: py_pcapplusplus.SomeIpSdProtocolType,
+        transport_protocol: Layer4ProtocolType,
         recv_timeout: int = 0.01,
-    ) -> int | None:
+    ) -> SOMEIP_EVTGROUP_INFO | None:
         found_evtgrpid = None
         someip_sd_layer = self._build_evtgrp_layer(
             service_info,
             evtgrpid,
             transport_protocol,
-            socket.source_port,
-            socket.source_ip,
-            socket.ip_version()
+            ep_socket.source_port,
+            ep_socket.source_ip,
             )
 
         # send evtgrp subscribe
-        socket.send(bytes(someip_sd_layer))
+        sd_socket.send(bytes(someip_sd_layer))
 
         # Read received data on sd socket and convert it to SOME/IP packet
-        recv_data = socket.recv(recv_timeout)
+        recv_data = sd_socket.recv(recv_timeout)
         if recv_data is not None:
             received_someip_sd_layer = py_pcapplusplus.SomeIpSdLayer.from_bytes(recv_data)  # Convert packet to SOME/IP SD
             if (received_someip_sd_layer 
                 and len(received_someip_sd_layer.get_entries()) 
-                and received_someip_sd_layer.get_entries()[0].ttl != 0):  # if ttl is 0 it means we got a NACK
+                and received_someip_sd_layer.get_entries()[0].ttl != 0 # if ttl is 0 it means we got a NACK
+                ):
                 found_evtgrpid = received_someip_sd_layer.get_entries()[0].event_group_id
+                self.logger.info(f"Found eventgroup ID: {hex(found_evtgrpid)}")
 
-                self.logger.info(f"Found eventgroupID: {hex(found_evtgrpid)}")
+                # found evtgrp, probably the server also sent
+                # some initial data with it - try to receive it.
+                initial_data = ep_socket.recv(recv_timeout=recv_timeout)
+                found_evtgrpid = SOMEIP_EVTGROUP_INFO(
+                    eventgroup_id=found_evtgrpid,
+                    initial_data=initial_data,
+                )
 
         return found_evtgrpid
 
@@ -155,10 +164,9 @@ class SomeipUtils(ParsableModel):
         self,
         service_info: SOMEIP_SERVICE_INFO,
         evtgrpid: int,
-        transport_protocol: py_pcapplusplus.SomeIpSdProtocolType,
+        transport_protocol: Layer4ProtocolType,
         source_port: int,
         source_ip: IPvAnyAddress,
-        ip_version: IpVersion
     ) -> py_pcapplusplus.SomeIpSdLayer:
         # Build base packet.
         someip_sd_layer = py_pcapplusplus.SomeIpSdLayer(
@@ -174,20 +182,23 @@ class SomeipUtils(ParsableModel):
             event_group_id=evtgrpid
             )
         index = someip_sd_layer.add_entry(someip_sd_entry)
+        protocol_type = (py_pcapplusplus.SomeIpSdProtocolType.SD_UDP
+                         if transport_protocol == Layer4ProtocolType.UDP
+                         else py_pcapplusplus.SomeIpSdProtocolType.SD_TCP)
 
-        if ip_version == IpVersion.IPv6:
+        if source_ip.version == 6:
             someip_sd_option = py_pcapplusplus.SomeIpSdIPv6Option(
                 option_type=py_pcapplusplus.SomeIpSdIPv6OptionType.IPv6Endpoint,
                 ipv6_addr=str(source_ip),
                 port=source_port,
-                protocol_type=transport_protocol
+                protocol_type=protocol_type
                 )
         else:
             someip_sd_option = py_pcapplusplus.SomeIpSdIPv4Option(
                 option_type=py_pcapplusplus.SomeIpSdIPv4OptionType.IPv4Endpoint,
                 ipv4_addr=str(source_ip),
                 port=source_port,
-                protocol_type=transport_protocol
+                protocol_type=protocol_type
                 )
 
         someip_sd_layer.add_option_to(index,
