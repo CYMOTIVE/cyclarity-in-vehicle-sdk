@@ -8,6 +8,8 @@ class IpVersion(str, Enum):
     IPv6 = "IPv6"
 
 class IpCommunicatorBase(CommunicatorBase):
+    """base class for IP protocol communicators
+    """
     sport: int = Field(description="Source port.")
     source_ip: IPvAnyAddress = Field(description="Source IP.")
     dport: int = Field(description="Destination port.")
