@@ -1,4 +1,3 @@
-from ipaddress import IPv6Address
 from typing import Optional
 from enum import IntEnum, IntFlag
 from pydantic import BaseModel, Field, IPvAnyAddress
@@ -11,8 +10,9 @@ class Layer4ProtocolType(IntEnum):
     TCP = 0x6
 
 class SOMEIP_EVTGROUP_INFO(BaseModel):
-    eventgroup_id: int
-    initial_data: Optional[HexBytes] = None
+    eventgroup_id: int = Field(description="The Eventgroup ID")
+    initial_data: Optional[HexBytes] = Field(default=None, 
+                                             description="Initial data associated with the eventgroup if got received")
     
     def __str__(self):
         return (f"Event group ID: {hex(self.eventgroup_id)}" 
@@ -20,28 +20,29 @@ class SOMEIP_EVTGROUP_INFO(BaseModel):
 
 
 class SOMEIP_METHOD_INFO(BaseModel):
-    method_id: int
-    payload: HexBytes
+    method_id: int = Field(description="The Method ID") 
+    payload: HexBytes = Field(description="The payload associated with the method")
 
     def __str__(self):
         return (f"Method ID: {hex(self.method_id)}" 
-                + (f", Payload[{len(self.payload)}]: {self.payload[:20]}"))
+                + (f", Payload[{len(self.payload)}]: {self.payload[:20]}" if self.payload else ""))
 
 class SOMEIP_ENDPOINT_OPTION(BaseModel):
-    endpoint_addr: IPvAnyAddress
-    port: int
-    port_type: Layer4ProtocolType
+    endpoint_addr: IPvAnyAddress = Field(description="The SOME/IP end point IP address")
+    port: int = Field(description="The SOME/IP end point port")
+    port_type: Layer4ProtocolType = Field(description="The SOME/IP end point protocol type either UDP or TCP")
 
     def __str__(self):
         return f"Endpoint address: {self.endpoint_addr}, Port: {self.port}, Transport type: {self.port_type.name}"
 
 class SOMEIP_SERVICE_INFO(BaseModel):
-    service_id: int
-    instance_id: int
-    major_ver: int
-    minor_ver: int
-    ttl: int
-    endpoints: list[SOMEIP_ENDPOINT_OPTION] = []
+    service_id: int = Field(description="The Service ID")
+    instance_id: int = Field(description="The instance ID")
+    major_ver: int = Field(description="Major version of the service")
+    minor_ver: int = Field(description="Minor version of the service")
+    ttl: int = Field(description="Life time of the entry in seconds")
+    endpoints: list[SOMEIP_ENDPOINT_OPTION] = Field(default=[],
+                                                    description="List of endpoints offered by the service")
 
     def __str__(self):
         return (f"Service ID: {hex(self.service_id)}, "
