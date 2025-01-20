@@ -28,7 +28,7 @@ class SOMEIP_METHOD_INFO(BaseModel):
                 + (f", Payload[{len(self.payload)}]: {self.payload[:20]}" if self.payload else ""))
 
 class SOMEIP_ENDPOINT_OPTION(BaseModel):
-    endpoint_addr: IPvAnyAddress = Field(description="The SOME/IP end point IP address")
+    endpoint_addr: str = Field(description="The SOME/IP end point IP address")
     port: int = Field(description="The SOME/IP end point port")
     port_type: Layer4ProtocolType = Field(description="The SOME/IP end point protocol type either UDP or TCP")
 
