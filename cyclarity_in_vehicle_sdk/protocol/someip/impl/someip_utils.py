@@ -2,6 +2,7 @@ import itertools
 from typing import Union
 from cyclarity_in_vehicle_sdk.communication.ip.base.ip_communicator_base import IpVersion
 from cyclarity_in_vehicle_sdk.communication.ip.tcp.tcp import TcpCommunicator
+from cyclarity_in_vehicle_sdk.communication.ip.udp.multicast import MulticastCommunicator
 from cyclarity_in_vehicle_sdk.communication.ip.udp.udp import UdpCommunicator
 from cyclarity_in_vehicle_sdk.protocol.someip.models.someip_models import (
     SOMEIP_ENDPOINT_OPTION,
@@ -21,7 +22,7 @@ RET_E_UNKNOWN_METHOD = 0x03
 class SomeipUtils(ParsableModel):
     def find_service(
         self,
-        socket: UdpCommunicator,
+        socket: UdpCommunicator | MulticastCommunicator,
         service_id: int,
         recv_retry: int = 1,
         recv_timeout: float = 0.01,
@@ -29,7 +30,9 @@ class SomeipUtils(ParsableModel):
         """	SOME/IP Find Service
 
         Args:
-            socket (UdpCommunicator): A SOME/IP SD socket (UDP) for sending FindService queries
+            socket (UdpCommunicator | MulticastCommunicator): 
+                A SOME/IP SD socket (UDP) for sending FindService queries
+                A SOME/IP SD socket for receiving offered services response (UDP) from broadcast (Multicast)
             service_id (int): The Service ID to try query
             recv_retry (int): Retries for receiving data from the SD socket. defaults to 1.
             recv_timeout (float): Timeout in seconds for the read operation. defaults to 0.01
@@ -38,19 +41,19 @@ class SomeipUtils(ParsableModel):
             list[SOMEIP_SERVICE_INFO] list of found services
         """
         found_services: list[SOMEIP_SERVICE_INFO] = []
-        self.logger.info(f"Testing service ID: {hex(service_id)}")
+        self.logger.debug(f"Testing service ID: {hex(service_id)}")
+        if isinstance(socket, UdpCommunicator):
+            someip_sd_layer = py_pcapplusplus.SomeIpSdLayer(flags=SomeIpSdOptionFlags.Unicast)
 
-        someip_sd_layer = py_pcapplusplus.SomeIpSdLayer(flags=SomeIpSdOptionFlags.Unicast)
+            find_service_entry = py_pcapplusplus.SomeIpSdEntry(entry_type=py_pcapplusplus.SomeIpSdEntryType.FindService,
+                                                    service_id=service_id,
+                                                    instance_id=0xFFFF,
+                                                    major_version=0xFF,
+                                                    ttl=0xFFFFFF,
+                                                    minor_version=0xFFFFFFFF)
+            someip_sd_layer.add_entry(find_service_entry)
 
-        find_service_entry = py_pcapplusplus.SomeIpSdEntry(entry_type=py_pcapplusplus.SomeIpSdEntryType.FindService,
-                                                  service_id=service_id,
-                                                  instance_id=0xFFFF,
-                                                  major_version=0xFF,
-                                                  ttl=0xFFFFFF,
-                                                  minor_version=0xFFFFFFFF)
-        someip_sd_layer.add_entry(find_service_entry)
-
-        socket.send(bytes(someip_sd_layer))
+            socket.send(bytes(someip_sd_layer))
 
         # Read received data and convert it to SOME/IP packet
         for _ in range(recv_retry):
