@@ -683,6 +683,7 @@ description = "Python wrapper module for the Pcap++ library using nanobind"
 optional = false
 python-versions = ">=3.10"
 files = [
+    {file = "py_pcapplusplus-1.0.3a4-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:b1f27399953a28e5da5e0890666d20835aa0029bb1ff10ea4559df41d67d759b"},
     {file = "py_pcapplusplus-1.0.3a4-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:557ba74b1760feda5432bff82590dd2a4893c8be3155d73fbc55d876cb95283d"},
 ]
 
