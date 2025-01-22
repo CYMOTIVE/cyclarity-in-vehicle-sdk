@@ -115,7 +115,7 @@ class UdsUtils implements UdsUtilsBase{
 }
 
 class SomeipUtils {
-    +find_service(\n\tsocket: UdpCommunicator, \n\tservice_id: int, \n\trecv_retry: int, \n\trecv_timeout: float) -> list[SOMEIP_SERVICE_INFO]
+    +find_service(\n\tsocket: Union[UdpCommunicator, MulticastCommunicator], \n\tservice_id: int, \n\trecv_retry: int, \n\trecv_timeout: float) -> list[SOMEIP_SERVICE_INFO]
     +subscribe_evtgrp(\n\tsd_socket: UdpCommunicator,\n\tep_socket: Union[UdpCommunicator, TcpCommunicator],\n\tservice_info: SOMEIP_SERVICE_INFO,\n\tevtgrpid: int,\n\ttransport_protocol: Layer4ProtocolType,\n\trecv_timeout: int) -> SOMEIP_EVTGROUP_INFO | None
     +method_invoke(\n\tsocket: Union[TcpCommunicator, UdpCommunicator],\n\tservice_info: SOMEIP_SERVICE_INFO,\n\tmethod_id: int,\n\trecv_timeout: int) -> SOMEIP_METHOD_INFO | None
 }
