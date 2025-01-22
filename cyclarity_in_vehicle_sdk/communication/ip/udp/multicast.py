@@ -47,7 +47,7 @@ class MulticastCommunicator(IpConnectionlessCommunicatorBase):
             join_data = struct.pack("16sI", self.destination_ip.packed, interface_index)
             self._socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, join_data)
         else:
-            self._socket.bind(("", 0))
+            self._socket.bind(("", self.destination_port))
             packed_local_addr = socket.inet_aton(str(self.source_ip))
             packed_multicast_addr = socket.inet_aton(str(self.destination_ip))
             mreq = struct.pack('4s4s', packed_multicast_addr, packed_local_addr)
@@ -61,7 +61,7 @@ class MulticastCommunicator(IpConnectionlessCommunicatorBase):
         return True
     
     def send(self, data: bytes, timeout: Optional[float] = None) -> int:
-        return self._socket.sendto(data, (self.destination_ip, self.dport))
+        return self._socket.sendto(data, (str(self.destination_ip), self.dport))
     
     def recv(self, recv_timeout: float = 0, size: int = SOCK_DATA_RECV_AMOUNT) -> bytes:
         recv_data: bytes = None
