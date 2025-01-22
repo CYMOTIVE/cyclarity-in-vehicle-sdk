@@ -6,7 +6,7 @@ from cyclarity_in_vehicle_sdk.protocol.someip.impl.someip_utils import SomeipUti
 from cyclarity_in_vehicle_sdk.protocol.someip.models.someip_models import SOMEIP_EVTGROUP_INFO, SOMEIP_METHOD_INFO, SOMEIP_SERVICE_INFO, SOMEIP_ENDPOINT_OPTION, Layer4ProtocolType
 
 
-class UdsUtilsUTs(TestCase):
+class SomeipUtilsUTs(TestCase):
     def setUp(self):
         self.someip_utils = SomeipUtils()
 
