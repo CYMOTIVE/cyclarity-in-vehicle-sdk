@@ -21,6 +21,7 @@ gpiod = "^2.2.3"
 jsonargparse = "~4.34.0"
 construct = "^2.10.70"
 pycryptodome = "^3.21.0"
+pyroute2 = "0.8.1"
 
 [build-system]
 requires = ["poetry-core"]

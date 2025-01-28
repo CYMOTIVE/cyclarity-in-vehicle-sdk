@@ -1,8 +1,8 @@
 from typing import Union
 
-from pydantic import IPvAnyAddress
 from .models import IpConfiguration, CanConfiguration, IpRoute
 from pyroute2 import NDB, IPRoute
+from pyroute2.netlink.rtnl.ifinfmsg.plugins.can import CAN_CTRLMODE_NAMES
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 
 class ConfigurationManager(ParsableModel):
@@ -20,7 +20,7 @@ class ConfigurationManager(ParsableModel):
         pass
 
     def configure_ip(self, ip_config: IpConfiguration):
-        if not self._is_eth_interface_exists(ip_config.interface):
+        if not self._is_interface_exists(ip_config.interface):
             self.logger.error(f"Ethernet interface: {ip_config.interface}, does not exists, cannot configure IP")
             return
         
@@ -45,7 +45,7 @@ class ConfigurationManager(ParsableModel):
                         )
 
     def remove_ip(self, ip_config: IpConfiguration):
-        if not self._is_eth_interface_exists(ip_config.interface):
+        if not self._is_interface_exists(ip_config.interface):
             self.logger.error(f"Ethernet interface: {ip_config.interface}, does not exists, cannot remove IP")
             return
         
@@ -59,15 +59,15 @@ class ConfigurationManager(ParsableModel):
                 interface.del_ip(address=str(ip_config.ip), prefixlen=ip_config.suffix)
 
     def list_interfaces(self) -> list[str]:
-        ip_route = IPRoute()
-        interfaces = []
-        for link in ip_route.get_links():
-            interfaces.append(link.get_attr('IFLA_IFNAME'))
-        
-        return interfaces
+        with IPRoute() as ip_route:
+            interfaces = []
+            for link in ip_route.get_links():
+                interfaces.append(link.get_attr('IFLA_IFNAME'))
+            
+            return interfaces
     
     def list_ips(self, if_name: str) -> list[str]:
-        if not self._is_eth_interface_exists(if_name):
+        if not self._is_interface_exists(if_name):
             self.logger.error(f"Ethernet interface: {if_name}, does not exists")
             return []
         
@@ -81,7 +81,26 @@ class ConfigurationManager(ParsableModel):
 
 
     def configure_can(self, can_config: CanConfiguration):
-        pass
+        if not self._is_interface_exists(can_config.channel):
+            self.logger.error(f"CAN interface: {can_config.channel}, does not exists, cannot configure")
+            return
+        
+        with IPRoute() as ip_route:
+            idx = ip_route.link_lookup(ifname=can_config.channel)[0]
+            link = ip_route.link('get', index=idx)
+            if 'state' in link[0] and link[0]['state'] == 'up':
+                ip_route.link('set', index=idx, state='down')
+            
+            ip_route.link(
+                'set',
+                index=idx,
+                kind='can',
+                can_bittiming={
+                    'bitrate': can_config.bitrate,
+                    'sample_point': can_config.sample_point
+                    },
+                can_ctrlmode=({'flags': CAN_CTRLMODE_NAMES["CAN_CTRLMODE_CC_LEN8_DLC"]}) if can_config.cc_len8_dlc else {}
+            )
 
-    def _is_eth_interface_exists(self, ifname: str) -> bool:
+    def _is_interface_exists(self, ifname: str) -> bool:
         return ifname in self.list_interfaces()

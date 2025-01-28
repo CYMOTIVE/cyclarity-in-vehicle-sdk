@@ -32,7 +32,7 @@ class CanConfiguration(BaseModel):
     channel: str
     bitrate: int
     sample_point: float
-    dbitrate: int
-    dsample_point: float
-    fd: bool
+    # dbitrate: int
+    # dsample_point: float
+    # fd: bool
     cc_len8_dlc: bool
