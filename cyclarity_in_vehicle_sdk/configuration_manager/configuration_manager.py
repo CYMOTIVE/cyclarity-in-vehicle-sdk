@@ -1,12 +1,14 @@
 from typing import Optional, Union
 
+from pydantic import Field
+
 from .models import IpConfiguration, CanConfiguration
 from pyroute2 import NDB, IPRoute
 from pyroute2.netlink.rtnl.ifinfmsg.plugins.can import CAN_CTRLMODE_NAMES
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 
 class ConfigurationManager(ParsableModel):
-    actions: Optional[list[Union[IpConfiguration, CanConfiguration]]] = None
+    actions: Optional[list[Union[IpConfiguration, CanConfiguration]]] = Field(default=None)
 
     def setup(self):
         if self.actions:

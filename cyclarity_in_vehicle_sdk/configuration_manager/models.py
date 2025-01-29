@@ -20,6 +20,7 @@ class IpConfiguration(BaseModel):
             IPv6Network(ip_subnet, False)
         else:
             IPv4Network(ip_subnet, False)
+        return self
     
     @property
     def cidr_notation(self) -> str:
@@ -32,7 +33,4 @@ class CanConfiguration(BaseModel):
     channel: str
     bitrate: int
     sample_point: float
-    # dbitrate: int
-    # dsample_point: float
-    # fd: bool
     cc_len8_dlc: bool
