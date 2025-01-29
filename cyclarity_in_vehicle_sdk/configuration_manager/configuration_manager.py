@@ -5,6 +5,7 @@ from pydantic import Field
 from .models import IpConfiguration, CanConfiguration
 from pyroute2 import NDB, IPRoute
 from pyroute2.netlink.rtnl.ifinfmsg.plugins.can import CAN_CTRLMODE_NAMES
+# **26/01/2025 lib pyroute2 was approved by Eugene with license Apache 2.0**
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 
 class ConfigurationManager(ParsableModel):
