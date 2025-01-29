@@ -1,0 +1,12 @@
+get_schema: null
+verbose_logging: true
+cm:
+  actions:
+  - channel: can0
+    bitrate: 500000
+    sample_point: 0.875
+    cc_len8_dlc: True
+  - interface: lo
+    ip: 1.1.1.1
+    suffix: 24
+    route: null
