@@ -1,5 +1,7 @@
 Here is the dockerfile used for the creation of the docker running the pipeline
 
+this docker image is saved in our ECR space in the AWS, for help tp login contact Platform team
+
 command used to build and push image:
 ```
 
