@@ -1,19 +1,20 @@
-from typing import Union
+from typing import Optional, Union
 
-from .models import IpConfiguration, CanConfiguration, IpRoute
+from .models import IpConfiguration, CanConfiguration
 from pyroute2 import NDB, IPRoute
 from pyroute2.netlink.rtnl.ifinfmsg.plugins.can import CAN_CTRLMODE_NAMES
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 
 class ConfigurationManager(ParsableModel):
-    actions: list[Union[IpConfiguration, CanConfiguration]]
+    actions: Optional[list[Union[IpConfiguration, CanConfiguration]]] = None
 
     def setup(self):
-        for action in self.actions:
-            if type(action) is IpConfiguration:
-                self.configure_ip(action)
-            if type(action) is CanConfiguration:
-                self.configure_can(action)
+        if self.actions:
+            for action in self.actions:
+                if type(action) is IpConfiguration:
+                    self.configure_ip(action)
+                if type(action) is CanConfiguration:
+                    self.configure_can(action)
 
     def teardown(self):
         # restores
