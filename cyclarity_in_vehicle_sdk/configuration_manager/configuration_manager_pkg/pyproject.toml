@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "configuration-manager-pkg"
+version = "0.1.0"
+description = ""
+authors = ["Cymotive <clarity@cymotive.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+cyclarity-in-vehicle-sdk = "1.0.8a46266"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
