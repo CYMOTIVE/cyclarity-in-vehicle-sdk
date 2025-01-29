@@ -3,7 +3,7 @@
 #  This template allows you to validate your python code.
 #  The workflow allows running tests and code linting on the default branch.
 
-image: public.ecr.aws/p0d9j9b5/invehicle/dockers:3.10.13
+image: public.ecr.aws/p0d9j9b5/invehicle/dockers:3.10.13-2
 
 steps:
   - step: &build-and-test
