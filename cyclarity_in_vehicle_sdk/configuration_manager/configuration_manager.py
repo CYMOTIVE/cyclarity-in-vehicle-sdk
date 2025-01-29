@@ -101,6 +101,7 @@ class ConfigurationManager(ParsableModel):
                     },
                 can_ctrlmode=({'flags': CAN_CTRLMODE_NAMES["CAN_CTRLMODE_CC_LEN8_DLC"]}) if can_config.cc_len8_dlc else {}
             )
+            ip_route.link('set', index=idx, state='up')
 
     def _is_interface_exists(self, ifname: str) -> bool:
         return ifname in self.list_interfaces()
