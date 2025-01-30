@@ -1,0 +1,29 @@
+@startuml Configuration Manager
+
+participant BE
+participant IOT_Client as client
+participant ConfigurationManager as cm
+
+== Client Startup ==
+
+client -> BE: subscribe_configuration_changes()
+
+== Client Startup/Change ==
+
+client -> cm: get_current_configuration()
+cm -> client: device_configuration
+client -> BE: publish_device_configuration()
+note left of client
+Publishes on raise up and upon change the
+manifest of current available CAN,ethernet interfaces
+and its current params - IPs, bitrate for CAN etc, state (UP/DOWN)
+end note
+
+== Configuration request ==
+BE -> client: publish_configuration_changes(actions)
+client -> cm: configure(actions)
+client -> cm: get_current_configuration()
+cm -> client: device_configuration
+client -> BE: publish_device_configuration()
+
+@enduml
