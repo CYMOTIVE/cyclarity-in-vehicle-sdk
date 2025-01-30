@@ -48,10 +48,28 @@ class EthIfFlags(IntFlag):
     IFF_DORMANT = IFF_DORMANT
     IFF_ECHO = IFF_ECHO
 
-@pydantic_enum_by_name
-class InterfaceState(IntEnum):
-    UP: 1
-    DOWN: 0
+    @staticmethod
+    def get_flags_from_int(flags: int) -> list:
+        ret_flags = []
+        for flag in EthIfFlags:
+            if flags & flag.value:
+                ret_flags.append(flag)
+
+        return ret_flags
+
+class InterfaceState(str, Enum):
+    UP = "UP"
+    DOWN = "DOWN"
+    UNKNOWN = "UNKNOWN"
+
+    @staticmethod
+    def state_from_string(str_state: str):
+        if str_state.casefold() == InterfaceState.UP.casefold():
+            return InterfaceState.UP
+        elif str_state.casefold() == InterfaceState.DOWN.casefold():
+            return InterfaceState.DOWN
+        else:
+            return InterfaceState.UNKNOWN
 
 class ConfigurationAction(BaseModel):
     @classmethod
@@ -101,5 +119,5 @@ class EthernetInterfaceParams(BaseModel):
     ip_params: list[IpConfiguration]
 
 class DeviceConfiguration(BaseModel):
-    eth_interfaces: Optional[list[EthernetInterfaceParams]] = None
-    can_interfaces: Optional[list[CanConfiguration]] = None
+    eth_interfaces: list[EthernetInterfaceParams] = []
+    can_interfaces: list[CanConfiguration] = []

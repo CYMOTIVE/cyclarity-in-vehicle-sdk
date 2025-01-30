@@ -3,7 +3,7 @@ from typing import Any, Optional, Type, Union
 
 from pydantic import Field
 
-from .models import EthIfFlags, EthInterfaceConfiguration, IpConfiguration, CanConfiguration, ConfigurationAction
+from .models import DeviceConfiguration, EthIfFlags, EthInterfaceConfiguration, EthernetInterfaceParams, InterfaceState, IpConfiguration, CanConfiguration, ConfigurationAction
 from pyroute2 import NDB, IPRoute
 from pyroute2.netlink.rtnl.ifinfmsg.plugins.can import CAN_CTRLMODE_NAMES
 # **26/01/2025 lib pyroute2 was approved by Eugene with license Apache 2.0**
@@ -42,6 +42,36 @@ class ConfigurationManager(ParsableModel):
                     self.configure_can(action)
                 if type(action) is EthInterfaceConfiguration:
                     self.configure_eth_interface(action)
+
+    def get_device_configuration(self) -> DeviceConfiguration:
+        config = DeviceConfiguration()
+        self._get_eth_configuration(config)
+
+        return config
+
+    def _get_eth_configuration(self, config: DeviceConfiguration):
+        interfaces = self._ndb.interfaces.dump()
+        eth_interfaces = [iface for iface in interfaces if iface['ifi_type'] == 1]  
+        for iface in eth_interfaces:
+            eth_config = EthInterfaceConfiguration(
+                interface=iface.ifname,
+                mtu=iface.mtu,
+                state=InterfaceState.state_from_string(iface.state),
+                flags=EthIfFlags.get_flags_from_int(iface.flags)
+            )
+            ip_params = []
+            with self._ndb.interfaces[iface.ifname] as interface:
+                for address_obj in interface.ipaddr:
+                    ip_params.append(IpConfiguration(interface=iface.ifname,
+                                                     ip=address_obj['address'],
+                                                     suffix=address_obj['prefixlen'],
+                    ))
+
+            config.eth_interfaces.append(
+                EthernetInterfaceParams(
+                    if_params=eth_config,
+                    ip_params=ip_params)
+                    )
 
     def rollback_all(self):
         for interface in self._snapshots.keys():
