@@ -1,27 +1,56 @@
-from typing import Optional, Union
+from types import TracebackType
+from typing import Any, Optional, Type, Union
 
 from pydantic import Field
 
-from .models import IpConfiguration, CanConfiguration
+from .models import EthIfFlags, EthInterfaceConfiguration, IpConfiguration, CanConfiguration, ConfigurationAction
 from pyroute2 import NDB, IPRoute
 from pyroute2.netlink.rtnl.ifinfmsg.plugins.can import CAN_CTRLMODE_NAMES
 # **26/01/2025 lib pyroute2 was approved by Eugene with license Apache 2.0**
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 
+ACTION_TYPES = Union[ConfigurationAction.get_subclasses()]
+
 class ConfigurationManager(ParsableModel):
-    actions: Optional[list[Union[IpConfiguration, CanConfiguration]]] = Field(default=None)
+    actions: Optional[list[ACTION_TYPES]] = Field(default=None)
+
+    _snapshots: dict[str, Any] = {}
+    _ndb = None
+
+    def __enter__(self):
+        self.setup()
+        return self
+    
+    def __exit__(self, 
+                 exception_type: Optional[Type[BaseException]], 
+                 exception_value: Optional[BaseException], 
+                 traceback: Optional[TracebackType]) -> bool:
+        self.teardown()
+        return False
+        
+    def teardown(self):
+        self._ndb.close()
 
     def setup(self):
+        self._ndb = NDB()
+        self.collect_snapshots()
         if self.actions:
             for action in self.actions:
                 if type(action) is IpConfiguration:
                     self.configure_ip(action)
                 if type(action) is CanConfiguration:
                     self.configure_can(action)
+                if type(action) is EthInterfaceConfiguration:
+                    self.configure_eth_interface(action)
 
-    def teardown(self):
-        # restores
-        pass
+    def rollback_all(self):
+        for interface in self._snapshots.keys():
+            self.rollback_interface(interface)
+
+    def rollback_interface(self, if_name: str):
+        if snapshot:= self._snapshots.get(if_name, None):
+            with self._ndb.interfaces[if_name] as interface:
+                interface.rollback(snapshot)
 
     def configure_ip(self, ip_config: IpConfiguration):
         if not self._is_interface_exists(ip_config.interface):
@@ -33,20 +62,19 @@ class ConfigurationManager(ParsableModel):
             return
         
         self.logger.debug(f"Configuring: {str(ip_config)}")
-        with NDB() as ndb:
-            with ndb.interfaces[ip_config.interface] as interface:
-                interface.add_ip(address=str(ip_config.ip), prefixlen=ip_config.suffix)
-                if ip_config.route:
-                    if ip_config.route.gateway:
-                        ndb.routes.create(
-                            dst=ip_config.cidr_notation,
-                            gateway=ip_config.route.gateway
-                        )
-                    else:
-                        ndb.routes.create(
-                            dst=ip_config.cidr_notation,
-                            oif=interface['index']
-                        )
+        with self._ndb.interfaces[ip_config.interface] as interface:
+            interface.add_ip(address=str(ip_config.ip), prefixlen=ip_config.suffix)
+            if ip_config.route:
+                if ip_config.route.gateway:
+                    self._ndb.routes.create(
+                        dst=ip_config.cidr_notation,
+                        gateway=ip_config.route.gateway
+                    )
+                else:
+                    self._ndb.routes.create(
+                        dst=ip_config.cidr_notation,
+                        oif=interface['index']
+                    )
 
     def remove_ip(self, ip_config: IpConfiguration):
         if not self._is_interface_exists(ip_config.interface):
@@ -58,17 +86,15 @@ class ConfigurationManager(ParsableModel):
             return
         
         self.logger.debug(f"Removing: {str(ip_config)}")
-        with NDB() as ndb:
-            with ndb.interfaces[ip_config.interface] as interface:
-                interface.del_ip(address=str(ip_config.ip), prefixlen=ip_config.suffix)
+        with self._ndb.interfaces[ip_config.interface] as interface:
+            interface.del_ip(address=str(ip_config.ip), prefixlen=ip_config.suffix)
 
     def list_interfaces(self) -> list[str]:
-        with IPRoute() as ip_route:
-            interfaces = []
-            for link in ip_route.get_links():
-                interfaces.append(link.get_attr('IFLA_IFNAME'))
+        interfaces = []
+        for interface in self._ndb.interfaces.dump():
+            interfaces.append(interface.ifname)
             
-            return interfaces
+        return interfaces
     
     def list_ips(self, if_name: str) -> list[str]:
         if not self._is_interface_exists(if_name):
@@ -76,10 +102,9 @@ class ConfigurationManager(ParsableModel):
             return []
         
         ret_addresses = []
-        with NDB() as ndb:
-            with ndb.interfaces[if_name] as interface:
-                for address_obj in interface.ipaddr:
-                    ret_addresses.append(address_obj['address'])
+        with self._ndb.interfaces[if_name] as interface:
+            for address_obj in interface.ipaddr:
+                ret_addresses.append(address_obj['address'])
         
         return ret_addresses
 
@@ -109,3 +134,21 @@ class ConfigurationManager(ParsableModel):
 
     def _is_interface_exists(self, ifname: str) -> bool:
         return ifname in self.list_interfaces()
+    
+    def collect_snapshots(self):
+        interfaces = self.list_interfaces()
+        for interface in interfaces:
+            self._snapshots[interface] = self._ndb.interfaces[interface].snapshot()
+    
+    def configure_eth_interface(self, eth_config: EthInterfaceConfiguration):
+        if not self._is_interface_exists(eth_config.interface):
+            self.logger.error(f"Ethernet interface: {eth_config.interface}, does not exists, cannot configure")
+            return
+        
+        with self._ndb.interfaces[eth_config.interface] as interface:
+            if eth_config.flags:
+                interface['flags'] |= sum(eth_config.flags, EthIfFlags(0))
+            if eth_config.mtu:
+                interface['mtu'] = eth_config.mtu
+
+    # bluetooth,  FirewallTester, arp
