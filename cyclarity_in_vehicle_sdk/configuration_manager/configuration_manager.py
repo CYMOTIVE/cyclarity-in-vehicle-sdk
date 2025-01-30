@@ -177,8 +177,10 @@ class ConfigurationManager(ParsableModel):
         
         with self._ndb.interfaces[eth_config.interface] as interface:
             if eth_config.flags:
-                interface['flags'] |= sum(eth_config.flags, EthIfFlags(0))
+                interface['flags'] = (0xffffffff & sum(eth_config.flags, EthIfFlags(0)))
             if eth_config.mtu:
                 interface['mtu'] = eth_config.mtu
+            if eth_config.state:
+                interface['state'] = eth_config.state.lower()
 
     # bluetooth,  FirewallTester, arp
