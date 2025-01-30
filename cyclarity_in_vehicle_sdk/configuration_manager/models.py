@@ -1,6 +1,6 @@
 
 from typing import Optional
-from enum import Enum, IntEnum, IntFlag
+from enum import Enum, IntFlag
 from pydantic import BaseModel, Field, IPvAnyAddress, model_validator
 from ipaddress import IPv4Network, IPv6Network
 from pyroute2.netlink.rtnl.ifinfmsg import (
@@ -108,16 +108,40 @@ class CanConfiguration(ConfigurationAction):
     sample_point: float
     cc_len8_dlc: bool
 
+    def __str__(self):
+        return f"CAN channel: {self.channel}, bitrate: {self.bitrate}, sample point: {self.sample_point}"
+
+DEFAULT_ETH_IF_FLAGS = [EthIfFlags.IFF_BROADCAST,
+                        EthIfFlags.IFF_MULTICAST,
+                        EthIfFlags.IFF_UP,
+                        EthIfFlags.IFF_LOWER_UP,
+                        EthIfFlags.IFF_RUNNING]
+
 class EthInterfaceConfiguration(ConfigurationAction):
     interface: str = Field(description="The Eth interface to be configured")
     mtu: Optional[int] = Field(default=None, description="MTU (maximum transmission unit)")
-    flags: list[EthIfFlags] = Field(default=[], description="Flags to apply on the interface")
+    flags: list[EthIfFlags] = Field(default=DEFAULT_ETH_IF_FLAGS, 
+                                    description="Flags to apply on the interface")
     state: Optional[InterfaceState] = Field(default=None, description="Interface State to configure")
 
 class EthernetInterfaceParams(BaseModel):
     if_params: EthInterfaceConfiguration
     ip_params: list[IpConfiguration]
 
+    def __str__(self):
+        return (f"interface: {self.if_params.interface}\n"
+                f"MTU: {self.if_params.mtu}, state: {self.if_params.state.value}\n"
+                f"Flags: " + ", ".join(str(flag) for flag in self.if_params.flags) + "\n"
+                f"IPs: " + ", ".join(ip.cidr_notation for ip in self.ip_params)
+                )
+
 class DeviceConfiguration(BaseModel):
     eth_interfaces: list[EthernetInterfaceParams] = []
     can_interfaces: list[CanConfiguration] = []
+
+    def __str__(self):
+        return (f"Ethernet interfaces:\n"
+                +f"\n\n".join(str(eth_if) for eth_if in self.eth_interfaces)
+                +f"\nCAN interfaces:\n"
+                +f"\n".join(str(can_if) for can_if in self.can_interfaces)
+                )
