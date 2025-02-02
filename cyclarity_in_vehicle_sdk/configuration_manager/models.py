@@ -104,12 +104,13 @@ class IpConfiguration(ConfigurationAction):
 
 class CanConfiguration(ConfigurationAction):
     channel: str
+    state: InterfaceState
     bitrate: int
     sample_point: float
     cc_len8_dlc: bool
 
     def __str__(self):
-        return f"CAN channel: {self.channel}, bitrate: {self.bitrate}, sample point: {self.sample_point}"
+        return f"CAN channel: {self.channel}, state {self.state.value}, bitrate: {self.bitrate}, sample point: {self.sample_point}, len8-dlc: {self.cc_len8_dlc}"
 
 DEFAULT_ETH_IF_FLAGS = [EthIfFlags.IFF_BROADCAST,
                         EthIfFlags.IFF_MULTICAST,
@@ -131,7 +132,7 @@ class EthernetInterfaceParams(BaseModel):
     def __str__(self):
         return (f"interface: {self.if_params.interface}\n"
                 f"MTU: {self.if_params.mtu}, state: {self.if_params.state.value}\n"
-                f"Flags: " + ", ".join(str(flag) for flag in self.if_params.flags) + "\n"
+                f"Flags: " + ", ".join(flag.name for flag in self.if_params.flags) + "\n"
                 f"IPs: " + ", ".join(ip.cidr_notation for ip in self.ip_params)
                 )
 

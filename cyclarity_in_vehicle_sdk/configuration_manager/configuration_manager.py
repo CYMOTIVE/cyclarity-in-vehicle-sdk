@@ -5,7 +5,6 @@ from pydantic import Field
 
 from .models import DeviceConfiguration, EthIfFlags, EthInterfaceConfiguration, EthernetInterfaceParams, InterfaceState, IpConfiguration, CanConfiguration, ConfigurationAction
 from pyroute2 import NDB, IPRoute
-from pyroute2.netlink.rtnl.ifinfmsg.plugins.can import CAN_CTRLMODE_NAMES
 # **26/01/2025 lib pyroute2 was approved by Eugene with license Apache 2.0**
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 
@@ -46,6 +45,7 @@ class ConfigurationManager(ParsableModel):
     def get_device_configuration(self) -> DeviceConfiguration:
         config = DeviceConfiguration()
         self._get_eth_configuration(config)
+        self._get_can_configuration(config)
 
         return config
 
@@ -72,6 +72,23 @@ class ConfigurationManager(ParsableModel):
                     if_params=eth_config,
                     ip_params=ip_params)
                     )
+            
+    def _get_can_configuration(self, config: DeviceConfiguration):
+        can_interfaces = self._ndb.interfaces.dump().filter(kind='can')
+        for iface in can_interfaces:
+            with IPRoute() as ip_route:
+                link = ip_route.link('get', index=iface.index)[0]
+                attrs = dict(link['attrs'])
+                link_info_attrs = dict(attrs['IFLA_LINKINFO']['attrs'])
+                info_data_attrs = dict(link_info_attrs['IFLA_INFO_DATA']['attrs'])
+                can_config = CanConfiguration(
+                    channel=iface.ifname,
+                    state=InterfaceState.state_from_string(iface.state),
+                    bitrate=int(info_data_attrs.get('IFLA_CAN_BITTIMING', {}).get('bitrate', 0)),
+                    sample_point=float(info_data_attrs.get('IFLA_CAN_BITTIMING', {}).get('sample_point', 0) / 1000.0),
+                    cc_len8_dlc=info_data_attrs.get('IFLA_CAN_CTRLMODE', {}).get('cc_len8_dlc', False)
+                )
+                config.can_interfaces.append(can_config)
 
     def rollback_all(self):
         for interface in self._snapshots.keys():
@@ -158,7 +175,7 @@ class ConfigurationManager(ParsableModel):
                     'bitrate': can_config.bitrate,
                     'sample_point': can_config.sample_point
                     },
-                can_ctrlmode=({'flags': CAN_CTRLMODE_NAMES["CAN_CTRLMODE_CC_LEN8_DLC"]}) if can_config.cc_len8_dlc else {}
+                can_ctrlmode=({'cc_len8_dlc': 'on'}) if can_config.cc_len8_dlc else {'cc_len8_dlc': 'off'}
             )
             ip_route.link('set', index=idx, state='up')
 
