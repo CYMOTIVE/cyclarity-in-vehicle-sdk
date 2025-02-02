@@ -102,6 +102,10 @@ class IpConfiguration(ConfigurationAction):
     def __str__(self):
         return f"{self.interface} - {self.cidr_notation}"
 
+class WifiConnect(ConfigurationAction):
+    ssid: str
+    password: str
+
 class CanConfiguration(ConfigurationAction):
     channel: str
     state: InterfaceState
@@ -136,13 +140,24 @@ class EthernetInterfaceParams(BaseModel):
                 f"IPs: " + ", ".join(ip.cidr_notation for ip in self.ip_params)
                 )
 
+class WifiDevice(BaseModel):
+    ssid: str
+    security: str
+    connected: bool
+
+    def __str__(self):
+        return f"SSID: {self.ssid}, security: {self.security}, connected: {self.connected}"
+
 class DeviceConfiguration(BaseModel):
     eth_interfaces: list[EthernetInterfaceParams] = []
     can_interfaces: list[CanConfiguration] = []
+    wifi_devices: dict[str, WifiDevice] = {}
 
     def __str__(self):
         return (f"Ethernet interfaces:\n"
                 +f"\n\n".join(str(eth_if) for eth_if in self.eth_interfaces)
                 +f"\nCAN interfaces:\n"
                 +f"\n".join(str(can_if) for can_if in self.can_interfaces)
+                +f"\nWifi devices:\n"
+                +f"\n".join(str(wifi_dev) for wifi_dev in self.wifi_devices.values())
                 )

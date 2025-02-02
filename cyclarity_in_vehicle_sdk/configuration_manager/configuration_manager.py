@@ -1,9 +1,11 @@
+import time
 from types import TracebackType
 from typing import Any, Optional, Type, Union
 
+import nmcli
 from pydantic import Field
 
-from .models import DeviceConfiguration, EthIfFlags, EthInterfaceConfiguration, EthernetInterfaceParams, InterfaceState, IpConfiguration, CanConfiguration, ConfigurationAction
+from .models import DeviceConfiguration, EthIfFlags, EthInterfaceConfiguration, EthernetInterfaceParams, InterfaceState, IpConfiguration, CanConfiguration, ConfigurationAction, WifiConnect, WifiDevice
 from pyroute2 import NDB, IPRoute
 # **26/01/2025 lib pyroute2 was approved by Eugene with license Apache 2.0**
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
@@ -41,17 +43,40 @@ class ConfigurationManager(ParsableModel):
                     self.configure_can(action)
                 if type(action) is EthInterfaceConfiguration:
                     self.configure_eth_interface(action)
+                if type(action) is WifiConnect:
+                    self.connect_wifi_device(action)
+
+    def connect_wifi_device(self, wifi_connect_params: WifiConnect):
+        try:
+            nmcli.device.wifi_connect(ssid=wifi_connect_params.ssid,
+                                      password=wifi_connect_params.password)
+        except nmcli.ConnectionActivateFailedException:
+            self.logger.error(f"Failed to connect to: {wifi_connect_params.ssid}")
+
 
     def get_device_configuration(self) -> DeviceConfiguration:
         config = DeviceConfiguration()
         self._get_eth_configuration(config)
         self._get_can_configuration(config)
+        self._get_wifi_devices_info(config)
 
         return config
+    
+    def _get_wifi_devices_info(self, config: DeviceConfiguration):
+        wifi_list = nmcli.device.wifi()
+        for wifi in wifi_list:
+            if wifi.ssid:
+                if wifi_dev:=config.wifi_devices.get(wifi.ssid):
+                    wifi_dev.connected = True if wifi.in_use else wifi_dev.connected
+                else:
+                    config.wifi_devices[wifi.ssid] = WifiDevice(ssid=wifi.ssid,
+                                                  security=wifi.security,
+                                                  connected=wifi.in_use,
+                                                  )
 
     def _get_eth_configuration(self, config: DeviceConfiguration):
         interfaces = self._ndb.interfaces.dump()
-        eth_interfaces = [iface for iface in interfaces if iface['ifi_type'] == 1]  
+        eth_interfaces = [iface for iface in interfaces if iface['ifi_type'] == 1] # 1 = ARPHRD_ETHER
         for iface in eth_interfaces:
             eth_config = EthInterfaceConfiguration(
                 interface=iface.ifname,
@@ -75,8 +100,8 @@ class ConfigurationManager(ParsableModel):
             
     def _get_can_configuration(self, config: DeviceConfiguration):
         can_interfaces = self._ndb.interfaces.dump().filter(kind='can')
-        for iface in can_interfaces:
-            with IPRoute() as ip_route:
+        with IPRoute() as ip_route:
+            for iface in can_interfaces:
                 link = ip_route.link('get', index=iface.index)[0]
                 attrs = dict(link['attrs'])
                 link_info_attrs = dict(attrs['IFLA_LINKINFO']['attrs'])
