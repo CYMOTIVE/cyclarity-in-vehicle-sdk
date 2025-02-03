@@ -9,7 +9,11 @@ class ConfigurationManagerRunnable(Runnable[Results]):
     cm: ConfigurationManager
 
     def setup(self):
+        current_config = self.cm.get_device_configuration()
+        self.logger.info(str(current_config))
         self.cm.setup()
+        modified_config = self.cm.get_device_configuration()
+        self.logger.info(str(modified_config))
 
     def run(self) -> Results:
         return Results()
