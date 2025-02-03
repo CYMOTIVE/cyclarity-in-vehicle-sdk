@@ -96,12 +96,12 @@ class ConfigurationManager(ParsableModel):
                     self._ndb.routes.create(
                         dst=ip_config.cidr_notation,
                         gateway=ip_config.route.gateway
-                    )
+                    ).commit()
                 else:
                     self._ndb.routes.create(
                         dst=ip_config.cidr_notation,
                         oif=interface['index']
-                    )
+                    ).commit()
 
     def _remove_ip(self, ip_config: IpRemoveAction):
         if not self._is_interface_exists(ip_config.interface):
@@ -113,8 +113,13 @@ class ConfigurationManager(ParsableModel):
             return
         
         if ip_config.route:
-            with self._ndb.routes[ip_config.cidr_notation] as route:
-                route.remove()
+            route = None
+            if ip_config.route.gateway:
+                route = self._ndb.routes.get({'dst': ip_config.cidr_notation, 'gateway': ip_config.route.gateway})
+            else:
+                route = self._ndb.routes.get({'dst': ip_config.cidr_notation})
+            if route:  
+                route.remove().commit()
 
         self.logger.debug(f"Removing: {str(ip_config)}")
         with self._ndb.interfaces[ip_config.interface] as interface:
