@@ -1,4 +1,5 @@
 
+from typing import Literal
 from cyclarity_in_vehicle_sdk.configuration_manager.models import CanInterfaceConfiguration, EthInterfaceParams, IpConfigurationParams
 from pydantic import BaseModel, Field
 
@@ -10,11 +11,11 @@ class ConfigurationAction(BaseModel):
 
 
 class IpAddAction(ConfigurationAction, IpConfigurationParams):
-    pass
+    action_type: Literal['add'] = Literal['add']
 
 
 class IpRemoveAction(ConfigurationAction, IpConfigurationParams):
-    pass
+    action_type: Literal['del'] = Literal['del']
 
 
 class WifiConnectAction(ConfigurationAction):
