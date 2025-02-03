@@ -26,6 +26,7 @@ from pyroute2.netlink.rtnl.ifinfmsg import (
     )
 from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_enum_by_name
 
+
 @pydantic_enum_by_name
 class EthIfFlags(IntFlag):
     IFF_UP = IFF_UP
@@ -57,6 +58,7 @@ class EthIfFlags(IntFlag):
 
         return ret_flags
 
+
 class InterfaceState(str, Enum):
     UP = "UP"
     DOWN = "DOWN"
@@ -71,15 +73,24 @@ class InterfaceState(str, Enum):
         else:
             return InterfaceState.UNKNOWN
 
-class ConfigurationAction(BaseModel):
-    @classmethod
-    def get_subclasses(cls):
-        return tuple(cls.__subclasses__())
 
 class IpRoute(BaseModel):
-    gateway: Optional[str] = None
+    gateway: Optional[str] = Field(default=None, 
+                                   description="Optional parameter the route gateway, none for default gateway")
 
-class IpConfiguration(ConfigurationAction):
+
+class CanInterfaceConfiguration(BaseModel):
+    channel: str = Field(description="The CAN interface e.g. can0")
+    state: InterfaceState = Field(description="The state of the CAN interface - UP/DOWN")
+    bitrate: int = Field(description="Bitrate")
+    sample_point: float = Field(description="Sample-point")
+    cc_len8_dlc: bool = Field(description="cc-len8-dlc flag value")
+
+    def __str__(self):
+        return f"CAN channel: {self.channel}, state {self.state.value}, bitrate: {self.bitrate}, sample point: {self.sample_point}, len8-dlc: {self.cc_len8_dlc}"
+
+
+class IpConfigurationParams(BaseModel):
     interface: str = Field(description="The network interface for the IP to be configured")
     ip: IPvAnyAddress = Field(description="The IP to configure, IPv4/IPv6")
     suffix: int = Field(description="The subnet notation for this IP address")
@@ -102,19 +113,6 @@ class IpConfiguration(ConfigurationAction):
     def __str__(self):
         return f"{self.interface} - {self.cidr_notation}"
 
-class WifiConnect(ConfigurationAction):
-    ssid: str
-    password: str
-
-class CanConfiguration(ConfigurationAction):
-    channel: str
-    state: InterfaceState
-    bitrate: int
-    sample_point: float
-    cc_len8_dlc: bool
-
-    def __str__(self):
-        return f"CAN channel: {self.channel}, state {self.state.value}, bitrate: {self.bitrate}, sample point: {self.sample_point}, len8-dlc: {self.cc_len8_dlc}"
 
 DEFAULT_ETH_IF_FLAGS = [EthIfFlags.IFF_BROADCAST,
                         EthIfFlags.IFF_MULTICAST,
@@ -122,16 +120,18 @@ DEFAULT_ETH_IF_FLAGS = [EthIfFlags.IFF_BROADCAST,
                         EthIfFlags.IFF_LOWER_UP,
                         EthIfFlags.IFF_RUNNING]
 
-class EthInterfaceConfiguration(ConfigurationAction):
+
+class EthInterfaceParams(BaseModel):
     interface: str = Field(description="The Eth interface to be configured")
     mtu: Optional[int] = Field(default=None, description="MTU (maximum transmission unit)")
     flags: list[EthIfFlags] = Field(default=DEFAULT_ETH_IF_FLAGS, 
                                     description="Flags to apply on the interface")
     state: Optional[InterfaceState] = Field(default=None, description="Interface State to configure")
 
-class EthernetInterfaceParams(BaseModel):
-    if_params: EthInterfaceConfiguration
-    ip_params: list[IpConfiguration]
+
+class EthernetInterfaceConfiguration(BaseModel):
+    if_params: EthInterfaceParams
+    ip_params: list[IpConfigurationParams]
 
     def __str__(self):
         return (f"interface: {self.if_params.interface}\n"
@@ -141,16 +141,17 @@ class EthernetInterfaceParams(BaseModel):
                 )
 
 class WifiDevice(BaseModel):
-    ssid: str
-    security: str
-    connected: bool
+    ssid: str = Field(description="The SSID of the access point")
+    security: str = Field(description="The security access of the access point")
+    connected: bool = Field(description="Is the device connected to this access point")
 
     def __str__(self):
         return f"SSID: {self.ssid}, security: {self.security}, connected: {self.connected}"
 
+
 class DeviceConfiguration(BaseModel):
-    eth_interfaces: list[EthernetInterfaceParams] = []
-    can_interfaces: list[CanConfiguration] = []
+    eth_interfaces: list[EthernetInterfaceConfiguration] = []
+    can_interfaces: list[CanInterfaceConfiguration] = []
     wifi_devices: dict[str, WifiDevice] = {}
 
     def __str__(self):
