@@ -11,11 +11,11 @@ class ConfigurationAction(BaseModel):
 
 
 class IpAddAction(ConfigurationAction, IpConfigurationParams):
-    action_type: Literal['add'] = Literal['add']
+    action_type: Literal['add'] = 'add'
 
 
 class IpRemoveAction(ConfigurationAction, IpConfigurationParams):
-    action_type: Literal['del'] = Literal['del']
+    action_type: Literal['del'] = 'del'
 
 
 class WifiConnectAction(ConfigurationAction):
