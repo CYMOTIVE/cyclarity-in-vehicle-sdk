@@ -4,7 +4,7 @@ from typing import Optional, Type, Union
 import nmcli
 from pydantic import Field
 
-from .models import (
+from cyclarity_in_vehicle_sdk.configuration_manager.models import (
     CanInterfaceConfiguration,
     DeviceConfiguration, 
     EthIfFlags,
@@ -13,7 +13,7 @@ from .models import (
     InterfaceState, 
     IpConfigurationParams,
     WifiDevice)
-from .actions import (
+from cyclarity_in_vehicle_sdk.configuration_manager.actions import (
     ConfigurationAction,
     IpAddAction,
     IpRemoveAction,
