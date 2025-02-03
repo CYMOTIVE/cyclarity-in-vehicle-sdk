@@ -29,8 +29,11 @@ ACTION_TYPES = Union[ConfigurationAction.get_subclasses()]
 
 class ConfigurationManager(ParsableModel):
     actions: Optional[list[ACTION_TYPES]] = Field(default=None)
-
     _ndb = None
+
+    def model_post_init(self, *args, **kwargs):
+        super().model_post_init(*args, **kwargs)
+        self._ndb = NDB()
 
     def __enter__(self):
         self.setup()
@@ -47,7 +50,6 @@ class ConfigurationManager(ParsableModel):
         self._ndb.close()
 
     def setup(self):
-        self._ndb = NDB()
         if self.actions:
             self.configure_actions(self.actions)
 
@@ -188,16 +190,19 @@ class ConfigurationManager(ParsableModel):
         return ifname in self._list_interfaces()
 
     def _get_wifi_devices_info(self, config: DeviceConfiguration):
-        wifi_list = nmcli.device.wifi()
-        for wifi in wifi_list:
-            if wifi.ssid:
-                if wifi_dev:=config.wifi_devices.get(wifi.ssid):
-                    wifi_dev.connected = True if wifi.in_use else wifi_dev.connected
-                else:
-                    config.wifi_devices[wifi.ssid] = WifiDevice(ssid=wifi.ssid,
-                                                  security=wifi.security,
-                                                  connected=wifi.in_use,
-                                                  )
+        try:
+            wifi_list = nmcli.device.wifi()
+            for wifi in wifi_list:
+                if wifi.ssid:
+                    if wifi_dev:=config.wifi_devices.get(wifi.ssid):
+                        wifi_dev.connected = True if wifi.in_use else wifi_dev.connected
+                    else:
+                        config.wifi_devices[wifi.ssid] = WifiDevice(ssid=wifi.ssid,
+                                                    security=wifi.security,
+                                                    connected=wifi.in_use,
+                                                    )
+        except Exception:
+            pass
 
     def _get_eth_configuration(self, config: DeviceConfiguration):
         interfaces = self._ndb.interfaces.dump()
