@@ -49,20 +49,23 @@ class ConfigurationManager(ParsableModel):
     def setup(self):
         self._ndb = NDB()
         if self.actions:
-            for action in self.actions:
-                self.configure_action(action)
+            self.configure_actions(self.actions)
 
-    def configure_action(self, action: ConfigurationAction):
-        if type(action) is IpAddAction:
-            self._configure_ip(action)
-        if type(action) is IpRemoveAction:
-            self._remove_ip(action)
-        if type(action) is CanConfigurationAction:
-            self._configure_can(action)
-        if type(action) is EthInterfaceConfigurationAction:
-            self._configure_eth_interface(action)
-        if type(action) is WifiConnectAction:
-            self._connect_wifi_device(action)
+    def configure_actions(self, actions: Union[ConfigurationAction, list[CanConfigurationAction]]):
+        if isinstance(actions, ConfigurationAction):
+            actions = [actions]
+
+        for action in actions:
+            if type(action) is IpAddAction:
+                self._configure_ip(action)
+            if type(action) is IpRemoveAction:
+                self._remove_ip(action)
+            if type(action) is CanConfigurationAction:
+                self._configure_can(action)
+            if type(action) is EthInterfaceConfigurationAction:
+                self._configure_eth_interface(action)
+            if type(action) is WifiConnectAction:
+                self._connect_wifi_device(action)
 
     def get_device_configuration(self) -> DeviceConfiguration:
         config = DeviceConfiguration()
