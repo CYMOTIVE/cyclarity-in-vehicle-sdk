@@ -194,7 +194,8 @@ class ConfigurationManager(ParsableModel):
             wifi_list = nmcli.device.wifi()
             for wifi in wifi_list:
                 if wifi.ssid:
-                    wifi_dev = next((wifi_dev for wifi_dev in config.wifi_devices if wifi_dev.ssid == wifi.ssid), None)
+                    wifi_dev = next((wifi_dev for wifi_dev in config.configurations_info if (type(wifi_dev) is WifiAccessPointConfigurationInfo 
+                                                                                             and wifi_dev.ssid == wifi.ssid)), None)
                     if wifi_dev:
                         wifi_dev.connected = True if wifi.in_use else wifi_dev.connected
                     else:
