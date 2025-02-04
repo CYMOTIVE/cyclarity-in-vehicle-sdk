@@ -220,6 +220,62 @@ class UnrespondedTesterPresentCrashDetector implements InteractiveCrashDetection
     -uds_utils: UdsUtils
     -operation_timeout: float
 }
+}
 
+package configuration_mmanager {
+
+class ConfigurationManager {
+    +setup()
+    +teardown()
+    +configure_actions(actions: Union[ConfigurationAction, list[CanConfigurationAction]])
+    +get_device_configuration() -> DeviceConfiguration:
+}
+
+class EthInterfaceParams{
+    +interface: str
+    +mtu: Optional[int]
+    +flags: list[EthIfFlags]
+    +state: Optional[InterfaceState]
+}
+class IpConfigurationParams {
+    +interface: str
+    +ip: IPvAnyAddress
+    +suffix: int
+    +route: Optional[IpRoute]
+}
+
+abstract ConfigurationInfoBase
+class CanInterfaceConfigurationInfo extends ConfigurationInfoBase {
+    +channel: str
+    +state: InterfaceState
+    +bitrate: int
+    +sample_point: float
+    +cc_len8_dlc: bool
+}
+
+class EthernetInterfaceConfigurationInfo extends ConfigurationInfoBase {
+    +if_params: EthInterfaceParams
+    +ip_params: list[IpConfigurationParams]
+}
+EthernetInterfaceConfigurationInfo o-- EthInterfaceParams
+EthernetInterfaceConfigurationInfo "n" o-- IpConfigurationParams
+
+class WifiAccessPointConfigurationInfo extends ConfigurationInfoBase {
+    ssid: str
+    security: str
+    connected: bool
+}
+
+abstract ConfigurationAction
+class IpAddAction extends ConfigurationAction
+class IpRemoveAction extends ConfigurationAction
+class WifiConnectAction extends ConfigurationAction {
+    +ssid: str
+    +password: str
+}
+class CanConfigurationAction extends ConfigurationAction
+class EthInterfaceConfigurationAction extends ConfigurationAction
+
+}
 
 @enduml
