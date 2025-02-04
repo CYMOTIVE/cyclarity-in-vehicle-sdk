@@ -5,14 +5,14 @@ import nmcli
 from pydantic import Field
 
 from cyclarity_in_vehicle_sdk.configuration_manager.models import (
-    CanInterfaceConfiguration,
+    CanInterfaceConfigurationInfo,
     DeviceConfiguration, 
     EthIfFlags,
     EthInterfaceParams,
-    EthernetInterfaceConfiguration,
+    EthernetInterfaceConfigurationInfo,
     InterfaceState, 
     IpConfigurationParams,
-    WifiDevice)
+    WifiAccessPointConfigurationInfo)
 from cyclarity_in_vehicle_sdk.configuration_manager.actions import (
     ConfigurationAction,
     IpAddAction,
@@ -194,13 +194,14 @@ class ConfigurationManager(ParsableModel):
             wifi_list = nmcli.device.wifi()
             for wifi in wifi_list:
                 if wifi.ssid:
-                    if wifi_dev:=config.wifi_devices.get(wifi.ssid):
+                    wifi_dev = next((wifi_dev for wifi_dev in config.wifi_devices if wifi_dev.ssid == wifi.ssid), None)
+                    if wifi_dev:
                         wifi_dev.connected = True if wifi.in_use else wifi_dev.connected
                     else:
-                        config.wifi_devices[wifi.ssid] = WifiDevice(ssid=wifi.ssid,
+                        config.configurations_info.append(WifiAccessPointConfigurationInfo(ssid=wifi.ssid,
                                                     security=wifi.security,
                                                     connected=wifi.in_use,
-                                                    )
+                                                    ))
         except Exception:
             pass
 
@@ -222,8 +223,8 @@ class ConfigurationManager(ParsableModel):
                                                      suffix=address_obj['prefixlen'],
                     ))
 
-            config.eth_interfaces.append(
-                EthernetInterfaceConfiguration(
+            config.configurations_info.append(
+                EthernetInterfaceConfigurationInfo(
                     if_params=eth_config,
                     ip_params=ip_params)
                     )
@@ -236,11 +237,11 @@ class ConfigurationManager(ParsableModel):
                 attrs = dict(link['attrs'])
                 link_info_attrs = dict(attrs['IFLA_LINKINFO']['attrs'])
                 info_data_attrs = dict(link_info_attrs['IFLA_INFO_DATA']['attrs'])
-                can_config = CanInterfaceConfiguration(
+                can_config = CanInterfaceConfigurationInfo(
                     channel=iface.ifname,
                     state=InterfaceState.state_from_string(iface.state),
                     bitrate=int(info_data_attrs.get('IFLA_CAN_BITTIMING', {}).get('bitrate', 0)),
                     sample_point=float(info_data_attrs.get('IFLA_CAN_BITTIMING', {}).get('sample_point', 0) / 1000.0),
                     cc_len8_dlc=info_data_attrs.get('IFLA_CAN_CTRLMODE', {}).get('cc_len8_dlc', False)
                 )
-                config.can_interfaces.append(can_config)
+                config.configurations_info.append(can_config)

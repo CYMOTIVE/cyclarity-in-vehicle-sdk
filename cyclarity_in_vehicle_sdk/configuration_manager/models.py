@@ -27,6 +27,10 @@ from pyroute2.netlink.rtnl.ifinfmsg import (
 from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_enum_by_name
 
 
+class ConfigurationInfoBase(BaseModel):
+    def __str__(self):
+        return str()
+
 @pydantic_enum_by_name
 class EthIfFlags(IntFlag):
     IFF_UP = IFF_UP
@@ -79,7 +83,7 @@ class IpRoute(BaseModel):
                                    description="Optional parameter the route gateway, none for default gateway")
 
 
-class CanInterfaceConfiguration(BaseModel):
+class CanInterfaceConfigurationInfo(ConfigurationInfoBase):
     channel: str = Field(description="The CAN interface e.g. can0")
     state: InterfaceState = Field(description="The state of the CAN interface - UP/DOWN")
     bitrate: int = Field(description="Bitrate")
@@ -129,36 +133,28 @@ class EthInterfaceParams(BaseModel):
     state: Optional[InterfaceState] = Field(default=None, description="Interface State to configure")
 
 
-class EthernetInterfaceConfiguration(BaseModel):
+class EthernetInterfaceConfigurationInfo(ConfigurationInfoBase):
     if_params: EthInterfaceParams
     ip_params: list[IpConfigurationParams]
 
     def __str__(self):
-        return (f"interface: {self.if_params.interface}\n"
-                f"MTU: {self.if_params.mtu}, state: {self.if_params.state.value}\n"
-                f"Flags: " + ", ".join(flag.name for flag in self.if_params.flags) + "\n"
-                f"IPs: " + ", ".join(ip.cidr_notation for ip in self.ip_params)
+        return (f"Ethernet interface: {self.if_params.interface}\n"
+                f"\tMTU: {self.if_params.mtu}, state: {self.if_params.state.value}\n"
+                f"\tFlags: " + ", ".join(flag.name for flag in self.if_params.flags) + "\n"
+                f"\tIPs: " + ", ".join(ip.cidr_notation for ip in self.ip_params)
                 )
 
-class WifiDevice(BaseModel):
+class WifiAccessPointConfigurationInfo(ConfigurationInfoBase):
     ssid: str = Field(description="The SSID of the access point")
     security: str = Field(description="The security access of the access point")
     connected: bool = Field(description="Is the device connected to this access point")
 
     def __str__(self):
-        return f"SSID: {self.ssid}, security: {self.security}, connected: {self.connected}"
+        return f"Wifi Access Point: SSID: {self.ssid}, security: {self.security}, connected: {self.connected}"
 
 
 class DeviceConfiguration(BaseModel):
-    eth_interfaces: list[EthernetInterfaceConfiguration] = []
-    can_interfaces: list[CanInterfaceConfiguration] = []
-    wifi_devices: dict[str, WifiDevice] = {}
+    configurations_info: list[ConfigurationInfoBase] = []
 
     def __str__(self):
-        return (f"Ethernet interfaces:\n"
-                +f"\n\n".join(str(eth_if) for eth_if in self.eth_interfaces)
-                +f"\nCAN interfaces:\n"
-                +f"\n".join(str(can_if) for can_if in self.can_interfaces)
-                +f"\nWifi devices:\n"
-                +f"\n".join(str(wifi_dev) for wifi_dev in self.wifi_devices.values())
-                )
+        return f"\n".join(str(conf_info) for conf_info in self.configurations_info)

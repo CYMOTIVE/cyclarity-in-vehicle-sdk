@@ -1,6 +1,6 @@
 
 from typing import Literal
-from cyclarity_in_vehicle_sdk.configuration_manager.models import CanInterfaceConfiguration, EthInterfaceParams, IpConfigurationParams
+from cyclarity_in_vehicle_sdk.configuration_manager.models import CanInterfaceConfigurationInfo, EthInterfaceParams, IpConfigurationParams
 from pydantic import BaseModel, Field
 
 
@@ -23,7 +23,7 @@ class WifiConnectAction(ConfigurationAction):
     password: str = Field(description="The pass phrase to use for connecting")
 
 
-class CanConfigurationAction(ConfigurationAction, CanInterfaceConfiguration):
+class CanConfigurationAction(ConfigurationAction, CanInterfaceConfigurationInfo):
     pass
 
 
