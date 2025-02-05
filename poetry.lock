@@ -451,13 +451,13 @@ testing = ["aboutcode-toolkit (>=6.0.0)", "black (>=22.3.0)", "doc8 (>=0.11.1)",
 
 [[package]]
 name = "cyclarity-sdk"
-version = "1.0.80"
+version = "1.0.82"
 description = ""
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "cyclarity_sdk-1.0.80-py3-none-any.whl", hash = "sha256:16c54d03d260844f98e5cb8e399672085b7a758e65e48f54da3f94d0484426c0"},
-    {file = "cyclarity_sdk-1.0.80.tar.gz", hash = "sha256:2af6d658ebe702f2b25e3ae5b8bfa5fb291dc9365a5c3bd27cfa857fd795c02d"},
+    {file = "cyclarity_sdk-1.0.82-py3-none-any.whl", hash = "sha256:7e9a0be5836af7a603e555e16f4fa1a5fe5e08f8a4c0c533bfee686412e8a4fb"},
+    {file = "cyclarity_sdk-1.0.82.tar.gz", hash = "sha256:35977bd2272a4c1ce40280cb44d92783e98c8af5691a63d3cc265c7839ba336c"},
 ]
 
 [package.dependencies]
@@ -668,13 +668,13 @@ files = [
 
 [[package]]
 name = "paramiko"
-version = "3.5.0"
+version = "3.5.1"
 description = "SSH2 protocol library"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "paramiko-3.5.0-py3-none-any.whl", hash = "sha256:1fedf06b085359051cd7d0d270cebe19e755a8a921cc2ddbfa647fb0cd7d68f9"},
-    {file = "paramiko-3.5.0.tar.gz", hash = "sha256:ad11e540da4f55cedda52931f1a3f812a8238a7af7f62a60de538cd80bb28124"},
+    {file = "paramiko-3.5.1-py3-none-any.whl", hash = "sha256:43b9a0501fc2b5e70680388d9346cf252cfb7d00b0667c39e80eb43a408b8f61"},
+    {file = "paramiko-3.5.1.tar.gz", hash = "sha256:b2c665bc45b2b215bd7d7f039901b14b067da00f3a11e6640995fd58f2664822"},
 ]
 
 [package.dependencies]
@@ -689,13 +689,13 @@ invoke = ["invoke (>=2.0)"]
 
 [[package]]
 name = "py-pcapplusplus"
-version = "1.0.3a4"
+version = "1.0.4"
 description = "Python wrapper module for the Pcap++ library using nanobind"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "py_pcapplusplus-1.0.3a4-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:b1f27399953a28e5da5e0890666d20835aa0029bb1ff10ea4559df41d67d759b"},
-    {file = "py_pcapplusplus-1.0.3a4-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:557ba74b1760feda5432bff82590dd2a4893c8be3155d73fbc55d876cb95283d"},
+    {file = "py_pcapplusplus-1.0.4-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3299a1469892c1525fb7463751e5a5e3fd619f4e06276e956b5468960df32987"},
+    {file = "py_pcapplusplus-1.0.4-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d431dd543c9fa524d02c7714dccbce350b7d773f3b761d776d20f19eee96ef52"},
 ]
 
 [[package]]
@@ -1230,4 +1230,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "1a7e25bc8d73359fb836d1703d6668ae2153da04933a791f9e4d70e5a8e4b09a"
+content-hash = "f829e8855055c203aea0bf774f896c0042d272af1f494af09e60718563213ee7"
