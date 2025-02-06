@@ -8,12 +8,19 @@ interface CommunicatorBase {
     +get_type(self) -> CommunicatorType:
 }
 
-abstract ConnectionCommunicatorBase extends CommunicatorBase {
+abstract IpCommunicatorBase extends CommunicatorBase {
+    -sport: int
+    -source_ip: IPvAnyAddress 
+    -dport: int
+    -destination_ip: IPvAnyAddress
+}
+
+abstract IpConnectionCommunicatorBase extends IpCommunicatorBase {
     +connect(self) -> bool
     +is_open() -> bool
 }
 
-abstract ConnectionlessCommunicatorBase extends CommunicatorBase {
+abstract IpConnectionlessCommunicatorBase extends IpCommunicatorBase {
     +send_to(self, target_ip: IPvAnyAddress, data: bytes) -> int:
     +receive_from(self, size: int) -> tuple[bytes, IPvAnyAddress]:
 }
@@ -107,6 +114,12 @@ class UdsUtils implements UdsUtilsBase{
     -_split_dids(self, didlist: Union[int, list[int]], data_hex: str) -> list[RdidDataTuple(did, data)]:
 }
 
+class SomeipUtils {
+    +find_service(\n\tsocket: Union[UdpCommunicator, MulticastCommunicator], \n\tservice_id: int, \n\trecv_retry: int, \n\trecv_timeout: float) -> list[SOMEIP_SERVICE_INFO]
+    +subscribe_evtgrp(\n\tsd_socket: UdpCommunicator,\n\tep_socket: Union[UdpCommunicator, TcpCommunicator],\n\tservice_info: SOMEIP_SERVICE_INFO,\n\tevtgrpid: int,\n\ttransport_protocol: Layer4ProtocolType,\n\trecv_timeout: int) -> SOMEIP_EVTGROUP_INFO | None
+    +method_invoke(\n\tsocket: Union[TcpCommunicator, UdpCommunicator],\n\tservice_info: SOMEIP_SERVICE_INFO,\n\tmethod_id: int,\n\trecv_timeout: int) -> SOMEIP_METHOD_INFO | None
+}
+
 interface IDeviceShell {
     exec_command (self, command: str, testcase_filter: Optional[str] = None) -> Tuple[str, ...]:
     teardown (self)
@@ -135,8 +148,9 @@ class SerialDeviceShell implements IDeviceShell
 class SshDeviceShell implements IDeviceShell
 class Layer3RawSocket implements RawSocketCommunicatorBase
 class Layer2RawSocket implements RawSocketCommunicatorBase
-class TcpCommunicator implements ConnectionCommunicatorBase
-class MulticastCommunicator implements ConnectionlessCommunicatorBase
+class TcpCommunicator implements IpConnectionCommunicatorBase
+class MulticastCommunicator implements IpConnectionlessCommunicatorBase
+class UdpCommunicator implements IpConnectionlessCommunicatorBase
 class CanCommunicatorSocketCan implements CanCommunicatorBase
 
 package plugins {
