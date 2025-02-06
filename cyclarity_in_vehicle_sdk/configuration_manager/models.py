@@ -118,11 +118,11 @@ class IpConfigurationParams(BaseModel):
         return f"{self.interface} - {self.cidr_notation}"
 
 
-DEFAULT_ETH_IF_FLAGS = [EthIfFlags.IFF_BROADCAST,
-                        EthIfFlags.IFF_MULTICAST,
-                        EthIfFlags.IFF_UP,
-                        EthIfFlags.IFF_LOWER_UP,
-                        EthIfFlags.IFF_RUNNING]
+DEFAULT_ETH_IF_FLAGS = [EthIfFlags.IFF_BROADCAST.name,
+                        EthIfFlags.IFF_MULTICAST.name,
+                        EthIfFlags.IFF_UP.name,
+                        EthIfFlags.IFF_LOWER_UP.name,
+                        EthIfFlags.IFF_RUNNING.name]
 
 
 class EthInterfaceParams(BaseModel):
