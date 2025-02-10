@@ -18,6 +18,7 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
     _is_open = False
     _address = None
     _params: dict = {"blocking_send":True}
+    _can_stack: isotp.CanStack = None
 
     def teardown(self):
         self.close()
@@ -36,14 +37,14 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
     def set_address(self, address: Address):
         self._address = address
         if self._is_open:
-            self.can_stack.set_address(address=address)
+            self._can_stack.set_address(address=address)
     
     def send(self, data: bytes, timeout: Optional[float] = 1) -> int:
         if not self._is_open:
             raise RuntimeError("IsoTpCommunicator has not been opened successfully")
         
         try:
-            self.can_stack.send(data=data, send_timeout=timeout)
+            self._can_stack.send(data=data, send_timeout=timeout)
         except isotp.BlockingSendTimeout as ex:
             self.logger.warning(f"Timeout for send operation: {str(ex)}")
             return 0
@@ -54,7 +55,7 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
         if not self._is_open:
             raise RuntimeError("IsoTpCommunicator has not been opened successfully")
         
-        received_data = self.can_stack.recv(block=True, timeout=recv_timeout)
+        received_data = self._can_stack.recv(block=True, timeout=recv_timeout)
         return bytes(received_data) if received_data else bytes()
     
     def open(self) -> bool:
@@ -63,15 +64,15 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
             return False
         
         self.can_communicator.open()
-        self.can_stack = isotp.CanStack(bus=self.can_communicator.get_bus(), address=self._address, params=self._params)
-        self.can_stack.start()
+        self._can_stack = isotp.CanStack(bus=self.can_communicator.get_bus(), address=self._address, params=self._params)
+        self._can_stack.start()
         self._is_open = True
         return True
     
     def close(self) -> bool:
         if self._is_open:
-            self.can_stack.stop()
-            self.can_stack.reset()
+            self._can_stack.stop()
+            self._can_stack.reset()
             self.can_communicator.close()
             self._is_open = False
 
