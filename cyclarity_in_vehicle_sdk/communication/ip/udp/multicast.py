@@ -42,7 +42,7 @@ class MulticastCommunicator(IpConnectionlessCommunicatorBase):
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         if is_ipv6:
-            self._socket.bind((self.destination_ip, 0))
+            self._socket.bind((str(self.destination_ip), 0))
             interface_index = socket.if_nametoindex(self.interface_name)
             join_data = struct.pack("16sI", self.destination_ip.packed, interface_index)
             self._socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, join_data)
