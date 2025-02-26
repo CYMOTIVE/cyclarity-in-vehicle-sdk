@@ -89,9 +89,14 @@ class CanInterfaceConfigurationInfo(ConfigurationInfoBase):
     bitrate: int = Field(description="Bitrate")
     sample_point: float = Field(description="Sample-point")
     cc_len8_dlc: bool = Field(description="cc-len8-dlc flag value")
+    fd: bool = Field(description="Set interface to support CAN-FD")
 
     def __str__(self):
-        return f"CAN channel: {self.channel}, state {self.state.value}, bitrate: {self.bitrate}, sample point: {self.sample_point}, len8-dlc: {self.cc_len8_dlc}"
+        return (f"CAN channel: {self.channel}, state {self.state.value}, "
+                f"bitrate: {self.bitrate}, sample point: {self.sample_point}, "
+                f"len8-dlc: {self.cc_len8_dlc}, "
+                f"FD: {self.fd}"
+                )
 
 
 class IpConfigurationParams(BaseModel):
