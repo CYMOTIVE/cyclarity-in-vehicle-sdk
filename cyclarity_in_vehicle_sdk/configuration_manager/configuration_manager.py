@@ -179,7 +179,7 @@ class ConfigurationManager(ParsableModel):
                         'sample_point': can_config.sample_point
                         },
                     can_ctrlmode=self._can_ctrlmode_options,
-                    can_data_bitrate_const=can_config.fd.dbitrate if can_config.fd else None
+                    can_data_bittiming=({'bitrate': can_config.fd.dbitrate} if can_config.fd else {})
                 )
             except NetlinkError as ex:
                 self.logger.error(f"Failed to configure CAN interface. what: {ex}")
@@ -254,8 +254,8 @@ class ConfigurationManager(ParsableModel):
                 info_data_attrs = dict(link_info_attrs['IFLA_INFO_DATA']['attrs'])
                 fd_options: CanFdOptions = None
                 if info_data_attrs.get('IFLA_CAN_CTRLMODE', {}).get('fd', None) and \
-                    info_data_attrs.get('IFLA_CAN_DATA_BITRATE_CONST', None):
-                    fd_options = CanFdOptions(dbitrate=info_data_attrs.get('IFLA_CAN_DATA_BITRATE_CONST', 0))
+                    info_data_attrs.get('IFLA_CAN_DATA_BITTIMING', None):
+                    fd_options = CanFdOptions(dbitrate=info_data_attrs.get('IFLA_CAN_DATA_BITTIMING', None).get('bitrate', 0))
 
                 can_config = CanInterfaceConfigurationInfo(
                     channel=iface.ifname,
