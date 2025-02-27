@@ -82,20 +82,25 @@ class IpRoute(BaseModel):
     gateway: Optional[str] = Field(default=None, 
                                    description="Optional parameter the route gateway, none for default gateway")
 
+class CanFdOptions(BaseModel):
+    dbitrate: int = Field(default=2000000, description="The data bitrate")
+
+    def __str__(self):
+        return f"dbitrate: {self.dbitrate}"
 
 class CanInterfaceConfigurationInfo(ConfigurationInfoBase):
     channel: str = Field(description="The CAN interface e.g. can0")
-    state: InterfaceState = Field(description="The state of the CAN interface - UP/DOWN")
-    bitrate: int = Field(description="Bitrate")
-    sample_point: float = Field(description="Sample-point")
+    state: InterfaceState = Field(default=InterfaceState.UP.name, description="The state of the CAN interface - UP/DOWN")
+    bitrate: int = Field(default=500000, description="Bitrate")
+    sample_point: float = Field(default=0.875, description="Sample-point")
     cc_len8_dlc: bool = Field(description="cc-len8-dlc flag value")
-    fd: bool = Field(description="Set interface to support CAN-FD")
+    fd: Optional[CanFdOptions] = Field(default=None, description="Set interface to support CAN-FD")
 
     def __str__(self):
         return (f"CAN channel: {self.channel}, state {self.state.value}, "
                 f"bitrate: {self.bitrate}, sample point: {self.sample_point}, "
                 f"len8-dlc: {self.cc_len8_dlc}, "
-                f"FD: {self.fd}"
+                f"FD: {str(self.fd) if self.fd else 'Not configured'}"
                 )
 
 
