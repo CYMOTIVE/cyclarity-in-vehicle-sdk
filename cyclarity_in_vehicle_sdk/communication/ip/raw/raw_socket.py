@@ -1,16 +1,13 @@
 import socket
 import asyncio
 from typing import Callable, Sequence
-from enum import Enum
 import time
 
+from cyclarity_in_vehicle_sdk.communication.ip.base.ip_communicator_base import IpVersion
 from cyclarity_in_vehicle_sdk.communication.ip.base.raw_socket_base import RawSocketCommunicatorBase
 from pydantic import Field
 from py_pcapplusplus import RawSocket, Packet, IPv4Layer, IPv6Layer, LayerType
 
-class IpVersion(str, Enum):
-    IPv4 = "IPv4"
-    IPv6 = "IPv6"
 
 # This class was just partially tested, and not in use by runnables ATM, do not use blindly
 class Layer2RawSocket(RawSocketCommunicatorBase):
