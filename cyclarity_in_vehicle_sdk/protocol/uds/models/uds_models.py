@@ -128,3 +128,5 @@ class UDS_INFO(BaseModel):
             self.open_sessions[session] = SESSION_INFO()
 
         return f".open_sessions[{session}]"
+
+DEFAULT_SESSION = SESSION_INFO(route_to_session=[SESSION_ACCESS(id=1)])
