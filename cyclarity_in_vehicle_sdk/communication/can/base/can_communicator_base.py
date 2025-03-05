@@ -7,6 +7,7 @@ from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 CanMessage: TypeAlias = can.Message
 BusABC: TypeAlias = can.BusABC
 
+## @brief Base class for CAN communicators python-can based
 class CanCommunicatorBase(ParsableModel):
     """Base class for CAN communicators python-can based
     """
@@ -22,14 +23,16 @@ class CanCommunicatorBase(ParsableModel):
         """
         raise NotImplementedError
 
+    ## @brief sends CAN message over the channel
+    #
+    #  This is a more detailed description, which may span multiple lines.
+    #  @param can_msg (CanMessage): CAN message in the python-can format `CanMessage`
+    #  @param timeout (Optional[float], optional): time out in seconds. Defaults to None.
+    #  @return A description of the return value.
+    #  @throws NotImplementedError 
     @abstractmethod
     def send(self, can_msg: CanMessage, timeout: Optional[float] = None):
-        """sends CAN message over the channel
-
-        Args:
-            can_msg (CanMessage): CAN message in the python-can format `CanMessage`
-            timeout (Optional[float], optional): time out in seconds. Defaults to None.
-        """
+ 
         raise NotImplementedError
     
     @abstractmethod
