@@ -7,6 +7,8 @@ from pydantic import Field
 
 CAN_ID_MAX_NORMAL_11_BITS = 0x7FF
 
+## @class IsoTpCommunicator
+#  @brief This class handles communication over IsoTP protocol.
 class IsoTpCommunicator(IsoTpCommunicatorBase):
     can_communicator: CanCommunicatorSocketCan = Field(description="CAN Communicator")
     rxid: int = Field(description="Receive CAN id.")
@@ -19,10 +21,14 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
     _address = None
     _params: dict = {"blocking_send":True}
     _can_stack: isotp.CanStack = None
-
+    
+    ## @fn teardown
+    #  @brief Close the communicator.
     def teardown(self):
         self.close()
 
+    ## @fn model_post_init
+    #  @brief Initialize the model after instantiation.
     def model_post_init(self, *args, **kwargs):
         super().model_post_init(*args, **kwargs)
         mode = AddressingMode.Normal_29bits if (self.rxid > CAN_ID_MAX_NORMAL_11_BITS or self.txid > CAN_ID_MAX_NORMAL_11_BITS) else AddressingMode.Normal_11bits
@@ -34,11 +40,19 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
         if self.can_fd:
             self._params.update({"can_fd":self.can_fd})
 
+    ## @fn set_address
+    #  @brief Set the address of the communicator.
+    #  @param address The address to be set.
     def set_address(self, address: Address):
         self._address = address
         if self._is_open:
             self._can_stack.set_address(address=address)
     
+    ## @fn send
+    #  @brief Send data to the target.
+    #  @param data The data to be sent.
+    #  @param timeout The time to wait for a response.
+    #  @return The number of bytes sent.
     def send(self, data: bytes, timeout: Optional[float] = 1) -> int:
         if not self._is_open:
             raise RuntimeError("IsoTpCommunicator has not been opened successfully")
@@ -51,6 +65,10 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
         
         return len(data)
     
+    ## @fn recv
+    #  @brief Receive data from the target.
+    #  @param recv_timeout The time to wait for a response.
+    #  @return The received data.
     def recv(self, recv_timeout: float) -> bytes:
         if not self._is_open:
             raise RuntimeError("IsoTpCommunicator has not been opened successfully")
@@ -58,6 +76,9 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
         received_data = self._can_stack.recv(block=True, timeout=recv_timeout)
         return bytes(received_data) if received_data else bytes()
     
+    ## @fn open
+    #  @brief Open the communicator.
+    #  @return True if the communicator is opened successfully, False otherwise.
     def open(self) -> bool:
         if not self._address:
             self.logger.error("IsoTpCommunicator has not been set with address")
@@ -69,6 +90,9 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
         self._is_open = True
         return True
     
+    ## @fn close
+    #  @brief Close the communicator.
+    #  @return True if the communicator is closed successfully, False otherwise.
     def close(self) -> bool:
         if self._is_open:
             self._can_stack.stop()
@@ -78,5 +102,8 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
 
         return True
     
+    ## @fn get_type
+    #  @brief Get the type of the communicator.
+    #  @return The type of the communicator.
     def get_type(self) -> CommunicatorType:
         return CommunicatorType.ISOTP
