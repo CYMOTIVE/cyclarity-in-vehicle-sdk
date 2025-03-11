@@ -514,14 +514,14 @@ requests = "*"
 
 [[package]]
 name = "doipclient"
-version = "1.1.4"
+version = "1.1.5"
 description = "A Diagnostic over IP (DoIP) client implementing ISO-13400-2."
 optional = false
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
-    {file = "doipclient-1.1.4-py3-none-any.whl", hash = "sha256:39d56810059bbd3025ae1aa57c596bde37dc64cf564fb33578f9a3e8146937ff"},
-    {file = "doipclient-1.1.4.tar.gz", hash = "sha256:5eb74319440e4a56e1f039dfe5f7db6fe227cb1b49ed70c0511395bd09f81b4d"},
+    {file = "doipclient-1.1.5-py3-none-any.whl", hash = "sha256:008741b132c724c20a07a8ee88ee2c5e395a866904903081c35f7e7917f3f063"},
+    {file = "doipclient-1.1.5.tar.gz", hash = "sha256:4fe7fdd84eba7bd911d85a4ab6164f9b9d5fcaca2d78a032df619c03a520623e"},
 ]
 
 [[package]]
