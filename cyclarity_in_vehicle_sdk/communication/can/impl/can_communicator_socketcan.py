@@ -86,7 +86,6 @@ class CanCommunicatorSocketCan(CanCommunicatorBase):
             else:
                 return None
             
-        ret_msg = None
         time_past = 0.0
         start_time = time.time()
         while time_past < timeout:
@@ -94,7 +93,7 @@ class CanCommunicatorSocketCan(CanCommunicatorBase):
             if ret_msg and ret_msg.arbitration_id not in self.blacklist_ids:
                 return ret_msg
             time_past = time.time() - start_time
-        return ret_msg
+        return None
     
     # @fn sniff
     #  @brief This function sniffs the CAN bus for a specified duration and collects all received CAN messages.

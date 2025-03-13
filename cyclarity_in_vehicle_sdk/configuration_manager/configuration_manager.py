@@ -12,7 +12,9 @@ from cyclarity_in_vehicle_sdk.configuration_manager.models import (
     EthernetInterfaceConfigurationInfo,
     InterfaceState, 
     IpConfigurationParams,
-    WifiAccessPointConfigurationInfo)
+    WifiAccessPointConfigurationInfo,
+    CanFdOptions
+    )
 from cyclarity_in_vehicle_sdk.configuration_manager.actions import (
     ConfigurationAction,
     IpAddAction,
@@ -22,6 +24,7 @@ from cyclarity_in_vehicle_sdk.configuration_manager.actions import (
     CanConfigurationAction,
 )
 from pyroute2 import NDB, IPRoute
+from pyroute2.netlink.exceptions import NetlinkError
 # **26/01/2025 lib pyroute2 was approved by Eugene with license Apache 2.0**
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 
@@ -30,6 +33,7 @@ ACTION_TYPES = Union[ConfigurationAction.get_subclasses()]
 class ConfigurationManager(ParsableModel):
     actions: Optional[list[ACTION_TYPES]] = Field(default=None)
     _ndb = None
+    _can_ctrlmode_options: dict[str, str] = {'cc_len8_dlc': 'off', 'fd': 'off'}
 
     def model_post_init(self, *args, **kwargs):
         super().model_post_init(*args, **kwargs)
@@ -154,24 +158,34 @@ class ConfigurationManager(ParsableModel):
         if not self._is_interface_exists(can_config.channel):
             self.logger.error(f"CAN interface: {can_config.channel}, does not exists, cannot configure")
             return
-        
         with IPRoute() as ip_route:
             idx = ip_route.link_lookup(ifname=can_config.channel)[0]
             link = ip_route.link('get', index=idx)
             if 'state' in link[0] and link[0]['state'] == 'up':
                 ip_route.link('set', index=idx, state='down')
             
-            ip_route.link(
-                'set',
-                index=idx,
-                kind='can',
-                can_bittiming={
-                    'bitrate': can_config.bitrate,
-                    'sample_point': can_config.sample_point
-                    },
-                can_ctrlmode=({'cc_len8_dlc': 'on'}) if can_config.cc_len8_dlc else {'cc_len8_dlc': 'off'}
-            )
-            ip_route.link('set', index=idx, state='up')
+            if can_config.cc_len8_dlc:
+                self._can_ctrlmode_options.update({'cc_len8_dlc': 'on'})
+            if can_config.fd:
+                self._can_ctrlmode_options.update({'fd': 'on'})
+            
+            try:
+                ip_route.link(
+                    'set',
+                    index=idx,
+                    kind='can',
+                    can_bittiming={
+                        'bitrate': can_config.bitrate,
+                        'sample_point': can_config.sample_point
+                        },
+                    can_ctrlmode=self._can_ctrlmode_options,
+                    can_data_bittiming=({'bitrate': can_config.fd.dbitrate} if can_config.fd else {})
+                )
+            except NetlinkError as ex:
+                self.logger.error(f"Failed to configure CAN interface. what: {ex}")
+                
+            if can_config.state == InterfaceState.UP:
+                ip_route.link('set', index=idx, state='up')
 
     def _configure_eth_interface(self, eth_config: EthInterfaceConfigurationAction):
         if not self._is_interface_exists(eth_config.interface):
@@ -238,11 +252,17 @@ class ConfigurationManager(ParsableModel):
                 attrs = dict(link['attrs'])
                 link_info_attrs = dict(attrs['IFLA_LINKINFO']['attrs'])
                 info_data_attrs = dict(link_info_attrs['IFLA_INFO_DATA']['attrs'])
+                fd_options: CanFdOptions = None
+                if info_data_attrs.get('IFLA_CAN_CTRLMODE', {}).get('fd', None) and \
+                    info_data_attrs.get('IFLA_CAN_DATA_BITTIMING', None):
+                    fd_options = CanFdOptions(dbitrate=info_data_attrs.get('IFLA_CAN_DATA_BITTIMING', None).get('bitrate', 0))
+
                 can_config = CanInterfaceConfigurationInfo(
                     channel=iface.ifname,
                     state=InterfaceState.state_from_string(iface.state),
                     bitrate=int(info_data_attrs.get('IFLA_CAN_BITTIMING', {}).get('bitrate', 0)),
                     sample_point=float(info_data_attrs.get('IFLA_CAN_BITTIMING', {}).get('sample_point', 0) / 1000.0),
-                    cc_len8_dlc=info_data_attrs.get('IFLA_CAN_CTRLMODE', {}).get('cc_len8_dlc', False)
+                    cc_len8_dlc=info_data_attrs.get('IFLA_CAN_CTRLMODE', {}).get('cc_len8_dlc', False),
+                    fd=fd_options
                 )
                 config.configurations_info.append(can_config)

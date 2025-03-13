@@ -102,7 +102,10 @@ class UdsUtils(UdsUtilsBase):
                 
                 # try to elevate security access if algorithm is provided for this session
                 if session.elevation_info and session.elevation_info.security_algorithm:
-                    self.security_access(security_algorithm=session.elevation_info.security_algorithm, timeout=timeout)
+                    try:
+                        self.security_access(security_algorithm=session.elevation_info.security_algorithm, timeout=timeout)
+                    except Exception as ex:
+                        self.logger.warning(f"Failed to get security access, continuing without. error: {ex}")
 
             except Exception as ex:
                 self.logger.warning(f"Failed to switch to session: {hex(session.id)}, what: {ex}")
@@ -237,7 +240,12 @@ class UdsUtils(UdsUtilsBase):
         response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = SecurityAccess.interpret_response(response=response,
                                                                                    mode=SecurityAccess.Mode.RequestSeed)
-        session_key = security_algorithm(interpreted_response.service_data.seed)
+        
+        if all(b == 0 for b in interpreted_response.service_data.seed):
+            # all zero seed means that security level is already unlocked
+            return True
+        
+        session_key: bytes = security_algorithm(interpreted_response.service_data.seed)
         request = SecurityAccess.make_request(level=security_algorithm.key_subfunction,
                                                                 mode=SecurityAccess.Mode.SendKey,
                                                                 data=session_key)
