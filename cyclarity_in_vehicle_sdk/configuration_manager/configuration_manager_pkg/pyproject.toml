@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-cyclarity-in-vehicle-sdk = "1.0.8a46266"
+cyclarity-in-vehicle-sdk = "1.0.10a41210"
 
 
 [build-system]
