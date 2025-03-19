@@ -51,13 +51,22 @@ class ConfigurationManager(ParsableModel):
         return False
         
     def teardown(self):
+        """Cleanup internal objects
+        """
         self._ndb.close()
 
     def setup(self):
+        """Configures the received actions from the initialization
+        """
         if self.actions:
             self.configure_actions(self.actions)
 
-    def configure_actions(self, actions: Union[ConfigurationAction, list[CanConfigurationAction]]):
+    def configure_actions(self, actions: Union[ConfigurationAction, list[ConfigurationAction]]):
+        """Configures the received actions
+
+        Args:
+            actions (Union[ConfigurationAction, list[ConfigurationAction]]): list of configuration actions to configure
+        """
         if isinstance(actions, ConfigurationAction):
             actions = [actions]
 
@@ -74,6 +83,11 @@ class ConfigurationManager(ParsableModel):
                 self._connect_wifi_device(action)
 
     def get_device_configuration(self) -> DeviceConfiguration:
+        """Get the current device configuration
+
+        Returns:
+            DeviceConfiguration: the device's current configurations
+        """
         config = DeviceConfiguration()
         self._get_eth_configuration(config)
         self._get_can_configuration(config)
