@@ -2,24 +2,24 @@ import select
 import socket
 import struct
 from typing import Optional
-from cyclarity_in_vehicle_sdk.communication.ip.base.ip_communicator_base import IpConnectionlessCommunicatorBase, IpVersion
+from cyclarity_in_vehicle_sdk.communication.ip.base.ip_communicator_base import IpConnectionlessCommunicatorBase
 from pydantic import Field, IPvAnyAddress
 
 from cyclarity_in_vehicle_sdk.communication.base.communicator_base import CommunicatorType
 
 SOCK_DATA_RECV_AMOUNT = 4096
 
-# This class was just partially tested, and not in use by runnables ATM, do not use blindly
-## @brief A class used for multicast communication over IP networks.
-# @param interface_name The network interface name - needed in case of IPv6 multicast
-# @param _socket A socket object used for the communication
 class MulticastCommunicator(IpConnectionlessCommunicatorBase):
+    """A class used for multicast communication over IP networks.
+    """
     interface_name: Optional[str] = Field(None, description="Network interface name - needed incase of IPv6 multicast")
     _socket: socket.socket = None
 
-    ## @brief Opens the socket and sets it up for multicast communication.
-    # @return A boolean indicating if the socket was successfully opened.
     def open(self) -> bool:
+        """Opens the socket.
+        Returns:
+            bool: A boolean indicating if the socket was successfully opened.
+        """
         if not self.destination_ip.is_multicast:
             raise RuntimeError(f"invalid multicast address provided: {str(self.destination_ip)}")
         
@@ -60,25 +60,38 @@ class MulticastCommunicator(IpConnectionlessCommunicatorBase):
 
         self._socket.setblocking(False)
         return True
-    
-    ## @brief Closes the socket.
-    # @return A boolean indicating if the socket was successfully closed.
+
     def close(self) -> bool:
+        """Closes the socket.
+
+        Returns:
+            bool: A boolean indicating if the socket was successfully closed.
+        """
         self._socket.close()
         return True
-    
-    ## @brief Sends data to the multicast group.
-    # @param data The data to be sent.
-    # @param timeout The timeout for the send operation.
-    # @return The number of bytes sent.
+
     def send(self, data: bytes, timeout: Optional[float] = None) -> int:
+        """Sends data to the multicast group.
+
+        Args:
+            data (bytes): data The data to be sent.
+            timeout (Optional[float], optional): The timeout for the send operation.
+
+        Returns:
+            int: The number of bytes sent.
+        """
         return self._socket.sendto(data, (str(self.destination_ip), self.dport))
-    
-    ## @brief Receives data from the multicast group.
-    # @param recv_timeout The timeout for the receive operation.
-    # @param size The size of the data to be received.
-    # @return The data received.
+
     def recv(self, recv_timeout: float = 0, size: int = SOCK_DATA_RECV_AMOUNT) -> bytes:
+        """Receives data from the multicast group.
+
+        Args:
+            recv_timeout (float, optional): The timeout for the receive operation.
+            size (int, optional): The size of the data to be received.
+
+        Returns:
+            bytes: The data received.
+        """
         recv_data: bytes = None
         if recv_timeout > 0:
             select.select([self._socket], [], [], recv_timeout)
@@ -87,20 +100,30 @@ class MulticastCommunicator(IpConnectionlessCommunicatorBase):
         except BlockingIOError:
             pass
         return recv_data
-    
-    ## @brief Sends data to a specific IP address and port.
-    # @param target_port The target port.
-    # @param target_ip The target IP address.
-    # @param data The data to be sent.
-    # @return The number of bytes sent.
+
     def send_to(self, target_port: int, target_ip: IPvAnyAddress, data: bytes) -> int:
+        """Sends data to a specific IP address and port.
+
+        Args:
+            target_port (int): The target port.
+            target_ip (IPvAnyAddress): The target IP address.
+            data (bytes): The data to be sent.
+
+        Returns:
+            int: The number of bytes sent.
+        """
         return self._socket.sendto(data, (target_ip.exploded, target_port))
 
-    ## @brief Receives data from a specific IP address and port.
-    # @param size The size of the data to be received.
-    # @param recv_timeout The timeout for the receive operation.
-    # @return The data received and the sender's IP address.
     def receive_from(self, size: int = SOCK_DATA_RECV_AMOUNT, recv_timeout: int = 0) -> tuple[bytes, IPvAnyAddress]:
+        """Receives data from a specific IP address and port.
+
+        Args:
+            size (int, optional): The size of the data to be received.
+            recv_timeout (int, optional): The timeout for the receive operation.
+
+        Returns:
+            tuple[bytes, IPvAnyAddress]: The data received and the sender's IP address.
+        """
         recv_tuple: tuple[bytes, IPvAnyAddress] = (None, None)
         if recv_timeout > 0:
             select.select([self._socket], [], [], recv_timeout)
@@ -110,7 +133,5 @@ class MulticastCommunicator(IpConnectionlessCommunicatorBase):
             pass
         return recv_tuple
 
-    ## @brief Returns the type of the communicator.
-    # @return The type of the communicator.
     def get_type(self) -> CommunicatorType:
         return CommunicatorType.MULTICAST
