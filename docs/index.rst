@@ -12,4 +12,5 @@ cyclarity-in-vehicle-sdk documentation
    communication
    protocol
    shell_devices
+   plugins
    configuration_managment
