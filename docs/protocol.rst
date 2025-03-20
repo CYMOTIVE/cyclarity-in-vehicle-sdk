@@ -1,7 +1,10 @@
 Protocol specifics APIs  
 ======================================
 
-.. toctree::
-   UdsUtils
-   SomeipUtils
-   DoipUtils
+.. currentmodule:: cyclarity_in_vehicle_sdk.protocol
+.. autosummary::
+     :toctree: _static
+
+     UdsUtils
+     SomeipUtils
+     DoipUtils

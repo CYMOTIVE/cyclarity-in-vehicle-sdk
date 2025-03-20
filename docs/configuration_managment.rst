@@ -1,4 +1,4 @@
-ConfigurationManager
+Configuration Management
 ======================================
 
 .. toctree::
