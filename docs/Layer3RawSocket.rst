@@ -1,4 +1,4 @@
-Layer2RawSocket
+Layer3RawSocket
 ======================================
 
 .. autoclass:: cyclarity_in_vehicle_sdk.communication.ip.raw.raw_socket.Layer3RawSocket

@@ -11,6 +11,4 @@ cyclarity-in-vehicle-sdk documentation
 .. toctree::
    communication
    protocol
-.. currentmodule:: sphinx
-
-.. autosummary::
+   configuration_managment

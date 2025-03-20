@@ -24,7 +24,11 @@ extensions = [
     'sphinx_autodoc_typehints',  
     'sphinx.ext.autosummary', 
     'myst_parser',
+    'sphinxcontrib.autodoc_pydantic',
 ]  
+
+autodoc_pydantic_field_doc_policy = 'description'
+autodoc_pydantic_model_show_json = False
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
