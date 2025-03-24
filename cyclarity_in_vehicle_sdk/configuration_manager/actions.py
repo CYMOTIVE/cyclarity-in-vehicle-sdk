@@ -40,3 +40,10 @@ class EthInterfaceConfigurationAction(ConfigurationAction, EthInterfaceParams):
     """
     pass
 
+
+class CreateVlanAction(ConfigurationAction):
+    """Action for creating a VLAN interface linked to an actual Eth interface
+    """
+    if_name: str = Field(description="The new vlan interface name")
+    if_link: str = Field(description="The physical interface to link to")
+    vlan_id: int = Field(description="The vlan ID")

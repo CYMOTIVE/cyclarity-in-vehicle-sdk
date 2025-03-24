@@ -17,6 +17,7 @@ from cyclarity_in_vehicle_sdk.configuration_manager.models import (
     )
 from cyclarity_in_vehicle_sdk.configuration_manager.actions import (
     ConfigurationAction,
+    CreateVlanAction,
     IpAddAction,
     IpRemoveAction,
     WifiConnectAction,
@@ -81,6 +82,8 @@ class ConfigurationManager(ParsableModel):
                 self._configure_eth_interface(action)
             if type(action) is WifiConnectAction:
                 self._connect_wifi_device(action)
+            if type(action) is CreateVlanAction:
+                self._create_vlan_interface(action)
 
     def get_device_configuration(self) -> DeviceConfiguration:
         """Get the current device configuration
@@ -94,6 +97,20 @@ class ConfigurationManager(ParsableModel):
         self._get_wifi_devices_info(config)
 
         return config
+    
+    def _create_vlan_interface(self, vlan_create_params: CreateVlanAction):
+        if not self._is_interface_exists(vlan_create_params.if_link):
+            self.logger.error(f"Ethernet interface: {vlan_create_params.if_link}, does not exists, cannot configure VLAN")
+            return
+        
+        with IPRoute() as ip:
+            ip.link(
+                "add",
+                ifname=vlan_create_params.if_name,
+                kind="vlan",
+                link=ip.link_lookup(ifname=vlan_create_params.if_link)[0],
+                vlan_id=vlan_create_params.vlan_id
+            )
 
     def _connect_wifi_device(self, wifi_connect_params: WifiConnectAction):
         try:
