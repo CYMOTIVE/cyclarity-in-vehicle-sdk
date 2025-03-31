@@ -99,8 +99,8 @@ class ConfigurationManager(ParsableModel):
         return config
     
     def _create_vlan_interface(self, vlan_create_params: CreateVlanAction):
-        if not self._is_interface_exists(vlan_create_params.if_link):
-            self.logger.error(f"Ethernet interface: {vlan_create_params.if_link}, does not exists, cannot configure VLAN")
+        if self._is_interface_exists(vlan_create_params.if_name):
+            self.logger.info(f"Ethernet interface: {vlan_create_params.if_name}, already exists")
             return
         
         with IPRoute() as ip:
