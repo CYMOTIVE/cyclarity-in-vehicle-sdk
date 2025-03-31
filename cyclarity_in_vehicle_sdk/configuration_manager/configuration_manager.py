@@ -111,6 +111,11 @@ class ConfigurationManager(ParsableModel):
                 link=ip.link_lookup(ifname=vlan_create_params.if_link)[0],
                 vlan_id=vlan_create_params.vlan_id
             )
+            ip.link(
+                "set",
+                index=ip.link_lookup(ifname=vlan_create_params.if_name)[0],
+                state="up"
+            )
 
     def _connect_wifi_device(self, wifi_connect_params: WifiConnectAction):
         try:
