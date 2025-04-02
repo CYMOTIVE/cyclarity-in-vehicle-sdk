@@ -1168,14 +1168,14 @@ files = [
 
 [[package]]
 name = "udsoncan"
-version = "1.24.1"
+version = "1.25.0"
 description = "Implementation of the Unified Diagnostic Service (UDS) protocol (ISO-14229) used in the automotive industry."
 optional = false
 python-versions = ">=3.7"
 groups = ["main"]
 files = [
-    {file = "udsoncan-1.24.1-py3-none-any.whl", hash = "sha256:a00fcf8519a5026847ab6ea73c264a251e508ee50dddb09ea79ecba79b8f9a7c"},
-    {file = "udsoncan-1.24.1.tar.gz", hash = "sha256:8dfeff52df9a87985de53ddfa649931bf44456d314828b50352c75335207f3d3"},
+    {file = "udsoncan-1.25.0-py3-none-any.whl", hash = "sha256:bfccf4214fd44057eb66c1a0d0da663168de06a3748b1bc8f31680e6f210127b"},
+    {file = "udsoncan-1.25.0.tar.gz", hash = "sha256:78ec1ab1b07acb2430f80a759b0b2608fc13d1bc4a150f38f1b890dba407bee1"},
 ]
 
 [package.extras]
