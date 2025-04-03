@@ -9,11 +9,12 @@ from udsoncan.services import (ECUReset,
                                SecurityAccess, 
                                TesterPresent, 
                                WriteDataByIdentifier, 
-                               DiagnosticSessionControl)
+                               DiagnosticSessionControl,
+                               Authentication)
 from udsoncan.common.DidCodec import DidCodec
 from udsoncan import latest_standard
 from udsoncan.exceptions import ConfigError
-from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (UdsSid, 
+from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (AuthenticationReturnParameter, AuthenticationTask, UdsSid, 
                                                                        NegativeResponse, 
                                                                        NoResponse, 
                                                                        RoutingControlResponseData, 
@@ -278,6 +279,27 @@ class UdsUtils(UdsUtilsBase):
             service = RAW_SERVICES_WITHOUT_SUB_FUNC[sid]
         request = Request(service=service, subfunction=sub_function, data=data)
         return self._send_and_read_raw_response(request=request, timeout=timeout)
+    
+    def authentication(self, authentication_task: AuthenticationTask,
+                       timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT,
+                       communication_configuration: Optional[int] = None,
+                       certificate_client: Optional[bytes] = None,
+                       challenge_client: Optional[bytes] = None,
+                       algorithm_indicator: Optional[bytes] = None,
+                       certificate_evaluation_id: Optional[int] = None,
+                       certificate_data: Optional[bytes] = None,
+                       proof_of_ownership_client: Optional[bytes] = None,
+                       ephemeral_public_key_client: Optional[bytes] = None,
+                       additional_parameter: Optional[bytes] = None) -> AuthenticationReturnParameter:
+        match authentication_task:
+            case AuthenticationTask.authenticationConfiguration:
+                return self.authentication_authentication_configuration(timeout)
+            
+    def authentication_authentication_configuration(self, timeout: float) -> AuthenticationReturnParameter:
+        request = Authentication.make_request(AuthenticationTask.authenticationConfiguration)
+        response = self._send_and_read_response(request=request, timeout=timeout)
+        interpreted_response = Authentication.interpret_response(response)
+        return AuthenticationReturnParameter(interpreted_response.service_data.return_value)
 
     def _send_and_read_response(self, request: Request, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> RawUdsResponse:
         response = self._send_and_read_raw_response(request=request, timeout=timeout)

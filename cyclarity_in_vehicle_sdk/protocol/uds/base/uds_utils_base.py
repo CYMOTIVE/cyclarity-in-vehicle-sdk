@@ -3,6 +3,7 @@ from enum import IntEnum
 from typing import NamedTuple, Optional, Type, TypeAlias, Union
 
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS, UdsStandardVersion
+from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_enum_by_name
 from udsoncan.Response import Response
 from udsoncan.ResponseCode import ResponseCode
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
@@ -56,9 +57,35 @@ class UdsSid(IntEnum):
     RequestTransferExit = 0x37
     RequestFileTransfer = 0x38
 
+@pydantic_enum_by_name
+class AuthenticationTask(IntEnum):
+    deAuthenticate = 0
+    verifyCertificateUnidirectional = 1
+    verifyCertificateBidirectional = 2
+    proofOfOwnership = 3
+    transmitCertificate = 4
+    requestChallengeForAuthentication = 5
+    verifyProofOfOwnershipUnidirectional = 6
+    verifyProofOfOwnershipBidirectional = 7
+    authenticationConfiguration = 8
+
+@pydantic_enum_by_name
+class AuthenticationReturnParameter(IntEnum):
+    RequestAccepted = 0x00
+    GeneralReject = 0x01
+    AuthenticationConfiguration_APCE = 0x02
+    AuthenticationConfiguration_ACR_with_asymmetric_cryptography = 0x03
+    AuthenticationConfiguration_ACR_with_symmetric_cryptography = 0x04
+
+    DeAuthentication_successful = 0x10
+    CertificateVerified_OwnershipVerificationNecessary = 0x11
+    OwnershipVerified_AuthenticationComplete = 0x12
+    CertificateVerified = 0x13
+
 class NoResponse(Exception):
     def __init__(self, *args, **kwargs):
         super().__init__("No response received for UDS request")
+
 
 class NegativeResponse(Exception):
     code: int
@@ -210,4 +237,19 @@ class UdsUtilsBase(ParsableModel):
         Returns:
             RawUdsResponse: Raw UdsResponse
         """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def authentication(self, 
+                       authentication_task: AuthenticationTask,
+                       timeout: float,
+                       communication_configuration: Optional[int] = None,
+                       certificate_client: Optional[bytes] = None,
+                       challenge_client: Optional[bytes] = None,
+                       algorithm_indicator: Optional[bytes] = None,
+                       certificate_evaluation_id: Optional[int] = None,
+                       certificate_data: Optional[bytes] = None,
+                       proof_of_ownership_client: Optional[bytes] = None,
+                       ephemeral_public_key_client: Optional[bytes] = None,
+                       additional_parameter: Optional[bytes] = None) -> AuthenticationReturnParameter:
         raise NotImplementedError
