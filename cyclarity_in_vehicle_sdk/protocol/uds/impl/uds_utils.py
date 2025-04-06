@@ -1,5 +1,13 @@
 import time
 from typing import Optional, Type, Union
+import cryptography.hazmat
+import cryptography.hazmat.primitives
+import cryptography.hazmat.primitives.asymmetric
+import cryptography.hazmat.primitives.asymmetric.padding
+import cryptography.hazmat.primitives.hashes
+import cryptography.hazmat.primitives.serialization
+import cryptography.x509
+import cryptography.x509.oid
 from pydantic import Field
 from udsoncan.BaseService import BaseService
 from udsoncan.Request import Request
@@ -27,6 +35,7 @@ from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (Authentic
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS, UdsStandardVersion
+import cryptography
 
 DEFAULT_UDS_OPERATION_TIMEOUT = 2
 RAW_SERVICES_WITH_SUB_FUNC = {value: type(name, (BaseService,), {'_sid':value, '_use_subfunction':True}) for name, value in UdsSid.__members__.items()}  
@@ -282,8 +291,9 @@ class UdsUtils(UdsUtilsBase):
     
     def authentication(self, authentication_task: AuthenticationTask,
                        timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT,
-                       communication_configuration: Optional[int] = None,
+                       communication_configuration: Optional[int] = 0,
                        certificate_client: Optional[bytes] = None,
+                       private_key_client: Optional[bytes] = None,
                        challenge_client: Optional[bytes] = None,
                        algorithm_indicator: Optional[bytes] = None,
                        certificate_evaluation_id: Optional[int] = None,
@@ -293,12 +303,47 @@ class UdsUtils(UdsUtilsBase):
                        additional_parameter: Optional[bytes] = None) -> AuthenticationReturnParameter:
         match authentication_task:
             case AuthenticationTask.authenticationConfiguration:
-                return self.authentication_authentication_configuration(timeout)
+                return self.authentication_configuration(timeout)
+            case AuthenticationTask.verifyCertificateUnidirectional:
+                return self.authentication_uni_certificate_exchange(timeout, communication_configuration, certificate_client, private_key_client)
             
-    def authentication_authentication_configuration(self, timeout: float) -> AuthenticationReturnParameter:
+    def authentication_configuration(self, timeout: float) -> AuthenticationReturnParameter:
         request = Authentication.make_request(AuthenticationTask.authenticationConfiguration)
         response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = Authentication.interpret_response(response)
+        return AuthenticationReturnParameter(interpreted_response.service_data.return_value)
+    
+    def authentication_uni_certificate_exchange(self, timeout: float, communication_configuration: int, certificate_client: bytes, private_key_client: bytes) -> AuthenticationReturnParameter:
+        # send certificate
+        request = Authentication.make_request(authentication_task=AuthenticationTask.verifyCertificateUnidirectional,
+                                              communication_configuration=communication_configuration,
+                                              certificate_client=certificate_client)
+        response = self._send_and_read_response(request=request, timeout=timeout)
+        interpreted_response = Authentication.interpret_response(response)
+        if not interpreted_response.service_data.challenge_server:
+            raise InvalidResponse("Expected challenge from server but none received")
+        
+        # sign challenge
+        priv_key = cryptography.hazmat.primitives.serialization.load_der_private_key(private_key_client, None)
+        # cert = cryptography.x509.load_pem_x509_certificate(certificate_client)
+        # csr_builder = cryptography.x509.CertificateSigningRequestBuilder(subject_name=cert.subject)
+        # csr_builder = csr_builder.add_attribute(
+        #     cryptography.x509.oid.AttributeOID.CHALLENGE_PASSWORD, 
+        #     interpreted_response.service_data.challenge_server
+        # )
+        sig = priv_key.sign(interpreted_response.service_data.challenge_server,
+                            cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15(),
+                            cryptography.hazmat.primitives.hashes.SHA256())
+        # csr = csr_builder.sign(private_key=priv_key,
+        #                  algorithm=cert.signature_hash_algorithm)
+
+        # send proof of ownership
+        request = Authentication.make_request(authentication_task=AuthenticationTask.proofOfOwnership,
+                                              proof_of_ownership_client=sig)
+        
+        response = self._send_and_read_response(request=request, timeout=timeout)
+        interpreted_response = Authentication.interpret_response(response)
+
         return AuthenticationReturnParameter(interpreted_response.service_data.return_value)
 
     def _send_and_read_response(self, request: Request, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> RawUdsResponse:
