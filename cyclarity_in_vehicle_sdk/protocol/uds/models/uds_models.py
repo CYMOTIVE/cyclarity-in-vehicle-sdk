@@ -1,9 +1,80 @@
 from abc import ABC, abstractmethod
-from enum import IntEnum
+from enum import Enum, IntEnum, auto
 import struct
 from typing import Optional, Union
 from pydantic import BaseModel, Field
 from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_enum_by_name
+
+
+class UdsSid(IntEnum):
+    """The service IDs standardized by UDS.
+
+    For additional information, see https://en.wikipedia.org/wiki/Unified_Diagnostic_Services
+    """
+
+    # 0x10..0x3e: UDS standardized service IDs
+    DiagnosticSessionControl = 0x10
+    EcuReset = 0x11
+    SecurityAccess = 0x27
+    CommunicationControl = 0x28
+    Authentication = 0x29
+    TesterPresent = 0x3E
+    AccessTimingParameters = 0x83
+    SecuredDataTransmission = 0x84
+    ControlDtcSettings = 0x85
+    ResponseOnEvent = 0x86
+    LinkControl = 0x87
+    ReadDataByIdentifier = 0x22
+    ReadMemoryByAddress = 0x23
+    ReadScalingDataByIdentifier = 0x24
+    ReadDataByIdentifierPeriodic = 0x2A
+    DynamicallyDefineDataIdentifier = 0x2C
+    WriteDataByIdentifier = 0x2E
+    WriteMemoryByAddress = 0x3D
+    ClearDiagnosticInformation = 0x14
+    ReadDtcInformation = 0x19
+    InputOutputControlByIdentifier = 0x2F
+    RoutineControl = 0x31
+    RequestDownload = 0x34
+    RequestUpload = 0x35
+    TransferData = 0x36
+    RequestTransferExit = 0x37
+    RequestFileTransfer = 0x38
+
+
+@pydantic_enum_by_name
+class AuthenticationAction(Enum):
+    PKI_CertificateExchangeUnidirectional = auto()
+    PKI_CertificateExchangeBidirectional = auto()
+    ChallengeResponse = auto()
+    AuthenticationConfiguration = auto()
+    DeAuthenticate = auto()
+    TransmitCertificate = auto()
+
+
+@pydantic_enum_by_name
+class AuthenticationTask(IntEnum):
+    deAuthenticate = 0
+    verifyCertificateUnidirectional = 1
+    verifyCertificateBidirectional = 2
+    proofOfOwnership = 3
+    transmitCertificate = 4
+    requestChallengeForAuthentication = 5
+    verifyProofOfOwnershipUnidirectional = 6
+    verifyProofOfOwnershipBidirectional = 7
+    authenticationConfiguration = 8
+
+@pydantic_enum_by_name
+class AuthenticationReturnParameter(IntEnum):
+    RequestAccepted = 0x00
+    GeneralReject = 0x01
+    AuthenticationConfiguration_APCE = 0x02
+    AuthenticationConfiguration_ACR_with_asymmetric_cryptography = 0x03
+    AuthenticationConfiguration_ACR_with_symmetric_cryptography = 0x04
+    DeAuthentication_successful = 0x10
+    CertificateVerified_OwnershipVerificationNecessary = 0x11
+    OwnershipVerified_AuthenticationComplete = 0x12
+    CertificateVerified = 0x13
 
 
 @pydantic_enum_by_name
