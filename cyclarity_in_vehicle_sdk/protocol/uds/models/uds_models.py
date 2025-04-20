@@ -1,7 +1,11 @@
 from abc import ABC, abstractmethod
 from enum import Enum, IntEnum, auto
+import inspect
 import struct
-from typing import Optional, Union
+from typing import Literal, Optional, Type, Union
+from cyclarity_in_vehicle_sdk.utils.crypto.models import AsymmetricPaddingType, HashingAlgorithm
+from cyclarity_in_vehicle_sdk.utils.custom_types.hexbytes import HexBytes
+from cyclarity_sdk.sdk_models.models import CyclarityFile
 from pydantic import BaseModel, Field
 from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_enum_by_name
 
@@ -44,6 +48,8 @@ class UdsSid(IntEnum):
 
 @pydantic_enum_by_name
 class AuthenticationAction(Enum):
+    """Types of authentication actions
+    """
     PKI_CertificateExchangeUnidirectional = auto()
     PKI_CertificateExchangeBidirectional = auto()
     ChallengeResponse = auto()
@@ -51,18 +57,73 @@ class AuthenticationAction(Enum):
     DeAuthenticate = auto()
     TransmitCertificate = auto()
 
+class AuthenticationParamsBase(BaseModel):
+    @abstractmethod
+    def authentication_action(self) -> AuthenticationAction:
+        raise NotImplementedError
+    
+    @classmethod  
+    def get_non_abstract_subclasses(cls) -> list[Type]:  
+        subclasses = []  
+  
+        for subclass in cls.__subclasses__():  
+            # Check if the subclass itself has any subclasses  
+            subclasses.extend(subclass.get_non_abstract_subclasses())  
+              
+            # Check if the subclass is non-abstract  
+            if not inspect.isabstract(subclass):  
+                subclasses.append(subclass)  
+  
+        return subclasses  
+    
 
-@pydantic_enum_by_name
-class AuthenticationTask(IntEnum):
-    deAuthenticate = 0
-    verifyCertificateUnidirectional = 1
-    verifyCertificateBidirectional = 2
-    proofOfOwnership = 3
-    transmitCertificate = 4
-    requestChallengeForAuthentication = 5
-    verifyProofOfOwnershipUnidirectional = 6
-    verifyProofOfOwnershipBidirectional = 7
-    authenticationConfiguration = 8
+class BaseAPCEParams(AuthenticationParamsBase):
+    """Base class defining parameters for UDS Authentication based on asymmetric public certificate exchange
+    """
+    private_key_der: Union[bytes, CyclarityFile] = Field(description="The private key for authentication in DER format")
+    certificate_client: Union[bytes, CyclarityFile] = Field(description="The client's certificate to send to the server for authentication")
+    asym_padding_type: AsymmetricPaddingType = Field(description="The padding type to use in signature creation for challenge signing")
+    hash_algorithm: HashingAlgorithm = Field(description="The hashing algorithm to use in signature creation for challenge signing")
+    communication_configuration: int = Field(default=0,
+                                             ge=0,
+                                             le=255,
+                                             description=("Configuration information about how to proceed with security"
+                                             " in further diagnostic communication after the Authentication (vehicle manufacturer specific)"))
+
+
+class UnidirectionalAPCEParams(BaseAPCEParams):
+    """Model defining the parameters for UDS Authentication based on unidirectional asymmetric public certificate exchange
+    """
+    param_type: Literal["UnidirectionalAPCEParams"] = "UnidirectionalAPCEParams"
+    def authentication_action(self) -> AuthenticationAction:
+        return AuthenticationAction.PKI_CertificateExchangeUnidirectional
+
+
+class AuthenticationConfigurationParams(AuthenticationParamsBase):
+    param_type: Literal["AuthenticationConfigurationParams"] = "AuthenticationConfigurationParams"
+    def authentication_action(self) -> AuthenticationAction:
+        return AuthenticationAction.AuthenticationConfiguration
+
+
+class DeAuthenticateParams(AuthenticationParamsBase):
+    param_type: Literal["DeAuthenticateParams"] = "DeAuthenticateParams"
+    def authentication_action(self) -> AuthenticationAction:
+        return AuthenticationAction.DeAuthenticate
+
+
+class TransmitCertificateParams(AuthenticationParamsBase):
+    """Model defining the parameters for UDS Authentication - Transmit Certificate
+    """
+    param_type: Literal["TransmitCertificateParams"] = "TransmitCertificateParams"
+    certificate_evaluation_id: int = Field(ge=0,
+                                           le=0xffff,
+                                           description=("Optional unique ID to identify the evaluation type "
+                                           "of the transmitted certificate"))
+    certificate_data: HexBytes = Field(description="The Certificate to verify")
+
+    def authentication_action(self) -> AuthenticationAction:
+        return AuthenticationAction.TransmitCertificate
+
 
 @pydantic_enum_by_name
 class AuthenticationReturnParameter(IntEnum):

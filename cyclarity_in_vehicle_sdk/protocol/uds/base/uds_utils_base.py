@@ -1,10 +1,14 @@
 from abc import abstractmethod
-from enum import Enum, IntEnum, auto
 from typing import NamedTuple, Optional, Type, TypeAlias, Union
 
-from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS, AuthenticationAction, AuthenticationReturnParameter, UdsSid, UdsStandardVersion
-from cyclarity_in_vehicle_sdk.utils.crypto.models import AsymmetricPaddingType, HashingAlgorithm
-from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_enum_by_name
+from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import (
+    SECURITY_ALGORITHM_BASE,
+    SESSION_ACCESS,
+    AuthenticationParamsBase,
+    AuthenticationReturnParameter,
+    UdsSid, 
+    UdsStandardVersion,
+    )
 from udsoncan.Response import Response
 from udsoncan.ResponseCode import ResponseCode
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
@@ -182,17 +186,7 @@ class UdsUtilsBase(ParsableModel):
         raise NotImplementedError
     
     @abstractmethod
-    def authentication(self, 
-                       authentication_action: AuthenticationAction,
-                       timeout: float,
-                       communication_configuration: Optional[int] = None,
-                       certificate_client: Optional[bytes] = None,
-                       private_key_client: Optional[bytes] = None,
-                       asym_padding_type: Optional[AsymmetricPaddingType] = None,
-                       hash_algorithm: Optional[HashingAlgorithm] = None,
-                       challenge_client: Optional[bytes] = None,
-                       algorithm_indicator: Optional[bytes] = None,
-                       certificate_evaluation_id: Optional[int] = None,
-                       certificate_data: Optional[bytes] = None,
-                       additional_parameter: Optional[bytes] = None) -> AuthenticationReturnParameter:
+    def authentication(self,
+                       params: Type[AuthenticationParamsBase],
+                       timeout: float) -> AuthenticationReturnParameter:
         raise NotImplementedError

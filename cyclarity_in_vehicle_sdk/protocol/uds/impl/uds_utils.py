@@ -16,10 +16,7 @@ from udsoncan.services import (
     )
 from udsoncan.common.DidCodec import DidCodec
 from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (
-    AsymmetricPaddingType,
-    AuthenticationAction,
     AuthenticationReturnParameter,
-    HashingAlgorithm,
     UdsSid, 
     NegativeResponse, 
     NoResponse, 
@@ -36,8 +33,11 @@ from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCo
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import (
     SECURITY_ALGORITHM_BASE,
     SESSION_ACCESS,
-    AuthenticationTask,
-    UdsStandardVersion
+    AuthenticationAction,
+    AuthenticationParamsBase,
+    UdsStandardVersion,
+    UnidirectionalAPCEParams,
+    TransmitCertificateParams
     )
 
 DEFAULT_UDS_OPERATION_TIMEOUT = 2
@@ -294,30 +294,15 @@ class UdsUtils(UdsUtilsBase):
         return self._send_and_read_raw_response(request=request, timeout=timeout)
     
     def authentication(self, 
-                       authentication_action: AuthenticationAction,
-                       timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT,
-                       communication_configuration: Optional[int] = 0,
-                       certificate_client: Optional[bytes] = None,
-                       private_key_client: Optional[bytes] = None,
-                       asym_padding_type: Optional[AsymmetricPaddingType] = None,
-                       hash_algorithm: Optional[HashingAlgorithm] = None,
-                       challenge_client: Optional[bytes] = None,
-                       algorithm_indicator: Optional[bytes] = None,
-                       certificate_evaluation_id: Optional[int] = None,
-                       certificate_data: Optional[bytes] = None,
-                       additional_parameter: Optional[bytes] = None) -> AuthenticationReturnParameter:
-        match authentication_action:
+                       params: Type[AuthenticationParamsBase],
+                       timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> AuthenticationReturnParameter:
+        match params.authentication_action():
             case AuthenticationAction.AuthenticationConfiguration:
                 return self._authentication_configuration(timeout)
             case AuthenticationAction.PKI_CertificateExchangeUnidirectional:
                 return self._authentication_uni_certificate_exchange(
-                    timeout=timeout,
-                    communication_configuration=communication_configuration,
-                    certificate_client=certificate_client,
-                    private_key_client=private_key_client,
-                    challenge_client=challenge_client,
-                    asym_padding_type=asym_padding_type,
-                    hash_algorithm=hash_algorithm,
+                    params=params,
+                    timeout=timeout
                     )
             case AuthenticationAction.PKI_CertificateExchangeBidirectional:
                 raise NotImplementedError("PKI_CertificateExchangeBidirectional is not implemented yet")
@@ -327,55 +312,46 @@ class UdsUtils(UdsUtilsBase):
                 return self._authentication_deauthenticate(timeout)
             case AuthenticationAction.TransmitCertificate:
                 return self._authentication_transmit_certificate(
-                    timeout,
-                    certificate_data,
-                    certificate_evaluation_id,
+                    params=params,
+                    timeout=timeout
                 )
             case _:
-                raise ValueError(f"invalid authentication action received: {authentication_action}")
+                raise ValueError(f"invalid authentication action received: {params.authentication_action()}")
             
     def _authentication_transmit_certificate(
             self,
-            timeout: float,
-            certificate_evaluation_id: Optional[int],
-            certificate_data: Optional[bytes],
+            params: TransmitCertificateParams,
+            timeout: float
             ) -> AuthenticationReturnParameter:
         request = Authentication.make_request(
-            authentication_task=AuthenticationTask.transmitCertificate,
-            certificate_evaluation_id=certificate_evaluation_id,
-            certificate_data=certificate_data
+            authentication_task=Authentication.AuthenticationTask.transmitCertificate,
+            certificate_evaluation_id=params.certificate_evaluation_id,
+            certificate_data=params.certificate_data
             )
         response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = Authentication.interpret_response(response)
         return AuthenticationReturnParameter(interpreted_response.service_data.return_value)
 
     def _authentication_deauthenticate(self, timeout: float) -> AuthenticationReturnParameter:
-        request = Authentication.make_request(AuthenticationTask.deAuthenticate)
+        request = Authentication.make_request(Authentication.AuthenticationTask.deAuthenticate)
         response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = Authentication.interpret_response(response)
         return AuthenticationReturnParameter(interpreted_response.service_data.return_value)
             
     def _authentication_configuration(self, timeout: float) -> AuthenticationReturnParameter:
-        request = Authentication.make_request(AuthenticationTask.authenticationConfiguration)
+        request = Authentication.make_request(Authentication.AuthenticationTask.authenticationConfiguration)
         response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = Authentication.interpret_response(response)
         return AuthenticationReturnParameter(interpreted_response.service_data.return_value)
     
     def _authentication_uni_certificate_exchange(
             self, 
-            timeout: float,
-            communication_configuration: int,
-            certificate_client: bytes,
-            private_key_client: bytes,
-            challenge_client: bytes,
-            hash_algorithm: HashingAlgorithm,
-            asym_padding_type: Optional[AsymmetricPaddingType] = None,
-            ) -> AuthenticationReturnParameter:
+            params: UnidirectionalAPCEParams,
+            timeout: float) -> AuthenticationReturnParameter:
         # send certificate
-        request = Authentication.make_request(authentication_task=AuthenticationTask.verifyCertificateUnidirectional,
-                                              communication_configuration=communication_configuration,
-                                              certificate_client=certificate_client,
-                                              challenge_client=challenge_client)
+        request = Authentication.make_request(authentication_task=Authentication.AuthenticationTask.verifyCertificateUnidirectional,
+                                              communication_configuration=params.communication_configuration,
+                                              certificate_client=params.certificate_client)
         response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = Authentication.interpret_response(response)
         if not interpreted_response.service_data.challenge_server:
@@ -386,14 +362,14 @@ class UdsUtils(UdsUtilsBase):
         
         # sign challenge
         sig_data = self._crypto_utils.sign_data(
-            private_key_der=private_key_client,
+            private_key_der=params.private_key_der,
             data=interpreted_response.service_data.challenge_server,
-            hash_alg=hash_algorithm,
-            padding=asym_padding_type
+            hash_alg=params.hash_algorithm,
+            padding=params.asym_padding_type
         )
 
         # send proof of ownership
-        request = Authentication.make_request(authentication_task=AuthenticationTask.proofOfOwnership,
+        request = Authentication.make_request(authentication_task=Authentication.AuthenticationTask.proofOfOwnership,
                                               proof_of_ownership_client=sig_data)
         
         response = self._send_and_read_response(request=request, timeout=timeout)
