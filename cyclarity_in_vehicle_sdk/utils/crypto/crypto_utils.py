@@ -9,13 +9,28 @@ from cyclarity_in_vehicle_sdk.utils.crypto.models import AsymmetricPaddingType, 
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 
 class CryptoUtils(ParsableModel):
+    """Utility class for performing cryptographic operations
+    """
     def sign_data(self,
             private_key_der: bytes,
             data: bytes,
             hash_alg: Optional[HashingAlgorithm],
             padding: Optional[AsymmetricPaddingType],
             ) -> bytes:
-        
+        """Create digital signature
+
+        Args:
+            private_key_der (bytes): the private key in DER format
+            data (bytes): the data to sign
+            hash_alg (Optional[HashingAlgorithm]): the hashing algorithm
+            padding (Optional[AsymmetricPaddingType]): the padding type, relevant for RSA type of key
+
+        Raises:
+            NotImplementedError: for key types that are yet to be supported
+
+        Returns:
+            bytes: the digital signature
+        """
         priv_key = load_der_private_key(private_key_der, None)
         if isinstance(priv_key, RSAPrivateKey):
             return self._sign_rsa(priv_key, data, hash_alg, padding)
