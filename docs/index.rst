@@ -10,7 +10,8 @@ cyclarity-in-vehicle-sdk documentation
 
 .. toctree::
    communication
+   data_models
    protocol
    shell_devices
    plugins
-   configuration_managment
+   configuration_management
