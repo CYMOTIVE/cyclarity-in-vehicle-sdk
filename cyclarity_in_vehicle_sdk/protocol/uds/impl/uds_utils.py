@@ -296,6 +296,21 @@ class UdsUtils(UdsUtilsBase):
     def authentication(self, 
                        params: Type[AuthenticationParamsBase],
                        timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> AuthenticationReturnParameter:
+        """Initiate UDS Authentication service sequence 
+
+        Args:
+            params (Type[AuthenticationParamsBase]): Set of parameters defined for the desired authentication task
+            timeout (float): timeout for the UDS operation in seconds
+
+        :raises NotImplementedError: for operations that are not supported yet
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises NoResponse: If no response was received
+        :raises InvalidResponse: with invalid reason, if invalid response has received
+
+        Returns:
+            AuthenticationReturnParameter: The results code of the authentication action
+        """
         match params.authentication_action():
             case AuthenticationAction.AuthenticationConfiguration:
                 return self._authentication_configuration(timeout)

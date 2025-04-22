@@ -100,12 +100,16 @@ class UnidirectionalAPCEParams(BaseAPCEParams):
 
 
 class AuthenticationConfigurationParams(AuthenticationParamsBase):
+    """Model for the parameters of the AuthenticationConfiguration action
+    """
     param_type: Literal["AuthenticationConfigurationParams"] = "AuthenticationConfigurationParams"
     def authentication_action(self) -> AuthenticationAction:
         return AuthenticationAction.AuthenticationConfiguration
 
 
 class DeAuthenticateParams(AuthenticationParamsBase):
+    """Model for the parameters of the DeAuthenticate action
+    """
     param_type: Literal["DeAuthenticateParams"] = "DeAuthenticateParams"
     def authentication_action(self) -> AuthenticationAction:
         return AuthenticationAction.DeAuthenticate
@@ -127,6 +131,8 @@ class TransmitCertificateParams(AuthenticationParamsBase):
 
 @pydantic_enum_by_name
 class AuthenticationReturnParameter(IntEnum):
+    """Model defining the authentication return codes
+    """
     RequestAccepted = 0x00
     GeneralReject = 0x01
     AuthenticationConfiguration_APCE = 0x02
@@ -140,12 +146,16 @@ class AuthenticationReturnParameter(IntEnum):
 
 @pydantic_enum_by_name
 class UdsStandardVersion(IntEnum):
+    """Model defining the UDS standard versions
+    """
     ISO_14229_2006 = 2006
     ISO_14229_2013 = 2013
     ISO_14229_2020 = 2020
 
 
 class SECURITY_ALGORITHM_BASE(BaseModel, ABC):
+    """Base model for security access algorithms
+    """
     seed_subfunction: Optional[int] = Field(default=None, description="The subfunction for the get seed operation")
     key_subfunction: Optional[int] = Field(default=None, description="The subfunction for the send key operation")
 
@@ -155,15 +165,35 @@ class SECURITY_ALGORITHM_BASE(BaseModel, ABC):
 
 
 class SECURITY_ALGORITHM_XOR(SECURITY_ALGORITHM_BASE):
+    """Model for XOR based security access
+    """
     xor_val: int = Field(description="Integer value to XOR the seed with for security key generation")
     def __call__(self, seed: bytes) -> bytes:
+        """Callable to generate the key out of a seed, by XORing the seed with the predefined value 
+
+        Args:
+            seed (bytes): the seed
+
+        Returns:
+            bytes: the generated key
+        """
         seed_int = int.from_bytes(seed, byteorder='big')
         key_int = seed_int ^ self.xor_val
         return struct.pack('>L',key_int)
 
 class SECURITY_ALGORITHM_PIN(SECURITY_ALGORITHM_BASE):
+    """Model for PIN based security access
+    """
     pin: int = Field(description="Integer value to be added to the seed for security key generation")
     def __call__(self, seed: bytes) -> bytes:
+        """Callable to generate the key out of a seed, by adding a predefined pin value with the seed
+
+        Args:
+            seed (bytes): the seed
+
+        Returns:
+            bytes: the generated key
+        """
         seed_int = int.from_bytes(seed, byteorder='big')
         seed_int += self.pin
         return struct.pack('>L',seed_int)
@@ -172,18 +202,24 @@ SecurityAlgorithm = Union[SECURITY_ALGORITHM_XOR,
                           SECURITY_ALGORITHM_PIN]
 
 class ELEVATION_INFO(BaseModel):
+    """Model for defining the needed elevation information for a UDS session
+    """
     need_elevation: Optional[bool] = Field(default=None, description="Whether this session requires elevation")
     security_algorithm: Optional[SecurityAlgorithm] = Field(default=None, description="The security elevation algorithm")
     def __str__(self):
         return f"{'Needs elevation' if self.need_elevation else ''}, {'Elevation Callback is available' if self.security_algorithm else ''}"
 
 class ERROR_CODE_AND_NAME(BaseModel):
+    """Model defining the error code and its name
+    """
     code: int = Field(description="Error code number")
     code_name: str = Field(description="Error code name")
     def __str__(self):
         return f"({hex(self.code)}) {self.code_name}"
 
 class SERVICE_INFO(BaseModel):
+    """Model containing information regarding a UDS service
+    """
     sid: int = Field(description="The SID of the UDS service")
     name: str = Field(description="The name of the UDS service")
     error: Optional[ERROR_CODE_AND_NAME] = Field(default=None, description="The error code if exists")
@@ -193,13 +229,9 @@ class SERVICE_INFO(BaseModel):
                 f"{', Accessible' if self.accessible else ', Inaccessible'}"
                 f"{', Error: ' + str(self.error) if self.error else ''}")
 
-class PERMISSION_INFO(BaseModel):
-    accessible: bool = False
-    elevation_info: ELEVATION_INFO = Field(default_factory=ELEVATION_INFO)
-    maybe_supported_error: Optional[str] = None
-
-
 class DID_INFO(BaseModel):
+    """Model containing information regarding a UDS Data Identifier
+    """
     did: int
     name: Optional[str] = None
     accessible: bool
@@ -214,6 +246,8 @@ class DID_INFO(BaseModel):
 )  
 
 class ROUTINE_OPERATION_INFO(BaseModel):
+    """Model containing information regarding a UDS routine subfunction
+    """
     control_type: int
     accessible: bool
     maybe_supported_error: Optional[ERROR_CODE_AND_NAME] = Field(default=None,
@@ -228,6 +262,8 @@ class ROUTINE_OPERATION_INFO(BaseModel):
                 )
 
 class ROUTINE_INFO(BaseModel):
+    """Model containing information regarding a UDS routine
+    """
     routine_id: int
     operations: list[ROUTINE_OPERATION_INFO]
     def __str__(self):
@@ -236,29 +272,16 @@ class ROUTINE_INFO(BaseModel):
                 f"{operations_str}\n")
 
 class SESSION_ACCESS(BaseModel):
+    """Model containing information regarding how to access a UDS session
+    """
     id: int = Field(description="ID of this UDS session")
     elevation_info: Optional[ELEVATION_INFO] = Field(default=None, description="Elevation info for this UDS session, if needed")
 
 class SESSION_INFO(BaseModel):
+    """Model containing information regarding a UDS session
+    """
     accessible: bool = Field(default=False, description="Whether this UDS session is accessible")
     elevation_info: Optional[ELEVATION_INFO] = Field(default=None, description="Elevation info for this UDS session")
     route_to_session: list[SESSION_ACCESS] = Field(default=[], description="The UDS session route to reach this session")
-
-class UDS_INFO(BaseModel):
-    open_sessions: dict[int, SESSION_INFO] = Field(
-        default_factory=dict[int, SESSION_INFO]
-    )
-    services_info: dict[int, SERVICE_INFO] = Field(
-        default_factory=dict[int, SERVICE_INFO]
-    )
-
-    def get_inner_scope(self, session=None, *args, **kwargs):
-        if session is None:
-            return ""
-
-        if session not in self.open_sessions.keys():
-            self.open_sessions[session] = SESSION_INFO()
-
-        return f".open_sessions[{session}]"
 
 DEFAULT_SESSION = SESSION_INFO(route_to_session=[SESSION_ACCESS(id=1)])

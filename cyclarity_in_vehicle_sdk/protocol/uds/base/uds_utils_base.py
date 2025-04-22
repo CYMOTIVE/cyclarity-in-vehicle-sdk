@@ -189,4 +189,13 @@ class UdsUtilsBase(ParsableModel):
     def authentication(self,
                        params: Type[AuthenticationParamsBase],
                        timeout: float) -> AuthenticationReturnParameter:
+        """Initiate UDS Authentication service sequence 
+
+        Args:
+            params (Type[AuthenticationParamsBase]): Set of parameters defined for the desired authentication task
+            timeout (float): timeout for the UDS operation in seconds
+
+        Returns:
+            AuthenticationReturnParameter: The results code of the authentication action
+        """
         raise NotImplementedError
