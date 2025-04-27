@@ -80,8 +80,8 @@ class AuthenticationParamsBase(BaseModel):
 class BaseAPCEParams(AuthenticationParamsBase):
     """Base class defining parameters for UDS Authentication based on asymmetric public certificate exchange
     """
-    private_key_der: Union[bytes, CyclarityFile] = Field(description="The private key for authentication in DER format")
-    certificate_client: Union[bytes, CyclarityFile] = Field(description="The client's certificate to send to the server for authentication")
+    private_key_der: Union[HexBytes, CyclarityFile] = Field(description="The private key for authentication in DER format")
+    certificate_client: Union[HexBytes, CyclarityFile] = Field(description="The client's certificate to send to the server for authentication")
     asym_padding_type: AsymmetricPaddingType = Field(description="The padding type to use in signature creation for challenge signing")
     hash_algorithm: HashingAlgorithm = Field(description="The hashing algorithm to use in signature creation for challenge signing")
     communication_configuration: int = Field(default=0,
