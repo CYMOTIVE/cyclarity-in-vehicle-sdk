@@ -1,5 +1,6 @@
 from enum import IntEnum
 from functools import partial
+import logging
 import time
 from typing import Optional, Type, TypeAlias
 from doipclient import constants, messages, DoIPClient
@@ -224,7 +225,13 @@ class DoipUtils(ParsableModel):
         return None
     
     @staticmethod
-    def send_uds_request(communicator: Type[CommunicatorBase], payload: bytes, client_logical_address: int, target_logical_address: int, timeout: float) -> int:
+    def send_uds_request(
+        logger: logging.Logger,
+        communicator: Type[CommunicatorBase],
+        payload: bytes,
+        client_logical_address: int,
+        target_logical_address: int,
+        timeout: float) -> int:
         """Sends a UDS request
 
         Args:
@@ -237,10 +244,18 @@ class DoipUtils(ParsableModel):
         Returns:
             int: number of bytes actually sent
         """
-        message = messages.DiagnosticMessage(source_address=client_logical_address, target_address=target_logical_address, user_data=payload)
+        message = messages.DiagnosticMessage(
+            source_address=client_logical_address,
+            target_address=target_logical_address,
+            user_data=payload
+            )
         data = DoipUtils._pack_doip_message(message=message)
-        return communicator.send(data=data, timeout=timeout)
-    
+        sent_bytes = communicator.send(data=data, timeout=timeout)
+        response = DoipUtils._read_doip(communicator, timeout=timeout)
+        if type(response) is not messages.DiagnosticMessagePositiveAcknowledgement:
+            logger.warning("Did not received DiagnosticMessagePositiveAcknowledgement")
+        return sent_bytes        
+
     @staticmethod
     def read_uds_response(communicator: Type[CommunicatorBase], timeout: float) -> Optional[bytes]:
         """Reads a UDS response
@@ -253,10 +268,9 @@ class DoipUtils(ParsableModel):
             Optional[bytes]: UDS response in bytes if received a valid response, False otherwise
         """
         response = DoipUtils._read_doip(communicator, timeout=timeout)
-        if type(response) is messages.DiagnosticMessagePositiveAcknowledgement:
-            diag_resp = DoipUtils._read_doip(communicator, timeout=timeout)
-            if type(diag_resp) is messages.DiagnosticMessage:
-                return bytes(diag_resp.user_data)
+
+        if type(response) is messages.DiagnosticMessage:
+            return bytes(response.user_data)
         return None
 
     @staticmethod
