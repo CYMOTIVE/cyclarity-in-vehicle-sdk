@@ -237,7 +237,7 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
         if self.ip_version == IpVersion.IPv4:
             ipv4_layer: IPv4Layer = packet.get_layer(LayerType.IPv4Layer)
             if ipv4_layer:
-                dst_addr = ipv4_layer.dst_ip
+                dst_addr = (ipv4_layer.dst_ip, 0)
             else:
                 self.logger.error("Attempt transmittion of non ipv4 packet")
                 self.logger.debug(f"packet = {packet}")
@@ -245,7 +245,7 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
         elif self.ip_version == IpVersion.IPv6:
             ipv6_layer: IPv6Layer = packet.get_layer(LayerType.IPv6Layer)
             if ipv6_layer:
-                dst_addr = ipv6_layer.dst_ip
+                dst_addr = (ipv6_layer.dst_ip, 0, 0, 0)
             else:
                 self.logger.error("Attempt transmittion of non ipv4 packet")
                 self.logger.debug(f"packet = {packet}")
@@ -254,7 +254,7 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
             self.logger.error(f"Unexpected ip version {self.ip_version} set as type.")
             return False
         
-        return self._out_socket.sendto(bytes(packet), (dst_addr, 0))
+        return self._out_socket.sendto(bytes(packet), dst_addr)
 
 
     def send_receive_packets(self, packet: Packet | Sequence[Packet] | None, is_answer: Callable[[Packet], bool], timeout: float) -> list[Packet]:
