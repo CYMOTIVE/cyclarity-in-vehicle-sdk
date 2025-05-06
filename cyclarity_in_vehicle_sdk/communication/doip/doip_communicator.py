@@ -102,3 +102,6 @@ class DoipCommunicator(CommunicatorBase):
             self.tcp_communicator.connect()
             return True
         return False
+    
+    def __str__(self):
+        return f"DoIP, Target: \nIP={str(self.tcp_communicator.destination_ip)}\nlogical address={hex(self.target_logical_address)}\nclient logical address={hex(self.client_logical_address)}"

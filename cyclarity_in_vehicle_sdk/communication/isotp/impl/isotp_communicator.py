@@ -116,3 +116,6 @@ class IsoTpCommunicator(IsoTpCommunicatorBase):
 
     def get_type(self) -> CommunicatorType:
         return CommunicatorType.ISOTP
+    
+    def __str__(self):
+        return f"ISO/TP, rx={hex(self.rxid)}, tx={hex(self.txid)}"

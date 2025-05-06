@@ -466,3 +466,6 @@ class UdsUtils(UdsUtilsBase):
             dids_values.append(RdidDataTuple(did=curr_did_int, data=data.hex()))  
     
         return dids_values  
+
+    def __str__(self):
+        return str(self.data_link_layer)
