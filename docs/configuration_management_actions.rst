@@ -11,3 +11,4 @@ Configuration Management - Actions
      WifiConnectAction
      CanConfigurationAction
      EthInterfaceConfigurationAction
+     CreateVlanAction
