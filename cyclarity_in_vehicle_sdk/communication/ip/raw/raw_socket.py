@@ -200,6 +200,8 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
         else:
             self.logger.error(f"Unexpected ip version {self.ip_version} set as type.")
             return False
+        
+        self._out_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, self.if_name.encode())
         self._in_socket = RawSocket(self.if_name)
         return True
 
