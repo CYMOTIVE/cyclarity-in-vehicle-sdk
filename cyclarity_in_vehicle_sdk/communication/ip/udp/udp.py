@@ -22,12 +22,14 @@ class UdpCommunicator(IpConnectionlessCommunicatorBase):
                 socket.AF_INET6,
                 socket.SOCK_DGRAM,
             )
+            self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self._socket.bind((self.source_ip.exploded, self.sport, 0, 0))
         else:
             self._socket = socket.socket(
                 socket.AF_INET,
                 socket.SOCK_DGRAM,
             )
+            self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self._socket.bind((self.source_ip.exploded, self.sport))
 
         self._socket.setblocking(0)
