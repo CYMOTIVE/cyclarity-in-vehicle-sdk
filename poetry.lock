@@ -497,14 +497,14 @@ testing = ["aboutcode-toolkit (>=6.0.0)", "black (>=22.3.0)", "doc8 (>=0.11.1)",
 
 [[package]]
 name = "cyclarity-sdk"
-version = "1.0.86"
+version = "1.0.89"
 description = ""
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "cyclarity_sdk-1.0.86-py3-none-any.whl", hash = "sha256:506c3ccbe36352d96e30e2033174c2003ea894f4615607e03f91462eb68516db"},
-    {file = "cyclarity_sdk-1.0.86.tar.gz", hash = "sha256:36b8b7c9055faba34ce03da333197d16aeba96ecffff6516b99075fbc08f4eda"},
+    {file = "cyclarity_sdk-1.0.89-py3-none-any.whl", hash = "sha256:9573839278db3d4257fecc71c72f4f29a73aa7d769012834469feca7765f0fca"},
+    {file = "cyclarity_sdk-1.0.89.tar.gz", hash = "sha256:29377c3a3cf38ef6c0bcf4a065550147d54f83ae023f264478492e97c88b8027"},
 ]
 
 [package.dependencies]
