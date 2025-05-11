@@ -10,6 +10,8 @@ class Layer4ProtocolType(IntEnum):
     TCP = 0x6
 
 class SOMEIP_EVTGROUP_INFO(BaseModel):
+    """Model containing information regarding SOME/IP event group
+    """
     eventgroup_id: int = Field(description="The Eventgroup ID")
     initial_data: Optional[HexBytes] = Field(default=None, 
                                              description="Initial data associated with the eventgroup if got received")
@@ -20,6 +22,8 @@ class SOMEIP_EVTGROUP_INFO(BaseModel):
 
 
 class SOMEIP_METHOD_INFO(BaseModel):
+    """Model containing information regarding SOME/IP method
+    """
     method_id: int = Field(description="The Method ID") 
     payload: HexBytes = Field(description="The payload associated with the method")
 
@@ -28,6 +32,8 @@ class SOMEIP_METHOD_INFO(BaseModel):
                 + (f", Payload[{len(self.payload)}]: {self.payload[:20]}" if self.payload else ""))
 
 class SOMEIP_ENDPOINT_OPTION(BaseModel):
+    """Model containing information regarding SOME/IP endpoint
+    """
     endpoint_addr: str = Field(description="The SOME/IP end point IP address")
     port: int = Field(description="The SOME/IP end point port")
     port_type: Layer4ProtocolType = Field(description="The SOME/IP end point protocol type either UDP or TCP")
@@ -36,6 +42,8 @@ class SOMEIP_ENDPOINT_OPTION(BaseModel):
         return f"Endpoint address: {self.endpoint_addr}, Port: {self.port}, Transport type: {self.port_type.name}"
 
 class SOMEIP_SERVICE_INFO(BaseModel):
+    """Model containing information regarding service
+    """
     service_id: int = Field(description="The Service ID")
     instance_id: int = Field(description="The instance ID")
     major_ver: int = Field(description="Major version of the service")

@@ -30,10 +30,10 @@ class RawSocketCommunicatorBase(ParsableModel):
     
     @abstractmethod
     def send_packet(self, packet: Packet) -> bool:
-        """send a packet or a sequence of packets to the raw socket
+        """send a packet to the raw socket
 
         Args:
-            packet (Packet | Sequence[Packet]): packet/packets to send.
+            packet (Packet): packet to send.
 
         Returns:
             bool: True if sent successfully, False otherwise
@@ -47,7 +47,7 @@ class RawSocketCommunicatorBase(ParsableModel):
         Optionally override this function to have a better implementation.
 
         Args:
-            packet (Packet | Sequence[Packet]): packet/packets to send.
+            packet (Sequence[Packet]): packet/packets to send.
 
         Returns:
             bool: True if sent successfully, False otherwise

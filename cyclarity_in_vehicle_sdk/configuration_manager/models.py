@@ -33,6 +33,8 @@ class ConfigurationInfoBase(BaseModel):
 
 @pydantic_enum_by_name
 class EthIfFlags(IntFlag):
+    """Enum for Ethernet interface flags
+    """
     IFF_UP = IFF_UP
     IFF_BROADCAST = IFF_BROADCAST
     IFF_DEBUG = IFF_DEBUG
@@ -64,6 +66,8 @@ class EthIfFlags(IntFlag):
 
 
 class InterfaceState(str, Enum):
+    """Enum for the state of the Ethernet interface
+    """
     UP = "UP"
     DOWN = "DOWN"
     UNKNOWN = "UNKNOWN"
@@ -89,6 +93,8 @@ class CanFdOptions(BaseModel):
         return f"dbitrate: {self.dbitrate}"
 
 class CanInterfaceConfigurationInfo(ConfigurationInfoBase):
+    """Model of the parameters for the CAN interface configurations
+    """
     channel: str = Field(description="The CAN interface e.g. can0")
     state: InterfaceState = Field(default=InterfaceState.UP.name, description="The state of the CAN interface - UP/DOWN")
     bitrate: int = Field(default=500000, description="Bitrate")
@@ -105,6 +111,8 @@ class CanInterfaceConfigurationInfo(ConfigurationInfoBase):
 
 
 class IpConfigurationParams(BaseModel):
+    """Model of the parameters for the IP configuration
+    """
     interface: str = Field(description="The network interface for the IP to be configured")
     ip: IPvAnyAddress = Field(description="The IP to configure, IPv4/IPv6")
     suffix: int = Field(description="The subnet notation for this IP address")
@@ -136,6 +144,8 @@ DEFAULT_ETH_IF_FLAGS = [EthIfFlags.IFF_BROADCAST.name,
 
 
 class EthInterfaceParams(BaseModel):
+    """Model of the parameters for the Ethernet interface configurations
+    """
     interface: str = Field(description="The Eth interface to be configured")
     mtu: Optional[int] = Field(default=None, description="MTU (maximum transmission unit)")
     flags: list[EthIfFlags] = Field(default=DEFAULT_ETH_IF_FLAGS, 
@@ -144,6 +154,8 @@ class EthInterfaceParams(BaseModel):
 
 
 class EthernetInterfaceConfigurationInfo(ConfigurationInfoBase):
+    """Model of the parameters for the Ethernet interface information
+    """
     if_params: EthInterfaceParams
     ip_params: list[IpConfigurationParams]
 
@@ -155,6 +167,8 @@ class EthernetInterfaceConfigurationInfo(ConfigurationInfoBase):
                 )
 
 class WifiAccessPointConfigurationInfo(ConfigurationInfoBase):
+    """Model of the parameters for the Wifi interface information
+    """
     ssid: str = Field(description="The SSID of the access point")
     security: str = Field(description="The security access of the access point")
     connected: bool = Field(description="Is the device connected to this access point")
@@ -164,6 +178,8 @@ class WifiAccessPointConfigurationInfo(ConfigurationInfoBase):
 
 
 class DeviceConfiguration(BaseModel):
+    """Model of the parameters for the device configuration information
+    """
     configurations_info: list[ConfigurationInfoBase] = []
 
     def __str__(self):

@@ -1,31 +1,44 @@
 import time
 from typing import Optional, Type, Union
+from cyclarity_in_vehicle_sdk.utils.crypto.crypto_utils import CryptoUtils
 from pydantic import Field
 from udsoncan.BaseService import BaseService
 from udsoncan.Request import Request
-from udsoncan.services import (ECUReset, 
-                               ReadDataByIdentifier, 
-                               RoutineControl, 
-                               SecurityAccess, 
-                               TesterPresent, 
-                               WriteDataByIdentifier, 
-                               DiagnosticSessionControl)
+from udsoncan.services import (
+    ECUReset,
+    ReadDataByIdentifier,
+    RoutineControl,
+    SecurityAccess,
+    TesterPresent,
+    WriteDataByIdentifier,
+    DiagnosticSessionControl,
+    Authentication,
+    )
 from udsoncan.common.DidCodec import DidCodec
-from udsoncan import latest_standard
-from udsoncan.exceptions import ConfigError
-from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (UdsSid, 
-                                                                       NegativeResponse, 
-                                                                       NoResponse, 
-                                                                       RoutingControlResponseData, 
-                                                                       SessionControlResultData, 
-                                                                       UdsUtilsBase, 
-                                                                       InvalidResponse, 
-                                                                       RawUdsResponse, 
-                                                                       UdsResponseCode,
-                                                                       RdidDataTuple)
+from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (
+    AuthenticationReturnParameter,
+    UdsSid, 
+    NegativeResponse, 
+    NoResponse, 
+    RoutingControlResponseData, 
+    SessionControlResultData, 
+    UdsUtilsBase, 
+    InvalidResponse, 
+    RawUdsResponse, 
+    UdsResponseCode,
+    RdidDataTuple,
+    )
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
-from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS, UdsStandardVersion
+from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import (
+    SECURITY_ALGORITHM_BASE,
+    SESSION_ACCESS,
+    AuthenticationAction,
+    AuthenticationParamsBase,
+    UdsStandardVersion,
+    UnidirectionalAPCEParams,
+    TransmitCertificateParams
+    )
 
 DEFAULT_UDS_OPERATION_TIMEOUT = 2
 RAW_SERVICES_WITH_SUB_FUNC = {value: type(name, (BaseService,), {'_sid':value, '_use_subfunction':True}) for name, value in UdsSid.__members__.items()}  
@@ -50,6 +63,7 @@ class MyAsciiCodec(DidCodec):
 class UdsUtils(UdsUtilsBase):
     data_link_layer: Union[IsoTpCommunicator, DoipCommunicator]
     attempts: int = Field(default=1, ge=1, description="Number of attempts to perform the UDS operation if no response was received")
+    _crypto_utils: CryptoUtils = CryptoUtils()
 
     def setup(self) -> bool:
         """setup the library
@@ -278,6 +292,105 @@ class UdsUtils(UdsUtilsBase):
             service = RAW_SERVICES_WITHOUT_SUB_FUNC[sid]
         request = Request(service=service, subfunction=sub_function, data=data)
         return self._send_and_read_raw_response(request=request, timeout=timeout)
+    
+    def authentication(self, 
+                       params: Type[AuthenticationParamsBase],
+                       timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> AuthenticationReturnParameter:
+        """Initiate UDS Authentication service sequence 
+
+        Args:
+            params (Type[AuthenticationParamsBase]): Set of parameters defined for the desired authentication task
+            timeout (float): timeout for the UDS operation in seconds
+
+        :raises NotImplementedError: for operations that are not supported yet
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises NoResponse: If no response was received
+        :raises InvalidResponse: with invalid reason, if invalid response has received
+
+        Returns:
+            AuthenticationReturnParameter: The results code of the authentication action
+        """
+        match params.authentication_action():
+            case AuthenticationAction.AuthenticationConfiguration:
+                return self._authentication_configuration(timeout)
+            case AuthenticationAction.PKI_CertificateExchangeUnidirectional:
+                return self._authentication_uni_certificate_exchange(
+                    params=params,
+                    timeout=timeout
+                    )
+            case AuthenticationAction.PKI_CertificateExchangeBidirectional:
+                raise NotImplementedError("PKI_CertificateExchangeBidirectional is not implemented yet")
+            case AuthenticationAction.ChallengeResponse:
+                raise NotImplementedError("ChallengeResponse is not implemented yet")
+            case AuthenticationAction.DeAuthenticate:
+                return self._authentication_deauthenticate(timeout)
+            case AuthenticationAction.TransmitCertificate:
+                return self._authentication_transmit_certificate(
+                    params=params,
+                    timeout=timeout
+                )
+            case _:
+                raise ValueError(f"invalid authentication action received: {params.authentication_action()}")
+            
+    def _authentication_transmit_certificate(
+            self,
+            params: TransmitCertificateParams,
+            timeout: float
+            ) -> AuthenticationReturnParameter:
+        request = Authentication.make_request(
+            authentication_task=Authentication.AuthenticationTask.transmitCertificate,
+            certificate_evaluation_id=params.certificate_evaluation_id,
+            certificate_data=params.certificate_data
+            )
+        response = self._send_and_read_response(request=request, timeout=timeout)
+        interpreted_response = Authentication.interpret_response(response)
+        return AuthenticationReturnParameter(interpreted_response.service_data.return_value)
+
+    def _authentication_deauthenticate(self, timeout: float) -> AuthenticationReturnParameter:
+        request = Authentication.make_request(Authentication.AuthenticationTask.deAuthenticate)
+        response = self._send_and_read_response(request=request, timeout=timeout)
+        interpreted_response = Authentication.interpret_response(response)
+        return AuthenticationReturnParameter(interpreted_response.service_data.return_value)
+            
+    def _authentication_configuration(self, timeout: float) -> AuthenticationReturnParameter:
+        request = Authentication.make_request(Authentication.AuthenticationTask.authenticationConfiguration)
+        response = self._send_and_read_response(request=request, timeout=timeout)
+        interpreted_response = Authentication.interpret_response(response)
+        return AuthenticationReturnParameter(interpreted_response.service_data.return_value)
+    
+    def _authentication_uni_certificate_exchange(
+            self, 
+            params: UnidirectionalAPCEParams,
+            timeout: float) -> AuthenticationReturnParameter:
+        # send certificate
+        request = Authentication.make_request(authentication_task=Authentication.AuthenticationTask.verifyCertificateUnidirectional,
+                                              communication_configuration=params.communication_configuration,
+                                              certificate_client=params.certificate_client)
+        response = self._send_and_read_response(request=request, timeout=timeout)
+        interpreted_response = Authentication.interpret_response(response)
+        if not interpreted_response.service_data.challenge_server:
+            raise InvalidResponse("Expected challenge from server but none received")
+        
+        if interpreted_response.service_data.ephemeral_public_key_server:
+            raise NotImplementedError("Session key establishment is not supported yet")
+        
+        # sign challenge
+        sig_data = self._crypto_utils.sign_data(
+            private_key_der=params.private_key_der,
+            data=interpreted_response.service_data.challenge_server,
+            hash_alg=params.hash_algorithm,
+            padding=params.asym_padding_type
+        )
+
+        # send proof of ownership
+        request = Authentication.make_request(authentication_task=Authentication.AuthenticationTask.proofOfOwnership,
+                                              proof_of_ownership_client=sig_data)
+        
+        response = self._send_and_read_response(request=request, timeout=timeout)
+        interpreted_response = Authentication.interpret_response(response)
+
+        return AuthenticationReturnParameter(interpreted_response.service_data.return_value)
 
     def _send_and_read_response(self, request: Request, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> RawUdsResponse:
         response = self._send_and_read_raw_response(request=request, timeout=timeout)
@@ -353,3 +466,6 @@ class UdsUtils(UdsUtilsBase):
             dids_values.append(RdidDataTuple(did=curr_did_int, data=data.hex()))  
     
         return dids_values  
+
+    def __str__(self):
+        return str(self.data_link_layer)
