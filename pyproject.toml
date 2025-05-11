@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cyclarity-in-vehicle-sdk"
-version = "1.0.10a15997"
+version = "1.1.0a0"
 description = ""
 authors = ["Cymotive <clarity@cymotive.com>"]
 readme = "README.md"
@@ -16,7 +16,7 @@ can-isotp = "^2.0.6"
 udsoncan = "^1.23.1"
 cmake = "^3.30.2"
 python-can = "*"
-py-pcapplusplus = "^1.0.4"
+py-pcapplusplus = "*"
 gpiod = "^2.2.3"
 jsonargparse = "~4.34.0"
 construct = "^2.10.70"
@@ -24,6 +24,7 @@ pycryptodome = "^3.21.0"
 # 26/01/2025 lib pyroute2 was approved by Eugene with license Apache 2.0
 pyroute2 = "0.8.1"
 nmcli = "1.5.0"
+cryptography = "^44.0.2"
 
 [build-system]
 requires = ["poetry-core"]

@@ -9,89 +9,103 @@ from pydantic import Field
 from py_pcapplusplus import RawSocket, Packet, IPv4Layer, IPv6Layer, LayerType
 
 
-# This class was just partially tested, and not in use by runnables ATM, do not use blindly
-## @class Layer2RawSocket
-#  @brief This class handles layer 2 raw socket communication.
 class Layer2RawSocket(RawSocketCommunicatorBase):
-    ## @brief Name of ethernet interface to work with. (e.g. eth0, eth1 etc...)
+    """This class handles layer 2 raw socket communication.
+    """
     if_name: str = Field(description="Name of ethernet interface to work with. (e.g. eth0, eth1 etc...)")
     _raw_socket: RawSocket | None = None
 
-    ## @fn open
-    #  @brief Open the raw socket for communication.
-    #  @return True if successful, False otherwise.
     def open(self) -> bool:
+        """Open the raw socket for communication.
+
+        Returns:
+            bool: True if successful, False otherwise.
+        """
         self._raw_socket: RawSocket = RawSocket(self.if_name)
         return True
-    
-    ## @fn close
-    #  @brief Close the raw socket.
-    #  @return True if successful, False otherwise.
+
     def close(self) -> bool:
+        """Close the raw socket.
+
+        Returns:
+            bool: True if successful, False otherwise.
+        """
         self._raw_socket = None
         return True
-    
-    ## @fn is_open
-    #  @brief Check if the raw socket is open.
-    #  @return True if the socket is open, False otherwise.
+
     def is_open(self) -> bool:
+        """Check if the raw socket is open.
+
+        Returns:
+            bool: True if the socket is open, False otherwise.
+        """
         return self._raw_socket is not None
 
-    ## @fn send_packet
-    #  @brief Send a packet over the raw socket.
-    #  @param packet The Packet to be sent.
-    #  @return True if the packet was sent successfully, False otherwise.
-    #  @exception RuntimeError if the socket is not open.
     def send_packet(self, packet: Packet) -> bool:
+        """Send a packet over the raw socket.
+
+        Args:
+            packet (Packet): The Packet to be sent.
+
+        Returns:
+            bool: True if the packet was sent successfully, False otherwise.
+        """
         if self._raw_socket:
             return self._raw_socket.send_packet(packet)
         else:
             self.logger.error("Attempting to send a packet without openning the socket.")
             return False
-    
-    ## @fn send_packets
-    #  @brief Send multiple packets over the raw socket.
-    #  @param packets The list of Packets to be sent.
-    #  @return True if the packets were sent successfully, False otherwise.
-    #  @exception RuntimeError if the socket is not open.
+
     def send_packets(self, packets: Sequence[Packet]) -> bool:
+        """Send multiple packets over the raw socket.
+
+        Args:
+            packets (Sequence[Packet]): The list of Packets to be sent.
+
+        Returns:
+            bool: True if the packets were sent successfully, False otherwise.
+        """
         if self._raw_socket:
             return self._raw_socket.send_packets(packets)
         else:
             self.logger.error("Attempting to send packets without openning the socket.")
             return False
 
-    ## @fn send_receive_packet
-    #  @brief Send a packet and wait for a response.
-    #  @param packet The Packet to be sent.
-    #  @param is_answer A function that determines if a received packet is a valid response.
-    #  @param timeout The maximum amount of time to wait for a response.
-    #  @return The response Packet if one was received, None otherwise.
-    #  @exception RuntimeError if the socket is not open.
     def send_receive_packet(self, packet: Packet | Sequence[Packet] | None, is_answer: Callable[[Packet], bool], timeout: float = 2) -> Packet | None:
+        """send packet or a sequence of packets and read an answer
+        The answer is one packet that satisfy the "is_answer" callback provided.
+
+        Note: This function uses the implementation of 'send_receive_packets', 
+        Optionally override this function to have a better implementation (stop after the first valid packet arrives).
+
+        Args:
+            packet (Packet | Sequence[Packet] | None): the packet/packets to send. None to skip the sending operation.
+            is_answer (Callable[[Packet], bool]): callback that receives a packet and returns True if this packet is the answer to sent one
+            timeout (int): timeout for the operation
+
+        Returns:
+            Packet | None: The first packet that satisfy the "is_answer" callback, None if not found.
+        """
         found_packets = self._send_receive_packets(packet, is_answer, timeout, max_answers=1)
         if found_packets:
             return found_packets[0] # Get first valid answer
         else:
             return None
-    
-    ## @fn send_receive_packets
-    #  @brief Send a packet and wait for multiple responses.
-    #  @param packet The Packet to be sent.
-    #  @param is_answer A function that determines if a received packet is a valid response.
-    #  @param timeout The maximum amount of time to wait for a response.
-    #  @return A list of response Packets.
-    #  @exception RuntimeError if the socket is not open.
+
     def send_receive_packets(self, packet: Packet | Sequence[Packet] | None, is_answer: Callable[[Packet], bool], timeout: float = 2) -> list[Packet]:
+        """send packet or a sequence of packets and read a multiple packets answer
+        The answer is a list of packets that satisfy the "is_answer" callback provided.
+
+        Args:
+            packet (Packet | Sequence[Packet] | None): the packet/packets to send. None to skip the sending operation.
+            is_answer (Callable[[Packet], bool]): callback that receives a packet and returns True if this packet is the answer to sent one
+            timeout (int): timeout for the operation
+
+        Returns:
+            list[Packet]: All packets received that satisfy the "is_answer" callback.
+        """ 
         return self._send_receive_packets(packet, is_answer, timeout)
 
-    ## @fn _send_receive_packets
-    #  @brief Send a packet and wait for multiple responses.
-    #  @param packet The Packet to be sent.
-    #  @param is_answer A function that determines if a received packet is a valid response.
-    #  @param timeout The maximum amount of time to wait for a response.
-    #  @return A list of response Packets.
-    #  @exception RuntimeError if the socket is not open.
     def _send_receive_packets(self, packet: Packet | Sequence[Packet] | None, is_answer: Callable[[Packet], bool], timeout: float, max_answers=0) -> list[Packet]:
         if self._raw_socket:
             found_packets: list[Packet] = []
@@ -120,14 +134,16 @@ class Layer2RawSocket(RawSocketCommunicatorBase):
         else:
             self.logger.error("Attempting to send packets without openning the socket.")
             raise Exception("Attempt transmitting over a closed Layer2 Raw Socket.")
-    
-    ## @fn receive
-    # @brief This function receives a packet from the open raw socket with a specified timeout. 
-    #        If the socket is not open, it logs an error and raises an exception.
-    # @param timeout The maximum amount of time to wait for a packet in seconds, The default value is 2 seconds.
-    # @return Returns the received packet if it exists, otherwise returns None.
-    # @exception Raises an Exception with the message "Attempt to read from a closed Layer2 Raw Socket." 
+
     def receive(self, timeout: float = 2) -> Packet | None:
+        """read a single packet from the socket
+
+        Args:
+            timeout (float): timeout in seconds for the operation, 0 for blocking receive.
+
+        Returns:
+            Packet | None: the read packet, None if timeout reached.
+        """
         if self._raw_socket:
             if timeout > 0:
                 return self._raw_socket.receive_packet(blocking=False, timeout=timeout)
@@ -136,33 +152,46 @@ class Layer2RawSocket(RawSocketCommunicatorBase):
         else:
             self.logger.error("Attempting to receive packets without openning the socket.")
             raise Exception("Attempt to read from a closed Layer2 Raw Socket.")
-    
-    ## @fn receive_answer
-    # @brief This function sends a None packet and receives an answer packet based on the provided callback function.
-    # @param self The reference to the current instance of the class.
-    # @param is_answer A callable that takes a Packet as a parameter and returns a boolean value. 
-    #                  This function is used to determine if a received packet is the answer.
-    # @param timeout The maximum amount of time to wait for a packet in seconds. 
-    #                The default value is 2 seconds.
-    # @return Returns the received answer packet if it exists, otherwise returns None.
+
     def receive_answer(self, is_answer: Callable[[Packet], bool], timeout: float = 2) -> Packet | None:
+        """sniff communication and return a packet that satisfy the "is_answer" callback.
+
+        Args:
+            (Callable[[Packet], bool]): A callback that receives a packet and returns True if this packet is the answer looking for.
+            timeout (float): The duration of the sniffing to locate the answer packet.
+
+        Returns:
+            Packet | None: The first packet that satisfy the "is_answer" callback, None if not found.
+        """
         return self.send_receive_packet(None, is_answer, timeout)
     
     def receive_answers(self, is_answer: Callable[[Packet], bool], timeout: float = 2) -> list[Packet]:
+        """Read a multiple packets and returns all packets that satisfy the "is_answer" callback provided.
+
+        Args:
+            is_answer (Callable[[Packet], bool]): A callback that receives a packet and returns True if this packet is the answer looking for.
+            timeout (int): The duration of the sniffing to locate the answer packets.
+
+        Returns:
+            list[Packet]: All packets received that satisfy the "is_answer" callback.
+        """ 
         return self.send_receive_packets(None, is_answer, timeout)
 
-## @class Layer3RawSocket
-# @brief This class defines a Layer 3 raw socket for communication. 
+
 class Layer3RawSocket(RawSocketCommunicatorBase):
+    """Layer 3 raw socket for communicator
+    """
     if_name: str = Field(description="Name of ethernet interface to work with. (e.g. eth0, eth1 etc...)")
     ip_version: IpVersion = Field(description="IP version. IPv4/IPv6")
     _in_socket: RawSocket | None = None
     _out_socket: socket.socket | None = None
 
-    ## @fn open
-    # @brief This function opens the socket for communication.
-    # @return Returns True if the socket was successfully opened, False otherwise.
     def open(self) -> bool:
+        """Open the raw socket for communication.
+
+        Returns:
+            bool: True if successful, False otherwise.
+        """
         if self.ip_version == IpVersion.IPv4:
             self._out_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
             self._out_socket.setsockopt(socket.SOL_IP, socket.IP_HDRINCL, 1)
@@ -171,28 +200,38 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
         else:
             self.logger.error(f"Unexpected ip version {self.ip_version} set as type.")
             return False
+        
+        self._out_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, self.if_name.encode())
         self._in_socket = RawSocket(self.if_name)
         return True
-    
-    ## @fn close
-    # @brief This function closes the socket.
-    # @return Returns True if the socket was successfully closed.
+
     def close(self) -> bool:
+        """Close the raw socket.
+
+        Returns:
+            bool: True if successful, False otherwise.
+        """
         self._in_socket = None
         self._out_socket.close()
         return True
-    
-    ## @fn is_open
-    # @brief This function checks if the socket is open.
-    # @return Returns True if the socket is open, False otherwise.
+
     def is_open(self) -> bool:
+        """inform the state of the raw socket
+
+        Returns:
+            bool: True if the socket is open and ready for send/receive operations, False otherwise.
+        """
         return self._in_socket is not None
 
-    ## @fn send_packet
-    # @brief This function sends a packet.
-    # @param packet The packet to be sent.
-    # @return Returns True if the packet was successfully sent, False otherwise.
     def send_packet(self, packet: Packet) -> bool:
+        """send a packet to the raw socket
+
+        Args:
+            packet (Packet): packet to send.
+
+        Returns:
+            bool: True if sent successfully, False otherwise
+        """
         if not self.is_open():
             self.logger.error("Attempt sending packet to a closed socket.")
             return False
@@ -200,7 +239,7 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
         if self.ip_version == IpVersion.IPv4:
             ipv4_layer: IPv4Layer = packet.get_layer(LayerType.IPv4Layer)
             if ipv4_layer:
-                dst_addr = ipv4_layer.dst_ip
+                dst_addr = (ipv4_layer.dst_ip, 0)
             else:
                 self.logger.error("Attempt transmittion of non ipv4 packet")
                 self.logger.debug(f"packet = {packet}")
@@ -208,7 +247,7 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
         elif self.ip_version == IpVersion.IPv6:
             ipv6_layer: IPv6Layer = packet.get_layer(LayerType.IPv6Layer)
             if ipv6_layer:
-                dst_addr = ipv6_layer.dst_ip
+                dst_addr = (ipv6_layer.dst_ip, 0, 0, 0)
             else:
                 self.logger.error("Attempt transmittion of non ipv4 packet")
                 self.logger.debug(f"packet = {packet}")
@@ -217,16 +256,21 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
             self.logger.error(f"Unexpected ip version {self.ip_version} set as type.")
             return False
         
-        return self._out_socket.sendto(bytes(packet), (dst_addr, 0))
+        return self._out_socket.sendto(bytes(packet), dst_addr)
 
-    ## @fn send_receive_packets
-    # @brief This function sends packets and receives packets in return. 
-    #       The function uses the asyncio library to send and receive packets in an asynchronous manner.     
-    # @param packet The packet(s) to be sent. It can be a single Packet, a sequence of Packets, or None.
-    # @param is_answer A callable that takes a Packet as a parameter and returns a boolean value. 
-    # @param timeout The maximum amount of time to wait for a packet in seconds.
-    # @return found_packet A list of packets that are answers to the sent packet(s).
+
     def send_receive_packets(self, packet: Packet | Sequence[Packet] | None, is_answer: Callable[[Packet], bool], timeout: float) -> list[Packet]:
+        """send packet or a sequence of packets and read a multiple packets answer
+        The answer is a list of packets that satisfy the "is_answer" callback provided.
+
+        Args:
+            packet (Packet | Sequence[Packet] | None): the packet/packets to send. None to skip the sending operation.
+            is_answer (Callable[[Packet], bool]): callback that receives a packet and returns True if this packet is the answer to sent one
+            timeout (int): timeout for the operation
+
+        Returns:
+            list[Packet]: All packets received that satisfy the "is_answer" callback.
+        """ 
         found_packet: list[Packet] = []
         
         async def find_packet(in_socket: RawSocket, timeout: float):
@@ -242,12 +286,16 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
         self.send(packet)
         loop.run_until_complete(find_packet_task)
         return found_packet
-    
-    ## @fn receive  
-    # @brief Receives a packet from the raw socket.  
-    # @param timeout The timeout duration for receiving the packet.  
-    # @return The received packet if a packet is successfully received, None otherwise.             
+
     def receive(self, timeout: float = 2) -> Packet | None:
+        """read a single packet from the socket
+
+        Args:
+            timeout (float): timeout in seconds for the operation, 0 for blocking receive.
+
+        Returns:
+            Packet | None: the read packet, None if timeout reached.
+        """
         if self._in_socket is None:
             self.logger.error("Attempt to read from a closed socket.")
             return None

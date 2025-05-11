@@ -17,6 +17,7 @@ from cyclarity_in_vehicle_sdk.configuration_manager.models import (
     )
 from cyclarity_in_vehicle_sdk.configuration_manager.actions import (
     ConfigurationAction,
+    CreateVlanAction,
     IpAddAction,
     IpRemoveAction,
     WifiConnectAction,
@@ -51,13 +52,22 @@ class ConfigurationManager(ParsableModel):
         return False
         
     def teardown(self):
+        """Cleanup internal objects
+        """
         self._ndb.close()
 
     def setup(self):
+        """Configures the received actions from the initialization
+        """
         if self.actions:
             self.configure_actions(self.actions)
 
-    def configure_actions(self, actions: Union[ConfigurationAction, list[CanConfigurationAction]]):
+    def configure_actions(self, actions: Union[ConfigurationAction, list[ConfigurationAction]]):
+        """Configures the received actions
+
+        Args:
+            actions (Union[ConfigurationAction, list[ConfigurationAction]]): list of configuration actions to configure
+        """
         if isinstance(actions, ConfigurationAction):
             actions = [actions]
 
@@ -72,14 +82,40 @@ class ConfigurationManager(ParsableModel):
                 self._configure_eth_interface(action)
             if type(action) is WifiConnectAction:
                 self._connect_wifi_device(action)
+            if type(action) is CreateVlanAction:
+                self._create_vlan_interface(action)
 
     def get_device_configuration(self) -> DeviceConfiguration:
+        """Get the current device configuration
+
+        Returns:
+            DeviceConfiguration: the device's current configurations
+        """
         config = DeviceConfiguration()
         self._get_eth_configuration(config)
         self._get_can_configuration(config)
         self._get_wifi_devices_info(config)
 
         return config
+    
+    def _create_vlan_interface(self, vlan_create_params: CreateVlanAction):
+        if self._is_interface_exists(vlan_create_params.if_name):
+            self.logger.info(f"Ethernet interface: {vlan_create_params.if_name}, already exists")
+            return
+        
+        with IPRoute() as ip:
+            ip.link(
+                "add",
+                ifname=vlan_create_params.if_name,
+                kind="vlan",
+                link=ip.link_lookup(ifname=vlan_create_params.if_link)[0],
+                vlan_id=vlan_create_params.vlan_id
+            )
+            ip.link(
+                "set",
+                index=ip.link_lookup(ifname=vlan_create_params.if_name)[0],
+                state="up"
+            )
 
     def _connect_wifi_device(self, wifi_connect_params: WifiConnectAction):
         try:

@@ -1,8 +1,14 @@
 from abc import abstractmethod
-from enum import IntEnum
 from typing import NamedTuple, Optional, Type, TypeAlias, Union
 
-from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_BASE, SESSION_ACCESS, UdsStandardVersion
+from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import (
+    SECURITY_ALGORITHM_BASE,
+    SESSION_ACCESS,
+    AuthenticationParamsBase,
+    AuthenticationReturnParameter,
+    UdsSid, 
+    UdsStandardVersion,
+    )
 from udsoncan.Response import Response
 from udsoncan.ResponseCode import ResponseCode
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
@@ -21,44 +27,11 @@ UdsDefinedSessions: TypeAlias = DiagnosticSessionControl.Session
 UdsDid: TypeAlias = DataIdentifier
 RdidDataTuple = NamedTuple("RdidDataTuple", did=int, data=str)
 
-class UdsSid(IntEnum):
-    """The service IDs standardized by UDS.
-
-    For additional information, see https://en.wikipedia.org/wiki/Unified_Diagnostic_Services
-    """
-
-    # 0x10..0x3e: UDS standardized service IDs
-    DiagnosticSessionControl = 0x10
-    EcuReset = 0x11
-    SecurityAccess = 0x27
-    CommunicationControl = 0x28
-    Authentication = 0x29
-    TesterPresent = 0x3E
-    AccessTimingParameters = 0x83
-    SecuredDataTransmission = 0x84
-    ControlDtcSettings = 0x85
-    ResponseOnEvent = 0x86
-    LinkControl = 0x87
-    ReadDataByIdentifier = 0x22
-    ReadMemoryByAddress = 0x23
-    ReadScalingDataByIdentifier = 0x24
-    ReadDataByIdentifierPeriodic = 0x2A
-    DynamicallyDefineDataIdentifier = 0x2C
-    WriteDataByIdentifier = 0x2E
-    WriteMemoryByAddress = 0x3D
-    ClearDiagnosticInformation = 0x14
-    ReadDtcInformation = 0x19
-    InputOutputControlByIdentifier = 0x2F
-    RoutineControl = 0x31
-    RequestDownload = 0x34
-    RequestUpload = 0x35
-    TransferData = 0x36
-    RequestTransferExit = 0x37
-    RequestFileTransfer = 0x38
 
 class NoResponse(Exception):
     def __init__(self, *args, **kwargs):
         super().__init__("No response received for UDS request")
+
 
 class NegativeResponse(Exception):
     code: int
@@ -209,5 +182,20 @@ class UdsUtilsBase(ParsableModel):
 
         Returns:
             RawUdsResponse: Raw UdsResponse
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def authentication(self,
+                       params: Type[AuthenticationParamsBase],
+                       timeout: float) -> AuthenticationReturnParameter:
+        """Initiate UDS Authentication service sequence 
+
+        Args:
+            params (Type[AuthenticationParamsBase]): Set of parameters defined for the desired authentication task
+            timeout (float): timeout for the UDS operation in seconds
+
+        Returns:
+            AuthenticationReturnParameter: The results code of the authentication action
         """
         raise NotImplementedError

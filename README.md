@@ -57,3 +57,24 @@ The In-Vehicle SDK package includes the following interfaces and implementations
   
 You can install the In-Vehicle SDK package using pip:  
 `pip install cyclarity-in-vehicle-sdk`
+
+## Usage
+
+Example for importing and using `CanCommunicatorSocketCan` for sending a Message
+```
+from cyclarity_in_vehicle_sdk.communication.can.base.can_communicator_base import CanMessage
+from cyclarity_in_vehicle_sdk.communication.can.impl.can_communicator_socketcan import CanCommunicatorSocketCan
+
+canmsg = CanMessage(
+            arbitration_id=0x123,
+            is_extended_id = False,
+            is_rx=False,
+            data=b"\x00" * 8,
+            is_fd=False,
+            bitrate_switch=False,
+        )
+
+socket = CanCommunicatorSocketCan(channel="vcan0", support_fd=True)
+with socket:
+    socket.send(can_msg=canmsg)
+```

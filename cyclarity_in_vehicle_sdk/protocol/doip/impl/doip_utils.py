@@ -1,5 +1,6 @@
 from enum import IntEnum
 from functools import partial
+import logging
 import time
 from typing import Optional, Type, TypeAlias
 from doipclient import constants, messages, DoIPClient
@@ -31,7 +32,12 @@ class DoipUtils(ParsableModel):
     raw_socket: Layer3RawSocket
     _tcp_communicators_cache: dict[str, TcpCommunicator] = {}
 
-    def setup(self):
+    def setup(self) -> bool:
+        """Opens the socket for communicating with the target
+
+        Returns:
+            bool: True if succeeded False otherwise
+        """
         if not self.raw_socket.open():
             self.logger.error("Failed opening raw socket")
             return False
@@ -39,6 +45,11 @@ class DoipUtils(ParsableModel):
         return True
 
     def teardown(self) -> bool:
+        """Closes communications with the target
+
+        Returns:
+            bool: True if succeeded False otherwise
+        """
         self.raw_socket.close()
         for tcp_con in self._tcp_communicators_cache.values():
             tcp_con.close()
@@ -51,6 +62,19 @@ class DoipUtils(ParsableModel):
                                       protocol_version: DoipProtocolVersion = DoipProtocolVersion.DoIP_13400_2012, 
                                       eid: bytes = None, 
                                       vin: str = None) -> VehicleIdentificationResponse:
+        """Initiate Vehicle identification request
+
+        Args:
+            source_address (IPvAnyAddress): source IP address for the request
+            source_port (int): source port for the request
+            target_address (IPvAnyAddress): target IP address
+            protocol_version (DoipProtocolVersion, optional): the Doip Protocol Version. Defaults to DoipProtocolVersion.DoIP_13400_2012.
+            eid (bytes, optional): eid. Defaults to None.
+            vin (str, optional): vin. Defaults to None.
+
+        Returns:
+            VehicleIdentificationResponse: if got a response, None otherwise
+        """
         if eid:
             message = messages.VehicleIdentificationRequestWithEID(eid)
         elif vin:
@@ -95,6 +119,20 @@ class DoipUtils(ParsableModel):
                                         activation_type: ActivationType = ActivationType.Default,
                                         protocol_version: DoipProtocolVersion = DoipProtocolVersion.DoIP_13400_2012,
                                         vm_specific: int = None) -> Optional[RoutingActivationResponse]:
+        """Initiate Routing activation request
+
+        Args:
+            source_address (IPvAnyAddress): source IP address
+            target_address (IPvAnyAddress): target IP address
+            client_logical_address (int): client's logical address
+            timeout (float, optional): timeout in seconds for the operation
+            activation_type (ActivationType, optional): The activation type. Defaults to ActivationType.Default.
+            protocol_version (DoipProtocolVersion, optional): the Doip Protocol Version. Defaults to DoipProtocolVersion.DoIP_13400_2012.
+            vm_specific (int, optional): optional vm specific argument. Defaults to None.
+
+        Returns:
+            Optional[RoutingActivationResponse]: RoutingActivationResponse if got a response, None otherwise
+        """
         
         
         _, tcp_communicator = self._get_tcp_communicator(source_address=source_address, target_address=target_address)
@@ -113,6 +151,19 @@ class DoipUtils(ParsableModel):
                                               activation_type: ActivationType = ActivationType.Default,
                                               protocol_version: DoipProtocolVersion = DoipProtocolVersion.DoIP_13400_2012,
                                               vm_specific: int = None) -> Optional[RoutingActivationResponse]:
+        """Initiate Routing activation request via the provided communicator 
+
+        Args:
+            communicator (Type[CommunicatorBase]): communicator to perform the request over
+            client_logical_address (int): client's logical address
+            timeout (float, optional): timeout in seconds for the operation
+            activation_type (ActivationType, optional): The activation type. Defaults to ActivationType.Default.
+            protocol_version (DoipProtocolVersion, optional): the Doip Protocol Version. Defaults to DoipProtocolVersion.DoIP_13400_2012.
+            vm_specific (int, optional): optional vm specific argument. Defaults to None.
+
+        Returns:
+            Optional[RoutingActivationResponse]: RoutingActivationResponse if got a response, None otherwise
+        """
         
         message = messages.RoutingActivationRequest(
             client_logical_address, activation_type, vm_specific=vm_specific
@@ -132,6 +183,17 @@ class DoipUtils(ParsableModel):
                           source_port: int, 
                           target_address: IPvAnyAddress, 
                           protocol_version: DoipProtocolVersion = DoipProtocolVersion.DoIP_13400_2012) -> EntityStatusResponse:
+        """Initiate Entity status request
+
+        Args:
+            source_address (IPvAnyAddress): source IP address
+            source_port (int): source port
+            target_address (IPvAnyAddress): target IP address
+            protocol_version (DoipProtocolVersion, optional): the Doip Protocol Version. Defaults to DoipProtocolVersion.DoIP_13400_2012.
+
+        Returns:
+            EntityStatusResponse: if got a response, None otherwise
+        """
         is_answer_cb = partial(DoipUtils._is_answer, 
                                expected_source_port=source_port, 
                                l4_type=LayerType.UdpLayer, 
@@ -163,18 +225,52 @@ class DoipUtils(ParsableModel):
         return None
     
     @staticmethod
-    def send_uds_request(communicator: Type[CommunicatorBase], payload: bytes, client_logical_address: int, target_logical_address: int, timeout: float) -> int:
-        message = messages.DiagnosticMessage(source_address=client_logical_address, target_address=target_logical_address, user_data=payload)
+    def send_uds_request(
+        logger: logging.Logger,
+        communicator: Type[CommunicatorBase],
+        payload: bytes,
+        client_logical_address: int,
+        target_logical_address: int,
+        timeout: float) -> int:
+        """Sends a UDS request
+
+        Args:
+            communicator (Type[CommunicatorBase]): communicator to perform the request over
+            payload (bytes): the UDS request payload
+            client_logical_address (int): client's logical address
+            target_logical_address (int): target's logical address
+            timeout (float): timeout in seconds for the operation
+
+        Returns:
+            int: number of bytes actually sent
+        """
+        message = messages.DiagnosticMessage(
+            source_address=client_logical_address,
+            target_address=target_logical_address,
+            user_data=payload
+            )
         data = DoipUtils._pack_doip_message(message=message)
-        return communicator.send(data=data, timeout=timeout)
-    
+        sent_bytes = communicator.send(data=data, timeout=timeout)
+        response = DoipUtils._read_doip(communicator, timeout=timeout)
+        if type(response) is not messages.DiagnosticMessagePositiveAcknowledgement:
+            logger.warning("Did not received DiagnosticMessagePositiveAcknowledgement")
+        return sent_bytes        
+
     @staticmethod
     def read_uds_response(communicator: Type[CommunicatorBase], timeout: float) -> Optional[bytes]:
+        """Reads a UDS response
+
+        Args:
+            communicator (Type[CommunicatorBase]): communicator to read the response over
+            timeout (float): timeout in seconds for the operation
+
+        Returns:
+            Optional[bytes]: UDS response in bytes if received a valid response, False otherwise
+        """
         response = DoipUtils._read_doip(communicator, timeout=timeout)
-        if type(response) is messages.DiagnosticMessagePositiveAcknowledgement:
-            diag_resp = DoipUtils._read_doip(communicator, timeout=timeout)
-            if type(diag_resp) is messages.DiagnosticMessage:
-                return bytes(diag_resp.user_data)
+
+        if type(response) is messages.DiagnosticMessage:
+            return bytes(response.user_data)
         return None
 
     @staticmethod
