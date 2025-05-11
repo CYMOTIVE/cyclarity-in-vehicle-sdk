@@ -1,33 +1,35 @@
-name: Deploy to PyPI  
-  
-on:  
-  workflow_dispatch:  
-  
-jobs:  
-  deploy:  
-    name: Deploy to PyPI  
-    runs-on: ubuntu-latest  
-    environment: pypi-deploy  
-    container:  
-      image: public.ecr.aws/p0d9j9b5/invehicle/dockers:3.10.13-2  
-    steps:  
-      - name: Checkout repository  
-        uses: actions/checkout@v4  
-  
-      - name: Uninstall SDK  
-        run: sh ./scripts/uninstall_sdk.sh  
-  
-      - name: Setup pip config  
-        run: |  
-          mkdir -p ~/.pip  
-          echo -e "[global]\nindex-url = https://pypi.org/simple" > ~/.pip/pip.conf  
-  
-      - name: Install dependencies and SDK  
-        run: |  
-          pip install --upgrade pip  
-          pip install -e .  
-  
-      - name: Deploy to PyPI  
-        env:  
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}  
-        run: sh ./scripts/pipeline_deploy_pypi.sh  
+name: Deploy to PyPI
+
+on:
+  push
+# on: 
+#   workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to PyPI
+    runs-on: ubuntu-latest
+    environment: pypi-deploy
+    container:
+      image: public.ecr.aws/p0d9j9b5/invehicle/dockers:3.10.13-2
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Uninstall SDK 
+        run: sh ./scripts/uninstall_sdk.sh 
+
+      - name: Setup pip config 
+        run: | 
+          mkdir -p ~/.pip 
+          echo -e "[global]\nindex-url = https://pypi.org/simple" > ~/.pip/pip.conf 
+
+      - name: Install dependencies and SDK 
+        run: | 
+          pip install --upgrade pip 
+          pip install -e . 
+
+      - name: Deploy to PyPI 
+        env: 
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }} 
+        run: sh ./scripts/pipeline_deploy_pypi.sh 
