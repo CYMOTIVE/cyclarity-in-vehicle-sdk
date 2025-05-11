@@ -1,0 +1,42 @@
+name: CI  
+  
+on:  
+  push:  
+    branches: [main, dev]  
+  pull_request:  
+    branches: [main, dev]  
+  
+jobs:  
+  build-and-test:  
+    name: Build and Test  
+    runs-on: ubuntu-latest  
+    container:  
+      image: public.ecr.aws/p0d9j9b5/invehicle/dockers:3.10.13-2  
+    steps:  
+      - name: Checkout repository  
+        uses: actions/checkout@v4  
+  
+      - name: Uninstall SDK  
+        run: sh ./scripts/uninstall_sdk.sh  
+  
+      - name: Setup pip config  
+        run: |  
+          mkdir -p ~/.pip  
+          echo -e "[global]\nindex-url = https://pypi.org/simple" > ~/.pip/pip.conf  
+  
+      - name: Install dependencies and SDK  
+        run: |  
+          pip install --upgrade pip  
+          pip install pytest mock  
+          pip install -e .  
+  
+      - name: Run pytest  
+        run: |  
+          pytest -s -v cyclarity_in_vehicle_sdk/tests/* --junitxml=test-reports/report.xml  
+  
+      - name: Upload test report  
+        if: always()  
+        uses: actions/upload-artifact@v4  
+        with:  
+          name: test-reports  
+          path: test-reports/report.xml  
