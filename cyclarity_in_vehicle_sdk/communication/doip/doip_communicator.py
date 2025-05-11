@@ -27,11 +27,14 @@ class DoipCommunicator(CommunicatorBase):
             if not self._initiate_routing_activation_if_needed(timeout=timeout):
                 return 0
          
-        sent_bytes = DoipUtils.send_uds_request(communicator=self.tcp_communicator, 
-                                   payload=data,
-                                   client_logical_address=self.client_logical_address, 
-                                   target_logical_address=self.target_logical_address,
-                                   timeout=timeout)
+        sent_bytes = DoipUtils.send_uds_request(
+            logger=self.logger,
+            communicator=self.tcp_communicator,
+            payload=data,
+            client_logical_address=self.client_logical_address,
+            target_logical_address=self.target_logical_address,
+            timeout=timeout,
+            )
 
         return sent_bytes
 
@@ -99,3 +102,6 @@ class DoipCommunicator(CommunicatorBase):
             self.tcp_communicator.connect()
             return True
         return False
+    
+    def __str__(self):
+        return f"DoIP, Target: \nIP={str(self.tcp_communicator.destination_ip)}\nlogical address={hex(self.target_logical_address)}\nclient logical address={hex(self.client_logical_address)}"

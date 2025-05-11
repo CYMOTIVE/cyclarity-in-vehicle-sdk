@@ -4,7 +4,7 @@ from pydantic import BaseModel, IPvAnyAddress
 
 class IpAddressParams(BaseModel):
     ip: IPvAnyAddress
-    vlan_id: Optional[int]
+    vlan_id: Optional[int] = None
 
     class Config:  
         frozen = True

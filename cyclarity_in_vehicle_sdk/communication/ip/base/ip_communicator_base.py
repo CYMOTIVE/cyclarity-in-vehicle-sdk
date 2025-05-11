@@ -16,11 +16,11 @@ class IpCommunicatorBase(CommunicatorBase):
     destination_ip: IPvAnyAddress = Field(description="Destination IP.")
     
     @property
-    def source_ip(self) -> IPvAnyAddress:
+    def get_source_ip(self) -> IPvAnyAddress:
         return self.source_ip
     
     @property
-    def destination_ip(self) -> IPvAnyAddress:
+    def get_destination_ip(self) -> IPvAnyAddress:
         return self.destination_ip
     
     @property
