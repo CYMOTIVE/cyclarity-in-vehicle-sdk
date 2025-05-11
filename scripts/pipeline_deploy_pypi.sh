@@ -4,8 +4,8 @@ set -e
 export PYPI_TOKEN
 VERSION_FILE_NAME="cyclarity-in-vehicle-sdk.txt"
 
-if [ "$BITBUCKET_BRANCH"  = "release" ]; then
-    echo "The branch is release, releasing new version"
+if [ "$BITBUCKET_BRANCH"  = "main" ]; then
+    echo "The branch is main, releasing new version"
     poetry version patch
 else
     echo "Releasing a prerelease version"

@@ -16,14 +16,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Uninstall SDK 
-        run: sh ./scripts/uninstall_sdk.sh 
-
-      - name: Setup pip config 
-        run: | 
-          mkdir -p ~/.pip 
-          echo -e "[global]\nindex-url = https://pypi.org/simple" > ~/.pip/pip.conf 
-
       - name: Install dependencies and SDK 
         run: | 
           pip install --upgrade pip 
