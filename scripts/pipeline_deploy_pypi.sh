@@ -1,18 +1,15 @@
 #!/bin/bash
-set -euo pipefail
-  
-# Variables
-VERSION_FILE_NAME="cyclarity-in-vehicle-sdk.txt"
+set -e
 
 # Detect current branch (compatible with GitHub Actions)
-if [[ -n "${GITHUB_REF-}" ]]; then
+if [ -n "${GITHUB_REF-}" ]; then
     BRANCH=$(echo "${GITHUB_REF##*/}")
 else
     BRANCH=$(git branch --show-current 2>/dev/null || echo "")
 fi
 
 # Version bump logic
-if [[ "$BRANCH" == "main" ]]; then
+if [ "$BRANCH" = "main" ]; then
     echo "The branch is main, releasing new version"
     poetry version patch
 else
@@ -32,7 +29,7 @@ fi
 poetry install
 poetry build
   
-if [[ -z "${PYPI_TOKEN-}" ]]; then
+if [ -z "${PYPI_TOKEN-}" ]; then
     echo "PYPI_TOKEN environment variable is not set. Exiting."
     exit 1
 fi
