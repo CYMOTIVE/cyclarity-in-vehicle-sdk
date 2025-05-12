@@ -26,7 +26,6 @@ from cyclarity_in_vehicle_sdk.configuration_manager.actions import (
 )
 from pyroute2 import NDB, IPRoute
 from pyroute2.netlink.exceptions import NetlinkError
-# **26/01/2025 lib pyroute2 was approved by Eugene with license Apache 2.0**
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 
 ACTION_TYPES = Union[ConfigurationAction.get_subclasses()]
