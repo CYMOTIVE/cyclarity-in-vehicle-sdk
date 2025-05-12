@@ -1,9 +1,7 @@
 name: Deploy to PyPI
 
-on:
-  push
-# on: 
-#   workflow_dispatch:
+on: 
+  workflow_dispatch:
 
 jobs:
   deploy:
