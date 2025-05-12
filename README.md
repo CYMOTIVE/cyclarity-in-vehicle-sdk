@@ -1,5 +1,10 @@
 # In-Vehicle SDK Package  
-  
+
+![pypi](https://img.shields.io/pypi/v/cyclarity-in-vehicle-sdk)
+[![downloads](https://static.pepy.tech/badge/cyclarity-in-vehicle-sdk)](https://pepy.tech/projects/cyclarity-in-vehicle-sdk)
+[![downloads_monthly](https://static.pepy.tech/badge/cyclarity-in-vehicle-sdk/month)](https://pepy.tech/projects/cyclarity-in-vehicle-sdk)
+![Tests](https://github.com/CYMOTIVE/cyclarity-in-vehicle-sdk/actions/workflows/ci.yml/badge.svg)
+
 This package provides the In-Vehicle SDK, offering a range of functionalities to support communication and operations with in-vehicle systems.  
   
 ## Features  
