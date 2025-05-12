@@ -17,4 +17,4 @@ jobs:
       - name: Deploy to PyPI 
         env: 
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }} 
-        run: sh ./scripts/pipeline_deploy_pypi.sh 
+        run: ./scripts/pipeline_deploy_pypi.sh 
