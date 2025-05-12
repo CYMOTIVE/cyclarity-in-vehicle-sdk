@@ -53,10 +53,13 @@ The In-Vehicle SDK package includes the following interfaces and implementations
         3. `CanConfigurationAction` - configure CAN interface parameters. e.g. bitrate, sample-point, cc-len8-dlc flag and state.
         4. `EthInterfaceConfigurationAction` - configure the Ethernet interface: mtu, state and flags.
         5. `WifiConnectAction` - connect to a WiFi access point
+        6. `CreateVlanAction` - creating a VLAN interface
     * get_device_configuration() - retrieves the current device configurations:
         1. Ethernet interface configuration: state, IPs, flags and MTU.
         2. CAN interface configurations: state, bitrate, sample-point and cc-len8-dlc flag.
         3. The available WiFi access points. 
+
+The complete user manual can be found in [here](docs/cyclarity-in-vehicle-sdk.pdf)
 
 ## Installation  
   
