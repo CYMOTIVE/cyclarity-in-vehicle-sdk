@@ -1,8 +1,5 @@
 #!/bin/bash
-set -euo pipefail
-  
-# Variables
-VERSION_FILE_NAME="cyclarity-in-vehicle-sdk.txt"
+set -e
 
 # Detect current branch (compatible with GitHub Actions)
 if [[ -n "${GITHUB_REF-}" ]]; then
