@@ -14,6 +14,7 @@ from udsoncan.services import (
     DiagnosticSessionControl,
     Authentication,
     ReadDTCInformation,
+    ClearDiagnosticInformation,
     )
 from udsoncan.common.DidCodec import DidCodec
 from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (
@@ -280,7 +281,8 @@ class UdsUtils(UdsUtilsBase):
                            snapshot_record_number: Optional[int] = None,
                            extended_data_record_number: Optional[int] = None,
                            memory_selection: Optional[int] = None,
-                           timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> DtcInformationData:
+                           timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT,
+                           standard_version: UdsStandardVersion = UdsStandardVersion.ISO_14229_2020) -> DtcInformationData:
         """Read DTC Information service (0x19)
 
         Args:
@@ -292,6 +294,7 @@ class UdsUtils(UdsUtilsBase):
             extended_data_record_number (Optional[int], optional): Extended data record number. Defaults to None.
             memory_selection (Optional[int], optional): Memory selection for user defined memory DTC. Defaults to None.
             timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
+            standard_version (UdsStandardVersion, optional): the version of the UDS standard we are interacting with. Defaults to ISO_14229_2020.
 
         :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
@@ -309,12 +312,36 @@ class UdsUtils(UdsUtilsBase):
             dtc=dtc,
             snapshot_record_number=snapshot_record_number,
             extended_data_record_number=extended_data_record_number,
-            memory_selection=memory_selection
+            memory_selection=memory_selection,
+            standard_version=standard_version
         )
         response = self._send_and_read_response(request=request, timeout=timeout)
-        interpreted_response = ReadDTCInformation.interpret_response(response=response, subfunction=subfunction)
+        interpreted_response = ReadDTCInformation.interpret_response(response=response, subfunction=subfunction, standard_version=standard_version)
         return interpreted_response.service_data
     
+    def clear_diagnostic_information(self, group: int = 0xFFFFFF, memory_selection: Optional[int] = None, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, standard_version: UdsStandardVersion = UdsStandardVersion.ISO_14229_2020) -> bool:
+        """Clear Diagnostic Information service (0x14)
+
+        Args:
+            group (int, optional): DTC mask ranging from 0 to 0xFFFFFF. 0xFFFFFF means all DTCs. Defaults to 0xFFFFFF.
+            memory_selection (Optional[int], optional): Number identifying the respective DTC memory. Only supported in ISO-14229-1:2020 and above. Defaults to None.
+            timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
+            standard_version (UdsStandardVersion, optional): the version of the UDS standard we are interacting with. Defaults to ISO_14229_2020.
+
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises NoResponse: If no response was received
+        :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises NegativeResponse: with error code and code name, If negative response was received
+
+        Returns:
+            bool: True if the clear operation was successful, False otherwise
+        """
+        request = ClearDiagnosticInformation.make_request(group=group, memory_selection=memory_selection, standard_version=standard_version)
+        response = self._send_and_read_response(request=request, timeout=timeout)
+        ClearDiagnosticInformation.interpret_response(response=response)
+        return True  # If we get here, the operation was successful since no negative response was raised
+
     def raw_uds_service(self, sid: UdsSid, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, sub_function: Optional[int] = None, data: Optional[bytes] = None) -> RawUdsResponse:
         """sends raw UDS service request and reads response
 
