@@ -3,7 +3,22 @@ from unittest import TestCase
 from cyclarity_in_vehicle_sdk.communication.ip.tcp.tcp import TcpCommunicator
 from cyclarity_in_vehicle_sdk.protocol.uds.impl.uds_utils import UdsUtils
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SECURITY_ALGORITHM_XOR
-from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import NegativeResponse, ECUResetType, UdsResponseCode, UdsSid, RdidDataTuple, UdsStandardVersion
+from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (
+    AuthenticationReturnParameter,
+    DtcInformationData,
+    ECUResetType,
+    InvalidResponse,
+    NegativeResponse,
+    NoResponse,
+    RawUdsResponse,
+    RdidDataTuple,
+    RoutingControlResponseData,
+    SessionControlResultData,
+    UdsResponseCode,
+    UdsSid,
+    UdsUtilsBase,
+    UdsStandardVersion,
+)
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
 from cyclarity_in_vehicle_sdk.communication.can.impl.can_communicator_socketcan import CanCommunicatorSocketCan
@@ -311,3 +326,156 @@ class UdsUtilsUTs(TestCase):
         ]  
         res = self.uds_utils._split_dids(didlist=dids, data_bytes=input_data)  
         self.assertEqual(res, expected_res)  
+
+    def test_read_dtc_information_success(self):
+        """Test successful read DTC information with default parameters"""
+        # Mock the response
+        mock_response = MagicMock()
+        mock_response.positive = True
+        mock_response.data = bytes([0x59, 0x01, 0x00, 0x00, 0x00, 0x00])  # Example response data with correct length
+        self.uds_utils.data_link_layer.recv.return_value = bytes([0x59, 0x01, 0x00, 0x00, 0x00, 0x00])
+        self.uds_utils.data_link_layer.send.return_value = 5
+
+        # Call the method
+        result = self.uds_utils.read_dtc_information(
+            subfunction=0x01,  # Report number of DTCs by status mask
+            status_mask=0xFF,  # Required status_mask parameter
+            standard_version=UdsStandardVersion.ISO_14229_2020
+        )
+
+        # Verify the result
+        self.assertIsNotNone(result)
+        self.uds_utils.data_link_layer.send.assert_called_once()
+        self.uds_utils.data_link_layer.recv.assert_called_once()
+
+    def test_read_dtc_information_with_all_params(self):
+        """Test read DTC information with all optional parameters"""
+        # Mock the response
+        mock_response = MagicMock()
+        mock_response.positive = True
+        mock_response.data = bytes([0x59, 0x02, 0x00, 0x00, 0x00])  # Example response data
+        self.uds_utils.data_link_layer.recv.return_value = bytes([0x59, 0x02, 0x00, 0x00, 0x00])
+        self.uds_utils.data_link_layer.send.return_value = 5
+
+        # Call the method with all parameters
+        result = self.uds_utils.read_dtc_information(
+            subfunction=0x02,  # Report DTC by status mask
+            status_mask=0x01,
+            severity_mask=0x02,
+            dtc=0x123456,
+            snapshot_record_number=1,
+            extended_data_record_number=2,
+            memory_selection=3,
+            standard_version=UdsStandardVersion.ISO_14229_2020
+        )
+
+        # Verify the result
+        self.assertIsNotNone(result)
+        self.uds_utils.data_link_layer.send.assert_called_once()
+        self.uds_utils.data_link_layer.recv.assert_called_once()
+
+    def test_read_dtc_information_negative_response(self):
+        """Test read DTC information with negative response"""
+        # Mock the response
+        mock_response = MagicMock()
+        mock_response.positive = False
+        mock_response.code = UdsResponseCode.RequestOutOfRange
+        mock_response.code_name = "RequestOutOfRange"
+        self.uds_utils.data_link_layer.recv.return_value = bytes([0x7F, 0x19, 0x31])
+        self.uds_utils.data_link_layer.send.return_value = 5
+
+        # Call the method and expect exception
+        with self.assertRaises(NegativeResponse) as cm:
+            self.uds_utils.read_dtc_information(
+                subfunction=0x01,
+                status_mask=0xFF,  # Required status_mask parameter
+                standard_version=UdsStandardVersion.ISO_14229_2020
+            )
+
+        # Verify the exception
+        ex = cm.exception
+        self.assertEqual(ex.code, UdsResponseCode.RequestOutOfRange)
+
+    def test_clear_diagnostic_information_success(self):
+        """Test successful clear diagnostic information with default parameters"""
+        # Mock the response
+        mock_response = MagicMock()
+        mock_response.positive = True
+        self.uds_utils.data_link_layer.recv.return_value = bytes([0x54])
+        self.uds_utils.data_link_layer.send.return_value = 5
+
+        # Call the method
+        result = self.uds_utils.clear_diagnostic_information(
+            standard_version=UdsStandardVersion.ISO_14229_2020
+        )
+
+        # Verify the result
+        self.assertTrue(result)
+        self.uds_utils.data_link_layer.send.assert_called_once()
+        self.uds_utils.data_link_layer.recv.assert_called_once()
+
+    def test_clear_diagnostic_information_with_all_params(self):
+        """Test clear diagnostic information with all optional parameters"""
+        # Mock the response
+        mock_response = MagicMock()
+        mock_response.positive = True
+        self.uds_utils.data_link_layer.recv.return_value = bytes([0x54])
+        self.uds_utils.data_link_layer.send.return_value = 5
+
+        # Call the method with all parameters
+        result = self.uds_utils.clear_diagnostic_information(
+            group=0x123456,
+            memory_selection=1,
+            standard_version=UdsStandardVersion.ISO_14229_2020
+        )
+
+        # Verify the result
+        self.assertTrue(result)
+        self.uds_utils.data_link_layer.send.assert_called_once()
+        self.uds_utils.data_link_layer.recv.assert_called_once()
+
+    def test_clear_diagnostic_information_negative_response(self):
+        """Test clear diagnostic information with negative response"""
+        # Mock the response
+        mock_response = MagicMock()
+        mock_response.positive = False
+        mock_response.code = UdsResponseCode.SecurityAccessDenied
+        mock_response.code_name = "SecurityAccessDenied"
+        self.uds_utils.data_link_layer.recv.return_value = bytes([0x7F, 0x14, 0x33])
+        self.uds_utils.data_link_layer.send.return_value = 5
+
+        # Call the method and expect exception
+        with self.assertRaises(NegativeResponse) as cm:
+            self.uds_utils.clear_diagnostic_information(
+                standard_version=UdsStandardVersion.ISO_14229_2020
+            )
+
+        # Verify the exception
+        ex = cm.exception
+        self.assertEqual(ex.code, UdsResponseCode.SecurityAccessDenied)
+
+    def test_clear_diagnostic_information_no_response(self):
+        """Test clear diagnostic information with no response"""
+        # Mock no response
+        self.uds_utils.data_link_layer.recv.return_value = None
+        self.uds_utils.data_link_layer.send.return_value = 5
+
+        # Call the method and expect exception
+        with self.assertRaises(NoResponse):
+            self.uds_utils.clear_diagnostic_information(
+                standard_version=UdsStandardVersion.ISO_14229_2020
+            )
+
+    def test_read_dtc_information_no_response(self):
+        """Test read DTC information with no response"""
+        # Mock no response
+        self.uds_utils.data_link_layer.recv.return_value = None
+        self.uds_utils.data_link_layer.send.return_value = 5
+
+        # Call the method and expect exception
+        with self.assertRaises(NoResponse):
+            self.uds_utils.read_dtc_information(
+                subfunction=0x01,
+                status_mask=0xFF,  # Required status_mask parameter
+                standard_version=UdsStandardVersion.ISO_14229_2020
+            )
