@@ -13,6 +13,7 @@ from udsoncan.services import (
     WriteDataByIdentifier,
     DiagnosticSessionControl,
     Authentication,
+    ReadDTCInformation,
     )
 from udsoncan.common.DidCodec import DidCodec
 from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (
@@ -27,7 +28,10 @@ from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (
     RawUdsResponse, 
     UdsResponseCode,
     RdidDataTuple,
+    DtcInformationData,
+    DEFAULT_UDS_OPERATION_TIMEOUT,
     )
+from udsoncan import Dtc
 from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
 from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import (
@@ -40,7 +44,6 @@ from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import (
     TransmitCertificateParams
     )
 
-DEFAULT_UDS_OPERATION_TIMEOUT = 2
 RAW_SERVICES_WITH_SUB_FUNC = {value: type(name, (BaseService,), {'_sid':value, '_use_subfunction':True}) for name, value in UdsSid.__members__.items()}  
 RAW_SERVICES_WITHOUT_SUB_FUNC = {value: type(name, (BaseService,), {'_sid':value, '_use_subfunction':False}) for name, value in UdsSid.__members__.items()}  
 
@@ -268,6 +271,49 @@ class UdsUtils(UdsUtilsBase):
                                                                                    mode=SecurityAccess.Mode.SendKey)
         
         return interpreted_response.service_data.security_level_echo == security_algorithm.key_subfunction
+    
+    def read_dtc_information(self, 
+                           subfunction: int,
+                           status_mask: Optional[int] = None,
+                           severity_mask: Optional[int] = None,
+                           dtc: Optional[int] = None,
+                           snapshot_record_number: Optional[int] = None,
+                           extended_data_record_number: Optional[int] = None,
+                           memory_selection: Optional[int] = None,
+                           timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> DtcInformationData:
+        """Read DTC Information service (0x19)
+
+        Args:
+            subfunction (int): The service subfunction. Values are defined in ReadDTCInformation.Subfunction
+            status_mask (Optional[int], optional): A DTC status mask used to filter DTC. Defaults to None.
+            severity_mask (Optional[int], optional): A severity mask used to filter DTC. Defaults to None.
+            dtc (Optional[int], optional): A DTC mask used to filter DTC. Defaults to None.
+            snapshot_record_number (Optional[int], optional): Snapshot record number. Defaults to None.
+            extended_data_record_number (Optional[int], optional): Extended data record number. Defaults to None.
+            memory_selection (Optional[int], optional): Memory selection for user defined memory DTC. Defaults to None.
+            timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
+
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises NoResponse: If no response was received
+        :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises NegativeResponse: with error code and code name, If negative response was received
+
+        Returns:
+            DtcInformationData: The DTC information response data containing the requested DTC information
+        """
+        request = ReadDTCInformation.make_request(
+            subfunction=subfunction,
+            status_mask=status_mask,
+            severity_mask=severity_mask,
+            dtc=dtc,
+            snapshot_record_number=snapshot_record_number,
+            extended_data_record_number=extended_data_record_number,
+            memory_selection=memory_selection
+        )
+        response = self._send_and_read_response(request=request, timeout=timeout)
+        interpreted_response = ReadDTCInformation.interpret_response(response=response, subfunction=subfunction)
+        return interpreted_response.service_data
     
     def raw_uds_service(self, sid: UdsSid, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, sub_function: Optional[int] = None, data: Optional[bytes] = None) -> RawUdsResponse:
         """sends raw UDS service request and reads response
