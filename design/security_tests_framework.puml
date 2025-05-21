@@ -1,0 +1,64 @@
+@startuml Security Tests Framework
+
+' Base classes
+class BaseTestAction {
+    +execute() : BaseTestOutput
+}
+
+class BaseTestOutput {
+    +is_success(step_output: BaseTestOutput, prev_outputs: list[BaseTestOutput]) : bool
+}
+
+class TestStepTuple {
+    +action : BaseTestAction
+    +expected_output : BaseTestOutput
+}
+
+class CyclarityTestCase {
+    +name : str
+    +precondition_items : list[TestStepTuple]
+    +test_items : list[TestStepTuple]
+    +postcondition_items : list[TestStepTuple]
+    +setup() : bool
+    +run() : bool
+    +teardown() : bool
+}
+
+' UDS-specific classes
+class ReadDidAction {
+    +dids : int | list[int]
+    +uds_utils : UdsUtils
+    +execute() : ReadDidOutputBase
+}
+
+class ReadDidOutputBase {
+    +dids_data : list[RdidDataTuple]
+    +error_code : int
+    +is_success(step_output: ReadDidOutputBase, prev_outputs: list[ReadDidOutputBase]) : bool
+}
+
+class ReadDidOutputExact {
+    +is_success(step_output: ReadDidOutputBase, prev_outputs: list[ReadDidOutputBase]) : bool
+}
+
+class ReadDidOutputMaskMatch {
+    +mask : int
+    +is_success(step_output: ReadDidOutputBase, prev_outputs: list[ReadDidOutputBase]) : bool
+}
+
+class ReadDidOutputUnique {
+    +is_success(step_output: ReadDidOutputBase, prev_outputs: list[ReadDidOutputBase]) : bool
+}
+
+' Inheritance and relationships
+ReadDidAction --|> BaseTestAction
+ReadDidOutputBase --|> BaseTestOutput
+ReadDidOutputExact --|> ReadDidOutputBase
+ReadDidOutputMaskMatch --|> ReadDidOutputBase
+ReadDidOutputUnique --|> ReadDidOutputBase
+
+CyclarityTestCase o-- TestStepTuple
+TestStepTuple o-- BaseTestAction
+TestStepTuple o-- BaseTestOutput
+
+@enduml 
