@@ -20,42 +20,61 @@ class CyclarityTestingSuite(Runnable[CyclarityTestingSuiteResult]):
         """Execute all test cases in the suite.
         """
         self.logger.info(f"Executing {len(self.test_cases)} test cases")
-        for test_case in self.test_cases:
-            if not test_case.setup():
-                self.logger.error(f"Test case {test_case.name} failed in setup phase")
-                self.platform_api.send_finding(TestResult(
-                    topic=self.topic,
-                    type=TestBasicResultType.FAILED,
-                    purpose=self.purpose
-                ))
-                continue
-            
-            if not test_case.run():
-                self.logger.error(f"Test case {test_case.name} failed in run phase")
-                self.platform_api.send_finding(TestResult(
-                    topic=self.topic,
-                    type=TestBasicResultType.FAILED,
-                    purpose=self.purpose
-                ))
-                continue
+        try:
+            for test_case in self.test_cases:
+                setup_result = test_case.setup()
+                if not setup_result:
+                    self.logger.error(f"Test case \"{test_case.name}\" failed in setup phase, reason: {setup_result.fail_reason}")
+                    self.platform_api.send_finding(TestResult(
+                        topic=self.topic,
+                        type=TestBasicResultType.FAILED,
+                        purpose=self.purpose,
+                        fail_reason=setup_result.fail_reason
+                    ))
+                    continue
+                
+                run_result = test_case.run()
+                if not run_result:
+                    self.logger.error(f"Test case \"{test_case.name}\" failed in run phase, reason: {run_result.fail_reason}")
+                    self.platform_api.send_finding(TestResult(
+                        topic=self.topic,
+                        type=TestBasicResultType.FAILED,
+                        purpose=self.purpose,
+                        fail_reason=run_result.fail_reason
+                    ))
+                    continue
 
-            if not test_case.teardown():
-                self.logger.error(f"Test case {test_case.name} failed in teardown phase") 
+                teardown_result = test_case.teardown()
+                if not teardown_result:
+                    self.logger.error(f"Test case \"{test_case.name}\" failed in teardown phase, reason: {teardown_result.fail_reason}") 
+                    self.platform_api.send_finding(TestResult(
+                        topic=self.topic,
+                        type=TestBasicResultType.FAILED,
+                        purpose=self.purpose,
+                        fail_reason=teardown_result.fail_reason
+                    ))
+                    continue
+                
+                self.logger.info(f"Test case \"{test_case.name}\" passed")
                 self.platform_api.send_finding(TestResult(
                     topic=self.topic,
-                    type=TestBasicResultType.FAILED,
+                    type=TestBasicResultType.PASSED,
                     purpose=self.purpose
                 ))
-                continue
-            
-            self.logger.info(f"Test case {test_case.name} passed")
+        except Exception as e:
+            self.logger.error(f"Test case \"{test_case.name}\" failed with exception: {e}")
             self.platform_api.send_finding(TestResult(
                 topic=self.topic,
-                type=TestBasicResultType.PASSED,
-                purpose=self.purpose
+                type=TestBasicResultType.FAILED,
+                purpose=self.purpose,
+                fail_reason=str(e)
             ))
 
         return CyclarityTestingSuiteResult()
 
     def teardown(self, exception_type=None, exception_value=None, traceback=None):
         pass
+    
+if __name__ == "__main__":
+    from cyclarity_sdk.expert_builder import run_from_cli
+    run_from_cli(CyclarityTestingSuite)

@@ -1,7 +1,18 @@
 import inspect
-from typing import NamedTuple, Type, Union
+from typing import NamedTuple, Optional, Type, Union
 from pydantic import BaseModel
 from abc import abstractmethod
+
+
+class StepResult(BaseModel):
+    success: bool
+    fail_reason: Optional[str] = None
+    def __bool__(self) -> bool:
+        return self.success
+    def __str__(self) -> str:
+        if self.success:
+            return "Success"
+        return f"Failed: {self.fail_reason}"
 
 
 class BaseTestOutput(BaseModel):
@@ -20,7 +31,7 @@ class BaseTestOutput(BaseModel):
         return subclasses  
     
     @abstractmethod
-    def is_success(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> bool:
+    def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> StepResult:
         raise NotImplementedError
 
 
