@@ -21,7 +21,7 @@ class ReadDidOutputExact(ReadDidOutputBase):
             if self.error_code == step_output.error_code:
                 return StepResult(success=True)
             else:
-                return StepResult(success=False, fail_reason=f"Expected {self.error_code} but got {step_output.error_code}")
+                return StepResult(success=False, fail_reason=f"Expected {hex(self.error_code)} but got {hex(step_output.error_code)}")
 
         return StepResult(success=True)
 
@@ -30,13 +30,13 @@ class ReadDidOutputMaskMatch(ReadDidOutputBase):
     mask: int
     
     def validate(self, step_output: "ReadDidOutputBase", prev_outputs: list["ReadDidOutputBase"] = []) -> StepResult:
-        if self.error_code:
-            return StepResult(success=False, fail_reason=f"Unexpected error code {self.error_code}")
+        if step_output.error_code:
+            return StepResult(success=False, fail_reason=f"Unexpected error code {hex(step_output.error_code)}")
         
-        if not self.dids_data:
+        if not step_output.dids_data:
             return StepResult(success=False, fail_reason="No data returned")
         
-        for actual in self.dids_data:
+        for actual in step_output.dids_data:
             actual_int = int(actual.data, 16)
             if actual_int & self.mask != actual_int:
                 return StepResult(success=False, fail_reason=f"Data {actual.data} does not match mask {hex(self.mask)}")
@@ -45,10 +45,10 @@ class ReadDidOutputMaskMatch(ReadDidOutputBase):
 class ReadDidOutputUnique(ReadDidOutputBase):
     action_type: Literal['ReadDidOutputUnique'] = 'ReadDidOutputUnique'
     def validate(self, step_output: "ReadDidOutputBase", prev_outputs: list["ReadDidOutputBase"] = []) -> StepResult:
-        if self.error_code:
-            return StepResult(success=False, fail_reason=f"Unexpected error code {self.error_code}")
+        if step_output.error_code:
+            return StepResult(success=False, fail_reason=f"Unexpected error code {hex(step_output.error_code)}")
         
-        if not self.dids_data:
+        if not step_output.dids_data:
             return StepResult(success=False, fail_reason="No data returned")
         
         for prev_output in prev_outputs:
