@@ -1,64 +1,203 @@
 @startuml Security Tests Framework
 
 ' Base classes
-class BaseTestAction {
-    +execute() : BaseTestOutput
+abstract class BaseTestAction {
+    +{abstract} execute() : BaseTestOutput
+    +{static} get_non_abstract_subclasses() : list[Type]
 }
 
-class BaseTestOutput {
-    +is_success(step_output: BaseTestOutput, prev_outputs: list[BaseTestOutput]) : bool
+abstract class BaseTestOutput {
+    +{abstract} validate(step_output: BaseTestOutput, prev_outputs: list[BaseTestOutput]) : StepResult
+    +{static} get_non_abstract_subclasses() : list[Type]
+}
+
+class StepResult {
+    +success: bool
+    +fail_reason: Optional[str]
+    +__bool__() : bool
+    +__str__() : str
 }
 
 class TestStepTuple {
-    +action : BaseTestAction
-    +expected_output : BaseTestOutput
+    +action: BaseTestAction
+    +expected_output: BaseTestOutput
 }
 
 class CyclarityTestCase {
-    +name : str
-    +precondition_items : list[TestStepTuple]
-    +test_items : list[TestStepTuple]
-    +postcondition_items : list[TestStepTuple]
-    +setup() : bool
-    +run() : bool
-    +teardown() : bool
+    +name: str
+    +precondition_items: list[TestStepTuple]
+    +test_items: list[TestStepTuple]
+    +postcondition_items: list[TestStepTuple]
+    +setup() : StepResult
+    +run() : StepResult
+    +teardown() : StepResult
+    -_execute_and_validate(items: list[TestStepTuple]) : StepResult
 }
 
-' UDS-specific classes
-class ReadDidAction {
-    +dids : int | list[int]
-    +uds_utils : UdsUtils
-    +execute() : ReadDidOutputBase
+' UDS Actions and Outputs
+package "UDS Actions" {
+    class ReadDidAction {
+        +dids: int | list[int]
+        +uds_utils: UdsUtils
+        +execute() : ReadDidOutputBase
+    }
+
+    class SessionControlAction {
+        +session_id: int
+        +uds_utils: UdsUtils
+        +execute() : SessionControlOutputBase
+    }
+
+    class ECUResetAction {
+        +reset_type: int
+        +uds_utils: UdsUtils
+        +execute() : ECUResetOutputBase
+    }
+
+    class WriteDidAction {
+        +did: int
+        +value: str
+        +uds_utils: UdsUtils
+        +execute() : WriteDidOutputBase
+    }
+
+    class RoutineControlAction {
+        +routine_id: int
+        +control_type: int
+        +data: Optional[bytes]
+        +uds_utils: UdsUtils
+        +execute() : RoutineControlOutputBase
+    }
 }
 
-class ReadDidOutputBase {
-    +dids_data : list[RdidDataTuple]
-    +error_code : int
-    +is_success(step_output: ReadDidOutputBase, prev_outputs: list[ReadDidOutputBase]) : bool
-}
+package "UDS Outputs" {
+    package "Read DID" {
+        class ReadDidOutputBase {
+            +dids_data: Optional[list[RdidDataTuple]]
+            +error_code: Optional[int]
+            +validate() : StepResult
+        }
 
-class ReadDidOutputExact {
-    +is_success(step_output: ReadDidOutputBase, prev_outputs: list[ReadDidOutputBase]) : bool
-}
+        class ReadDidOutputExact {
+            +validate() : StepResult
+        }
 
-class ReadDidOutputMaskMatch {
-    +mask : int
-    +is_success(step_output: ReadDidOutputBase, prev_outputs: list[ReadDidOutputBase]) : bool
-}
+        class ReadDidOutputError {
+            +validate() : StepResult
+        }
 
-class ReadDidOutputUnique {
-    +is_success(step_output: ReadDidOutputBase, prev_outputs: list[ReadDidOutputBase]) : bool
+        class ReadDidOutputMaskMatch {
+            +mask: int
+            +validate() : StepResult
+        }
+
+        class ReadDidOutputUnique {
+            +validate() : StepResult
+        }
+    }
+
+    package "Session Control" {
+        class SessionControlOutputBase {
+            +error_code: Optional[int]
+            +validate() : StepResult
+        }
+
+        class SessionControlOutputSuccess {
+            +validate() : StepResult
+        }
+
+        class SessionControlOutputError {
+            +validate() : StepResult
+        }
+    }
+
+    package "ECU Reset" {
+        class ECUResetOutputBase {
+            +error_code: Optional[int]
+            +validate() : StepResult
+        }
+
+        class ECUResetOutputSuccess {
+            +validate() : StepResult
+        }
+
+        class ECUResetOutputError {
+            +validate() : StepResult
+        }
+    }
+
+    package "Write DID" {
+        class WriteDidOutputBase {
+            +error_code: Optional[int]
+            +validate() : StepResult
+        }
+
+        class WriteDidOutputSuccess {
+            +validate() : StepResult
+        }
+
+        class WriteDidOutputError {
+            +validate() : StepResult
+        }
+    }
+
+    package "Routine Control" {
+        class RoutineControlOutputBase {
+            +error_code: Optional[int]
+            +response_data: Optional[bytes]
+            +validate() : StepResult
+        }
+
+        class RoutineControlOutputSuccess {
+            +validate() : StepResult
+        }
+
+        class RoutineControlOutputError {
+            +validate() : StepResult
+        }
+    }
 }
 
 ' Inheritance and relationships
-ReadDidAction --|> BaseTestAction
-ReadDidOutputBase --|> BaseTestOutput
-ReadDidOutputExact --|> ReadDidOutputBase
-ReadDidOutputMaskMatch --|> ReadDidOutputBase
-ReadDidOutputUnique --|> ReadDidOutputBase
+BaseTestAction <|-- ReadDidAction
+BaseTestAction <|-- SessionControlAction
+BaseTestAction <|-- ECUResetAction
+BaseTestAction <|-- WriteDidAction
+BaseTestAction <|-- RoutineControlAction
+
+BaseTestOutput <|-- ReadDidOutputBase
+BaseTestOutput <|-- SessionControlOutputBase
+BaseTestOutput <|-- ECUResetOutputBase
+BaseTestOutput <|-- WriteDidOutputBase
+BaseTestOutput <|-- RoutineControlOutputBase
+
+ReadDidOutputBase <|-- ReadDidOutputExact
+ReadDidOutputBase <|-- ReadDidOutputError
+ReadDidOutputBase <|-- ReadDidOutputMaskMatch
+ReadDidOutputBase <|-- ReadDidOutputUnique
+
+SessionControlOutputBase <|-- SessionControlOutputSuccess
+SessionControlOutputBase <|-- SessionControlOutputError
+
+ECUResetOutputBase <|-- ECUResetOutputSuccess
+ECUResetOutputBase <|-- ECUResetOutputError
+
+WriteDidOutputBase <|-- WriteDidOutputSuccess
+WriteDidOutputBase <|-- WriteDidOutputError
+
+RoutineControlOutputBase <|-- RoutineControlOutputSuccess
+RoutineControlOutputBase <|-- RoutineControlOutputError
 
 CyclarityTestCase o-- TestStepTuple
 TestStepTuple o-- BaseTestAction
 TestStepTuple o-- BaseTestOutput
+
+note right of BaseTestAction
+  Abstract base class for all test actions
+end note
+
+note right of BaseTestOutput
+  Abstract base class for all test outputs
+end note
 
 @enduml 
