@@ -17,19 +17,19 @@ class StepResult(BaseModel):
 
 class BaseTestOutput(BaseModel):
     @classmethod  
-    def get_non_abstract_subclasses(cls) -> list[Type]:  
-        subclasses = []  
-  
-        for subclass in cls.__subclasses__():  
-            # Check if the subclass itself has any subclasses  
-            subclasses.extend(subclass.get_non_abstract_subclasses())  
-              
-            # Check if the subclass is non-abstract  
-            if not inspect.isabstract(subclass):  
-                subclasses.append(subclass)  
-  
-        return subclasses  
-    
+    def get_non_abstract_subclasses(cls) -> list[Type]:
+        subclasses = []
+
+        for subclass in cls.__subclasses__():
+            # If subclass has no subclasses and is non-abstract, it's a leaf
+            if not subclass.__subclasses__() and not inspect.isabstract(subclass):
+                subclasses.append(subclass)
+            else:
+                # Otherwise check its subclasses
+                subclasses.extend(subclass.get_non_abstract_subclasses())
+
+        return subclasses
+
     @abstractmethod
     def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> StepResult:
         raise NotImplementedError

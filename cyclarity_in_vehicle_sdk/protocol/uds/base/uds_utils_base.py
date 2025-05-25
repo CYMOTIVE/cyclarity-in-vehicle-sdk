@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import NamedTuple, Optional, Type, TypeAlias, Union
 
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
+from pydantic import BaseModel, Field
 from udsoncan.common.dids import DataIdentifier
 from udsoncan.Response import Response
 from udsoncan.ResponseCode import ResponseCode
@@ -27,10 +28,13 @@ RawUdsResponse: TypeAlias = Response
 UdsResponseCode: TypeAlias = ResponseCode
 UdsDefinedSessions: TypeAlias = DiagnosticSessionControl.Session
 UdsDid: TypeAlias = DataIdentifier
-RdidDataTuple = NamedTuple("RdidDataTuple", did=int, data=str)
 DtcInformationData: TypeAlias = ReadDTCInformation.ResponseData
 
 DEFAULT_UDS_OPERATION_TIMEOUT = 2
+
+class RdidDataTuple(BaseModel):
+    did: int = Field(description="The DID of the data")
+    data: str = Field(description="The data value in Hex string format")
 
 
 class NoResponse(Exception):
