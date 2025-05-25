@@ -118,3 +118,47 @@ class SessionControlAction(BaseTestAction):
             self.uds_utils.teardown()
 
 # ---------------- Session Control Action and Outputs ----------------
+# ---------------- ECU Reset Action and Outputs ----------------
+
+class ECUResetOutputBase(BaseTestOutput):
+    error_code: Optional[int] = None
+    def validate(self, step_output: "ECUResetOutputBase", prev_outputs: list["ECUResetOutputBase"] = []) -> StepResult:
+        return StepResult(success=True)
+
+class ECUResetOutputSuccess(ECUResetOutputBase):
+    output_type: Literal['ECUResetOutputSuccess'] = 'ECUResetOutputSuccess'
+    def validate(self, step_output: ECUResetOutputBase, prev_outputs: list[ECUResetOutputBase] = []) -> StepResult:
+        if step_output.error_code:
+            return StepResult(success=False, fail_reason=f"ECUReset service failed with error code {hex(step_output.error_code)}")
+        return StepResult(success=True)
+
+class ECUResetOutputError(ECUResetOutputBase):
+    output_type: Literal['ECUResetOutputError'] = 'ECUResetOutputError'
+    def validate(self, step_output: ECUResetOutputBase, prev_outputs: list[ECUResetOutputBase] = []) -> StepResult:
+        if not step_output.error_code:
+            return StepResult(success=False, fail_reason="ECUReset service did not return an error code")
+        if self.error_code:
+            if self.error_code == step_output.error_code:
+                return StepResult(success=True)
+            else:
+                return StepResult(success=False, fail_reason=f"Expected {hex(self.error_code)} but got {hex(step_output.error_code)}")
+        else:
+            return StepResult(success=False, fail_reason="ECUResetOutputError was not initalized with an error code")
+
+
+class ECUResetAction(BaseTestAction):
+    action_type: Literal['ECUResetAction'] = 'ECUResetAction'
+    reset_type: int
+    uds_utils: UdsUtils
+    
+    def execute(self) -> ECUResetOutputBase:
+        try:
+            self.uds_utils.setup()
+            self.uds_utils.ecu_reset(reset_type=self.reset_type)
+            return ECUResetOutputBase()
+        except NegativeResponse as ex:
+            return ECUResetOutputBase(error_code=ex.code)
+        finally:
+            self.uds_utils.teardown()
+
+# ---------------- ECU Reset Action and Outputs ----------------

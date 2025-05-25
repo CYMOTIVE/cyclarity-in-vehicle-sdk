@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import NamedTuple, Optional, Type, TypeAlias, Union
+from typing import Optional, Type, TypeAlias, Union
 
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 from pydantic import BaseModel, Field
