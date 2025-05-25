@@ -4,10 +4,24 @@ from cyclarity_in_vehicle_sdk.protocol.uds.impl.uds_utils import UdsUtils
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SESSION_INFO
 from cyclarity_in_vehicle_sdk.security_testing.models import BaseTestAction, BaseTestOutput, StepResult
 
+
+class ErrorCodeValidationMixin:
+    def validate_error_code(self, step_output, expected_code) -> StepResult:
+        if not step_output.error_code:
+            return StepResult(success=False, fail_reason="Service did not return an error code")
+        if expected_code:
+            if expected_code == step_output.error_code:
+                return StepResult(success=True)
+            else:
+                return StepResult(success=False, fail_reason=f"Expected {hex(expected_code)} but got {hex(step_output.error_code)}")
+        else:
+            return StepResult(success=False, fail_reason="Was not initalized with an error code")
+
+
 # ---------------- Read DID Action and Outputs ----------------
 
 class ReadDidOutputBase(BaseTestOutput):
-    dids_data: list[RdidDataTuple] = []
+    dids_data: Optional[list[RdidDataTuple]] = None
     error_code: Optional[int] = None
     
     def validate(self, step_output: "ReadDidOutputBase", prev_outputs: list["ReadDidOutputBase"] = []) -> StepResult:
@@ -15,17 +29,21 @@ class ReadDidOutputBase(BaseTestOutput):
 
 class ReadDidOutputExact(ReadDidOutputBase):
     output_type: Literal['ReadDidOutputExact'] = 'ReadDidOutputExact'
+
     def validate(self, step_output: "ReadDidOutputBase", prev_outputs: list["ReadDidOutputBase"] = []) -> StepResult:
+        if step_output.error_code:
+            return StepResult(success=False, fail_reason=f"Unexpected error code {hex(step_output.error_code)}")
+
         if self.dids_data != step_output.dids_data:
             return StepResult(success=False, fail_reason=f"Expected {self.dids_data} but got {step_output.dids_data}")
-        
-        if self.error_code:
-            if self.error_code == step_output.error_code:
-                return StepResult(success=True)
-            else:
-                return StepResult(success=False, fail_reason=f"Expected {hex(self.error_code)} but got {hex(step_output.error_code)}")
 
         return StepResult(success=True)
+
+class ReadDidOutputError(ErrorCodeValidationMixin, ReadDidOutputBase):
+    output_type: Literal['ReadDidOutputError'] = 'ReadDidOutputError'
+    def validate(self, step_output: "ReadDidOutputBase", prev_outputs: list["ReadDidOutputBase"] = []) -> StepResult:
+        return self.validate_error_code(step_output, self.error_code)
+
 
 class ReadDidOutputMaskMatch(ReadDidOutputBase):
     output_type: Literal['ReadDidOutputMaskMatch'] = 'ReadDidOutputMaskMatch'
@@ -43,7 +61,8 @@ class ReadDidOutputMaskMatch(ReadDidOutputBase):
             if actual_int & self.mask != actual_int:
                 return StepResult(success=False, fail_reason=f"Data {actual.data} does not match mask {hex(self.mask)}")
         return StepResult(success=True)
-    
+
+
 class ReadDidOutputUnique(ReadDidOutputBase):
     output_type: Literal['ReadDidOutputUnique'] = 'ReadDidOutputUnique'
     def validate(self, step_output: "ReadDidOutputBase", prev_outputs: list["ReadDidOutputBase"] = []) -> StepResult:
@@ -90,17 +109,10 @@ class SessionControlOutputSuccess(SessionControlOutputBase):
             return StepResult(success=False, fail_reason=f"SessionControl service failed with error code {hex(self.error_code)}")
         return StepResult(success=True)
     
-class SessionControlOutputError(SessionControlOutputBase):
+class SessionControlOutputError(ErrorCodeValidationMixin, SessionControlOutputBase):
     output_type: Literal['SessionControlOutputError'] = 'SessionControlOutputError'
     def validate(self, step_output: SessionControlOutputBase, prev_outputs: list[SessionControlOutputBase] = []) -> StepResult:
-        if not step_output.error_code:
-            return StepResult(success=False, fail_reason="SessionControl service did not return an error code")
-        if self.error_code:
-            if self.error_code == step_output.error_code:
-                return StepResult(success=True)
-            else:
-                return StepResult(success=False, fail_reason=f"Expected {hex(self.error_code)} but got {hex(step_output.error_code)}")
-        return StepResult(success=True)
+        return self.validate_error_code(step_output, self.error_code)
 
 class SessionControlAction(BaseTestAction):
     action_type: Literal['SessionControlAction'] = 'SessionControlAction'
@@ -132,18 +144,10 @@ class ECUResetOutputSuccess(ECUResetOutputBase):
             return StepResult(success=False, fail_reason=f"ECUReset service failed with error code {hex(step_output.error_code)}")
         return StepResult(success=True)
 
-class ECUResetOutputError(ECUResetOutputBase):
+class ECUResetOutputError(ErrorCodeValidationMixin, ECUResetOutputBase):
     output_type: Literal['ECUResetOutputError'] = 'ECUResetOutputError'
     def validate(self, step_output: ECUResetOutputBase, prev_outputs: list[ECUResetOutputBase] = []) -> StepResult:
-        if not step_output.error_code:
-            return StepResult(success=False, fail_reason="ECUReset service did not return an error code")
-        if self.error_code:
-            if self.error_code == step_output.error_code:
-                return StepResult(success=True)
-            else:
-                return StepResult(success=False, fail_reason=f"Expected {hex(self.error_code)} but got {hex(step_output.error_code)}")
-        else:
-            return StepResult(success=False, fail_reason="ECUResetOutputError was not initalized with an error code")
+        return self.validate_error_code(step_output, self.error_code)
 
 
 class ECUResetAction(BaseTestAction):
@@ -162,3 +166,39 @@ class ECUResetAction(BaseTestAction):
             self.uds_utils.teardown()
 
 # ---------------- ECU Reset Action and Outputs ----------------
+# ---------------- Write DID Action and Outputs ----------------
+
+class WriteDidOutputBase(BaseTestOutput):
+    error_code: Optional[int] = None
+    def validate(self, step_output: "WriteDidOutputBase", prev_outputs: list["WriteDidOutputBase"] = []) -> StepResult:
+        return StepResult(success=True)
+    
+class WriteDidOutputSuccess(WriteDidOutputBase):
+    output_type: Literal['WriteDidOutputSuccess'] = 'WriteDidOutputSuccess'
+    def validate(self, step_output: WriteDidOutputBase, prev_outputs: list[WriteDidOutputBase] = []) -> StepResult:
+        if step_output.error_code:
+            return StepResult(success=False, fail_reason=f"WriteDid service failed with error code {hex(step_output.error_code)}")
+        return StepResult(success=True)
+    
+class WriteDidOutputError(ErrorCodeValidationMixin, WriteDidOutputBase):
+    output_type: Literal['WriteDidOutputError'] = 'WriteDidOutputError'
+    def validate(self, step_output: WriteDidOutputBase, prev_outputs: list[WriteDidOutputBase] = []) -> StepResult:
+        return self.validate_error_code(step_output, self.error_code)
+
+class WriteDidAction(BaseTestAction):
+    action_type: Literal['WriteDidAction'] = 'WriteDidAction'
+    did: int
+    value: str
+    uds_utils: UdsUtils
+    
+    def execute(self) -> WriteDidOutputBase:
+        try:
+            self.uds_utils.setup()
+            self.uds_utils.write_did(did=self.did, value=self.value)
+            return WriteDidOutputBase()
+        except NegativeResponse as ex:
+            return WriteDidOutputBase(error_code=ex.code)
+        finally:
+            self.uds_utils.teardown()
+
+# ---------------- Write DID Action and Outputs ----------------
