@@ -202,3 +202,42 @@ class WriteDidAction(BaseTestAction):
             self.uds_utils.teardown()
 
 # ---------------- Write DID Action and Outputs ----------------
+# ---------------- Routine Control Action and Outputs ----------------
+
+class RoutineControlOutputBase(BaseTestOutput):
+    error_code: Optional[int] = None
+    response_data: Optional[bytes] = None
+    def validate(self, step_output: "RoutineControlOutputBase", prev_outputs: list["RoutineControlOutputBase"] = []) -> StepResult:
+        return StepResult(success=True)
+    
+class RoutineControlOutputSuccess(RoutineControlOutputBase):
+    output_type: Literal['RoutineControlOutputSuccess'] = 'RoutineControlOutputSuccess'
+    def validate(self, step_output: RoutineControlOutputBase, prev_outputs: list[RoutineControlOutputBase] = []) -> StepResult:
+        if step_output.error_code:
+            return StepResult(success=False, fail_reason=f"RoutineControl service failed with error code {hex(step_output.error_code)}")
+        
+        return StepResult(success=True)
+    
+class RoutineControlOutputError(ErrorCodeValidationMixin, RoutineControlOutputBase):
+    output_type: Literal['RoutineControlOutputError'] = 'RoutineControlOutputError'
+    def validate(self, step_output: RoutineControlOutputBase, prev_outputs: list[RoutineControlOutputBase] = []) -> StepResult:
+        return self.validate_error_code(step_output, self.error_code)
+
+class RoutineControlAction(BaseTestAction):
+    action_type: Literal['RoutineControlAction'] = 'RoutineControlAction'
+    routine_id: int
+    control_type: int
+    data: Optional[bytes] = None
+    uds_utils: UdsUtils
+    
+    def execute(self) -> RoutineControlOutputBase:
+        try:
+            self.uds_utils.setup()
+            resp = self.uds_utils.routine_control(routine_id=self.routine_id, control_type=self.control_type, data=self.data)
+            return RoutineControlOutputBase(response_data=resp.data)
+        except NegativeResponse as ex:
+            return RoutineControlOutputBase(error_code=ex.code)
+        finally:
+            self.uds_utils.teardown()
+
+# ---------------- Routine Control Action and Outputs ----------------
