@@ -31,10 +31,14 @@ class CyclarityTestCase(BaseModel):
     def _execute_and_validate(self, items: list[TestStepTuple]) -> StepResult:
         result = StepResult(success=True)
         prev_outputs = []
-        for step in items:
-            output = step.action.execute()
-            result = step.expected_output.validate(output, prev_outputs)
-            if not result:
-                break
-            prev_outputs.append(output)
+        for i, step in enumerate(items, start=1):
+            try:
+                output = step.action.execute()
+                result: StepResult = step.expected_output.validate(output, prev_outputs)
+                if not result:
+                    result.fail_reason += f"\nStep {i}/{len(items)}"
+                    break
+                prev_outputs.append(output)
+            except Exception as ex:
+                result = StepResult(success=False, fail_reason=f"Step {i}/{len(items)}, unexpected exception: {ex}")
         return result
