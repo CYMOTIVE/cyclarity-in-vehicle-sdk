@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "cyclarity-testcase-standalone"
+version = "0.1.0"
+description = ""
+authors = ["Gal Rahamim <gal.rahamim@cymotive.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+cyclarity-in-vehicle-sdk = "1.1.0a21529"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
