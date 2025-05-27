@@ -3,6 +3,7 @@ from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import NegativeRe
 from cyclarity_in_vehicle_sdk.protocol.uds.impl.uds_utils import UdsUtils
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SESSION_INFO
 from cyclarity_in_vehicle_sdk.security_testing.models import BaseTestAction, BaseTestOutput, StepResult
+from cyclarity_in_vehicle_sdk.utils.custom_types.hexbytes import HexBytes
 
 
 class ErrorCodeValidationMixin:
@@ -47,7 +48,7 @@ class ReadDidOutputError(ErrorCodeValidationMixin, ReadDidOutputBase):
 
 class ReadDidOutputMaskMatch(ReadDidOutputBase):
     output_type: Literal['ReadDidOutputMaskMatch'] = 'ReadDidOutputMaskMatch'
-    mask: int
+    mask: HexBytes
     
     def validate(self, step_output: "ReadDidOutputBase", prev_outputs: list["ReadDidOutputBase"] = []) -> StepResult:
         if step_output.error_code:
@@ -58,7 +59,7 @@ class ReadDidOutputMaskMatch(ReadDidOutputBase):
         
         for actual in step_output.dids_data:
             actual_int = int(actual.data, 16)
-            if actual_int & self.mask != actual_int:
+            if actual_int & int(self.mask, 16) != actual_int:
                 return StepResult(success=False, fail_reason=f"Data {actual.data} does not match mask {hex(self.mask)}")
         return StepResult(success=True)
 
