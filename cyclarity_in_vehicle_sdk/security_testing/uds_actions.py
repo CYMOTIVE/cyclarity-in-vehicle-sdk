@@ -1,4 +1,5 @@
 from typing import Literal, Optional, Union
+from cyclarity_in_vehicle_sdk.communication.can.impl.can_communicator_socketcan import CanCommunicatorSocketCan
 from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import NegativeResponse, RdidDataTuple
 from cyclarity_in_vehicle_sdk.protocol.uds.impl.uds_utils import UdsUtils
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import SESSION_INFO
@@ -58,8 +59,8 @@ class ReadDidOutputMaskMatch(ReadDidOutputBase):
             return StepResult(success=False, fail_reason="No data returned")
         
         for actual in step_output.dids_data:
-            actual_int = int(actual.data, 16)
-            if actual_int & int(self.mask, 16) != actual_int:
+            actual_int = int(actual.data, 16)            
+            if actual_int & int.from_bytes(self.mask, 'big') != actual_int:
                 return StepResult(success=False, fail_reason=f"Data {actual.data} does not match mask {hex(self.mask)}")
         return StepResult(success=True)
 
@@ -242,3 +243,21 @@ class RoutineControlAction(BaseTestAction):
             self.uds_utils.teardown()
 
 # ---------------- Routine Control Action and Outputs ----------------
+
+
+class CanSnifferOutput(BaseTestOutput):
+    can_ids: Union[int, list[int]]
+    def validate(self, step_output: "CanSnifferOutput", prev_outputs: list["CanSnifferOutput"] = ...) -> StepResult:
+        if self.can_ids == step_output.can_ids:
+            return StepResult(success=True)
+        else:
+            return StepResult(success=False, fail_reason=f"Expected {self.can_ids} but got {step_output.can_ids}")
+
+
+class CanSniffer(BaseTestAction):
+    can_communicator: CanCommunicatorSocketCan
+    sniff_time: float
+    def execute(self) -> CanSnifferOutput:
+        with self.can_communicator:
+            can_msgs = self.can_communicator.sniff(self.sniff_time)
+            return CanSnifferOutput(can_ids=[can_msg.arbiarbitration_id for can_msg in can_msgs])
