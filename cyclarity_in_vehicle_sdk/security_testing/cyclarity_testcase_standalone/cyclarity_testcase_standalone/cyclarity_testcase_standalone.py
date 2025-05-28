@@ -54,6 +54,14 @@ class CyclarityTestCaseStandalone(Runnable[CyclarityTestCaseStandaloneResult]):
                 purpose=self.purpose,
                 fail_reason=teardown_result.fail_reason
             ))
+
+        self.logger.info(f"Test case \"{self.name}\" passed")
+        self.platform_api.send_finding(TestResult(
+            description=f"Test Case: \"{self.name}\"",
+            topic=self.topic,
+            type=TestBasicResultType.PASSED,
+            purpose=self.purpose
+        ))
         return CyclarityTestCaseStandaloneResult()
 
     def teardown(self, exception_type=None, exception_value=None, traceback=None):

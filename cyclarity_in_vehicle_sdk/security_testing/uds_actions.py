@@ -108,7 +108,7 @@ class SessionControlOutputSuccess(SessionControlOutputBase):
     output_type: Literal['SessionControlOutputSuccess'] = 'SessionControlOutputSuccess'
     def validate(self, step_output: SessionControlOutputBase, prev_outputs: list[SessionControlOutputBase] = []) -> StepResult:
         if step_output.error_code:
-            return StepResult(success=False, fail_reason=f"SessionControl service failed with error code {hex(self.error_code)}")
+            return StepResult(success=False, fail_reason=f"SessionControl service failed with error code {hex(step_output.error_code)}")
         return StepResult(success=True)
     
 class SessionControlOutputError(ErrorCodeValidationMixin, SessionControlOutputBase):
@@ -260,4 +260,4 @@ class CanSniffer(BaseTestAction):
     def execute(self) -> CanSnifferOutput:
         with self.can_communicator:
             can_msgs = self.can_communicator.sniff(self.sniff_time)
-            return CanSnifferOutput(can_ids=[can_msg.arbiarbitration_id for can_msg in can_msgs])
+            return CanSnifferOutput(can_ids=[can_msg.arbitration_id for can_msg in can_msgs])

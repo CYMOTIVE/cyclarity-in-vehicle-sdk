@@ -159,7 +159,7 @@ class TestCanSniffer(unittest.TestCase):
 
     def test_can_sniffer_success(self):
         mock_can_msg = MagicMock()
-        mock_can_msg.arbiarbitration_id = 0x123
+        mock_can_msg.arbitration_id = 0x123
         self.can_communicator.sniff.return_value = [mock_can_msg]
         action = CanSniffer(can_communicator=self.can_communicator, sniff_time=1.0)
         actual_output = action.execute()
