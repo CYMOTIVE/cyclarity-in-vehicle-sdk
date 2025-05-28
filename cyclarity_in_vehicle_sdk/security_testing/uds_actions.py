@@ -26,13 +26,13 @@ class ReadDidOutputBase(BaseTestOutput):
     dids_data: Optional[list[RdidDataTuple]] = None
     error_code: Optional[int] = None
     
-    def validate(self, step_output: "ReadDidOutputBase", prev_outputs: list["ReadDidOutputBase"] = []) -> StepResult:
+    def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> StepResult:
         return StepResult(success=True)
 
 class ReadDidOutputExact(ReadDidOutputBase):
     output_type: Literal['ReadDidOutputExact'] = 'ReadDidOutputExact'
 
-    def validate(self, step_output: "ReadDidOutputBase", prev_outputs: list["ReadDidOutputBase"] = []) -> StepResult:
+    def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> StepResult:
         if step_output.error_code:
             return StepResult(success=False, fail_reason=f"Unexpected error code {hex(step_output.error_code)}")
 
@@ -43,7 +43,7 @@ class ReadDidOutputExact(ReadDidOutputBase):
 
 class ReadDidOutputError(ErrorCodeValidationMixin, ReadDidOutputBase):
     output_type: Literal['ReadDidOutputError'] = 'ReadDidOutputError'
-    def validate(self, step_output: "ReadDidOutputBase", prev_outputs: list["ReadDidOutputBase"] = []) -> StepResult:
+    def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> StepResult:
         return self.validate_error_code(step_output, self.error_code)
 
 
@@ -51,7 +51,7 @@ class ReadDidOutputMaskMatch(ReadDidOutputBase):
     output_type: Literal['ReadDidOutputMaskMatch'] = 'ReadDidOutputMaskMatch'
     mask: HexBytes
     
-    def validate(self, step_output: "ReadDidOutputBase", prev_outputs: list["ReadDidOutputBase"] = []) -> StepResult:
+    def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> StepResult:
         if step_output.error_code:
             return StepResult(success=False, fail_reason=f"Unexpected error code {hex(step_output.error_code)}")
         
@@ -67,7 +67,7 @@ class ReadDidOutputMaskMatch(ReadDidOutputBase):
 
 class ReadDidOutputUnique(ReadDidOutputBase):
     output_type: Literal['ReadDidOutputUnique'] = 'ReadDidOutputUnique'
-    def validate(self, step_output: "ReadDidOutputBase", prev_outputs: list["ReadDidOutputBase"] = []) -> StepResult:
+    def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> StepResult:
         if step_output.error_code:
             return StepResult(success=False, fail_reason=f"Unexpected error code {hex(step_output.error_code)}")
         
@@ -86,7 +86,7 @@ class ReadDidAction(BaseTestAction):
     dids: Union[int, list[int]]
     uds_utils: UdsUtils
     
-    def execute(self) -> ReadDidOutputBase:
+    def execute(self) -> BaseTestOutput:
         try:
             self.uds_utils.setup()
             res = self.uds_utils.read_did(didlist=self.dids)
@@ -101,19 +101,19 @@ class ReadDidAction(BaseTestAction):
 
 class SessionControlOutputBase(BaseTestOutput):
     error_code: Optional[int] = None
-    def validate(self, step_output: "SessionControlOutputBase", prev_outputs: list["SessionControlOutputBase"] = []) -> StepResult:
+    def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> StepResult:
         return StepResult(success=True)
     
 class SessionControlOutputSuccess(SessionControlOutputBase):
     output_type: Literal['SessionControlOutputSuccess'] = 'SessionControlOutputSuccess'
-    def validate(self, step_output: SessionControlOutputBase, prev_outputs: list[SessionControlOutputBase] = []) -> StepResult:
+    def validate(self, step_output: BaseTestOutput, prev_outputs: list[BaseTestOutput] = []) -> StepResult:
         if step_output.error_code:
             return StepResult(success=False, fail_reason=f"SessionControl service failed with error code {hex(step_output.error_code)}")
         return StepResult(success=True)
     
 class SessionControlOutputError(ErrorCodeValidationMixin, SessionControlOutputBase):
     output_type: Literal['SessionControlOutputError'] = 'SessionControlOutputError'
-    def validate(self, step_output: SessionControlOutputBase, prev_outputs: list[SessionControlOutputBase] = []) -> StepResult:
+    def validate(self, step_output: BaseTestOutput, prev_outputs: list[BaseTestOutput] = []) -> StepResult:
         return self.validate_error_code(step_output, self.error_code)
 
 class SessionControlAction(BaseTestAction):
@@ -121,7 +121,7 @@ class SessionControlAction(BaseTestAction):
     session_id: int
     uds_utils: UdsUtils
     
-    def execute(self) -> SessionControlOutputBase:
+    def execute(self) -> BaseTestOutput:
         try:
             self.uds_utils.setup()
             self.uds_utils.session(session=self.session_id)
@@ -136,19 +136,19 @@ class SessionControlAction(BaseTestAction):
 
 class ECUResetOutputBase(BaseTestOutput):
     error_code: Optional[int] = None
-    def validate(self, step_output: "ECUResetOutputBase", prev_outputs: list["ECUResetOutputBase"] = []) -> StepResult:
+    def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> StepResult:
         return StepResult(success=True)
 
 class ECUResetOutputSuccess(ECUResetOutputBase):
     output_type: Literal['ECUResetOutputSuccess'] = 'ECUResetOutputSuccess'
-    def validate(self, step_output: ECUResetOutputBase, prev_outputs: list[ECUResetOutputBase] = []) -> StepResult:
+    def validate(self, step_output: BaseTestOutput, prev_outputs: list[BaseTestOutput] = []) -> StepResult:
         if step_output.error_code:
             return StepResult(success=False, fail_reason=f"ECUReset service failed with error code {hex(step_output.error_code)}")
         return StepResult(success=True)
 
 class ECUResetOutputError(ErrorCodeValidationMixin, ECUResetOutputBase):
     output_type: Literal['ECUResetOutputError'] = 'ECUResetOutputError'
-    def validate(self, step_output: ECUResetOutputBase, prev_outputs: list[ECUResetOutputBase] = []) -> StepResult:
+    def validate(self, step_output: BaseTestOutput, prev_outputs: list[BaseTestOutput] = []) -> StepResult:
         return self.validate_error_code(step_output, self.error_code)
 
 
@@ -157,7 +157,7 @@ class ECUResetAction(BaseTestAction):
     reset_type: int
     uds_utils: UdsUtils
     
-    def execute(self) -> ECUResetOutputBase:
+    def execute(self) -> BaseTestOutput:
         try:
             self.uds_utils.setup()
             self.uds_utils.ecu_reset(reset_type=self.reset_type)
@@ -172,19 +172,19 @@ class ECUResetAction(BaseTestAction):
 
 class WriteDidOutputBase(BaseTestOutput):
     error_code: Optional[int] = None
-    def validate(self, step_output: "WriteDidOutputBase", prev_outputs: list["WriteDidOutputBase"] = []) -> StepResult:
+    def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> StepResult:
         return StepResult(success=True)
     
 class WriteDidOutputSuccess(WriteDidOutputBase):
     output_type: Literal['WriteDidOutputSuccess'] = 'WriteDidOutputSuccess'
-    def validate(self, step_output: WriteDidOutputBase, prev_outputs: list[WriteDidOutputBase] = []) -> StepResult:
+    def validate(self, step_output: BaseTestOutput, prev_outputs: list[BaseTestOutput] = []) -> StepResult:
         if step_output.error_code:
             return StepResult(success=False, fail_reason=f"WriteDid service failed with error code {hex(step_output.error_code)}")
         return StepResult(success=True)
     
 class WriteDidOutputError(ErrorCodeValidationMixin, WriteDidOutputBase):
     output_type: Literal['WriteDidOutputError'] = 'WriteDidOutputError'
-    def validate(self, step_output: WriteDidOutputBase, prev_outputs: list[WriteDidOutputBase] = []) -> StepResult:
+    def validate(self, step_output: BaseTestOutput, prev_outputs: list[BaseTestOutput] = []) -> StepResult:
         return self.validate_error_code(step_output, self.error_code)
 
 class WriteDidAction(BaseTestAction):
@@ -193,7 +193,7 @@ class WriteDidAction(BaseTestAction):
     value: str
     uds_utils: UdsUtils
     
-    def execute(self) -> WriteDidOutputBase:
+    def execute(self) -> BaseTestOutput:
         try:
             self.uds_utils.setup()
             self.uds_utils.write_did(did=self.did, value=self.value)
@@ -209,12 +209,12 @@ class WriteDidAction(BaseTestAction):
 class RoutineControlOutputBase(BaseTestOutput):
     error_code: Optional[int] = None
     response_data: Optional[bytes] = None
-    def validate(self, step_output: "RoutineControlOutputBase", prev_outputs: list["RoutineControlOutputBase"] = []) -> StepResult:
+    def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> StepResult:
         return StepResult(success=True)
     
 class RoutineControlOutputSuccess(RoutineControlOutputBase):
     output_type: Literal['RoutineControlOutputSuccess'] = 'RoutineControlOutputSuccess'
-    def validate(self, step_output: RoutineControlOutputBase, prev_outputs: list[RoutineControlOutputBase] = []) -> StepResult:
+    def validate(self, step_output: BaseTestOutput, prev_outputs: list[BaseTestOutput] = []) -> StepResult:
         if step_output.error_code:
             return StepResult(success=False, fail_reason=f"RoutineControl service failed with error code {hex(step_output.error_code)}")
         
@@ -222,7 +222,7 @@ class RoutineControlOutputSuccess(RoutineControlOutputBase):
     
 class RoutineControlOutputError(ErrorCodeValidationMixin, RoutineControlOutputBase):
     output_type: Literal['RoutineControlOutputError'] = 'RoutineControlOutputError'
-    def validate(self, step_output: RoutineControlOutputBase, prev_outputs: list[RoutineControlOutputBase] = []) -> StepResult:
+    def validate(self, step_output: BaseTestOutput, prev_outputs: list[BaseTestOutput] = []) -> StepResult:
         return self.validate_error_code(step_output, self.error_code)
 
 class RoutineControlAction(BaseTestAction):
@@ -232,7 +232,7 @@ class RoutineControlAction(BaseTestAction):
     data: Optional[bytes] = None
     uds_utils: UdsUtils
     
-    def execute(self) -> RoutineControlOutputBase:
+    def execute(self) -> BaseTestOutput:
         try:
             self.uds_utils.setup()
             resp = self.uds_utils.routine_control(routine_id=self.routine_id, control_type=self.control_type, data=self.data)
@@ -247,7 +247,7 @@ class RoutineControlAction(BaseTestAction):
 
 class CanSnifferOutput(BaseTestOutput):
     can_ids: Union[int, list[int]]
-    def validate(self, step_output: "CanSnifferOutput", prev_outputs: list["CanSnifferOutput"] = ...) -> StepResult:
+    def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = ...) -> StepResult:
         if self.can_ids == step_output.can_ids:
             return StepResult(success=True)
         else:
@@ -257,7 +257,7 @@ class CanSnifferOutput(BaseTestOutput):
 class CanSniffer(BaseTestAction):
     can_communicator: CanCommunicatorSocketCan
     sniff_time: float
-    def execute(self) -> CanSnifferOutput:
+    def execute(self) -> BaseTestOutput:
         with self.can_communicator:
             can_msgs = self.can_communicator.sniff(self.sniff_time)
             return CanSnifferOutput(can_ids=[can_msg.arbitration_id for can_msg in can_msgs])
