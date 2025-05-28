@@ -249,10 +249,12 @@ class CanSnifferOutput(BaseTestOutput):
     output_type: Literal['CanSnifferOutput'] = 'CanSnifferOutput'
     can_ids: Union[int, list[int]]
     def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> StepResult:
-        if self.can_ids == step_output.can_ids:
-            return StepResult(success=True)
-        else:
-            return StepResult(success=False, fail_reason=f"Expected {self.can_ids} but got {step_output.can_ids}")
+        if isinstance(self.can_ids, int):
+            self.can_ids = [self.can_ids]
+        for can_id in self.can_ids:
+            if can_id not in step_output.can_ids:
+                return StepResult(success=False, fail_reason=f"The Expected CAN ID: {hex(can_id)} was not sniffed")
+        return StepResult(success=True)
 
 
 class CanSniffer(BaseTestAction):
