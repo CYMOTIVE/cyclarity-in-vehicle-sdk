@@ -246,8 +246,9 @@ class RoutineControlAction(BaseTestAction):
 
 
 class CanSnifferOutput(BaseTestOutput):
+    output_type: Literal['CanSnifferOutput'] = 'CanSnifferOutput'
     can_ids: Union[int, list[int]]
-    def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = ...) -> StepResult:
+    def validate(self, step_output: "BaseTestOutput", prev_outputs: list["BaseTestOutput"] = []) -> StepResult:
         if self.can_ids == step_output.can_ids:
             return StepResult(success=True)
         else:
@@ -255,6 +256,7 @@ class CanSnifferOutput(BaseTestOutput):
 
 
 class CanSniffer(BaseTestAction):
+    action_type: Literal['CanSniffer'] = 'CanSniffer'
     can_communicator: CanCommunicatorSocketCan
     sniff_time: float
     def execute(self) -> BaseTestOutput:
