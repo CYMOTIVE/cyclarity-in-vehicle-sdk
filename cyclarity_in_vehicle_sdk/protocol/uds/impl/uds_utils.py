@@ -1,46 +1,55 @@
 import time
 from typing import Optional, Type, Union
-from cyclarity_in_vehicle_sdk.utils.crypto.crypto_utils import CryptoUtils
+
 from pydantic import Field
 from udsoncan.BaseService import BaseService
+from udsoncan.common.DidCodec import DidCodec
 from udsoncan.Request import Request
 from udsoncan.services import (
+    Authentication,
+    ClearDiagnosticInformation,
+    DiagnosticSessionControl,
     ECUReset,
     ReadDataByIdentifier,
+    ReadDTCInformation,
     RoutineControl,
     SecurityAccess,
     TesterPresent,
     WriteDataByIdentifier,
-    DiagnosticSessionControl,
-    Authentication,
-    )
-from udsoncan.common.DidCodec import DidCodec
+)
+
+from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import (
+    DoipCommunicator,
+)
+from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import (
+    IsoTpCommunicator,
+)
 from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (
+    DEFAULT_UDS_OPERATION_TIMEOUT,
     AuthenticationReturnParameter,
-    UdsSid, 
-    NegativeResponse, 
-    NoResponse, 
-    RoutingControlResponseData, 
-    SessionControlResultData, 
-    UdsUtilsBase, 
-    InvalidResponse, 
-    RawUdsResponse, 
-    UdsResponseCode,
+    DtcInformationData,
+    InvalidResponse,
+    NegativeResponse,
+    NoResponse,
+    RawUdsResponse,
     RdidDataTuple,
-    )
-from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import IsoTpCommunicator
-from cyclarity_in_vehicle_sdk.communication.doip.doip_communicator import DoipCommunicator
+    RoutingControlResponseData,
+    SessionControlResultData,
+    UdsResponseCode,
+    UdsSid,
+    UdsUtilsBase,
+)
 from cyclarity_in_vehicle_sdk.protocol.uds.models.uds_models import (
     SECURITY_ALGORITHM_BASE,
     SESSION_ACCESS,
     AuthenticationAction,
     AuthenticationParamsBase,
+    TransmitCertificateParams,
     UdsStandardVersion,
     UnidirectionalAPCEParams,
-    TransmitCertificateParams
-    )
+)
+from cyclarity_in_vehicle_sdk.utils.crypto.crypto_utils import CryptoUtils
 
-DEFAULT_UDS_OPERATION_TIMEOUT = 2
 RAW_SERVICES_WITH_SUB_FUNC = {value: type(name, (BaseService,), {'_sid':value, '_use_subfunction':True}) for name, value in UdsSid.__members__.items()}  
 RAW_SERVICES_WITHOUT_SUB_FUNC = {value: type(name, (BaseService,), {'_sid':value, '_use_subfunction':False}) for name, value in UdsSid.__members__.items()}  
 
@@ -269,6 +278,75 @@ class UdsUtils(UdsUtilsBase):
         
         return interpreted_response.service_data.security_level_echo == security_algorithm.key_subfunction
     
+    def read_dtc_information(self, 
+                           subfunction: int,
+                           status_mask: Optional[int] = None,
+                           severity_mask: Optional[int] = None,
+                           dtc: Optional[int] = None,
+                           snapshot_record_number: Optional[int] = None,
+                           extended_data_record_number: Optional[int] = None,
+                           memory_selection: Optional[int] = None,
+                           timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT,
+                           standard_version: UdsStandardVersion = UdsStandardVersion.ISO_14229_2020) -> DtcInformationData:
+        """Read DTC Information service (0x19)
+
+        Args:
+            subfunction (int): The service subfunction. Values are defined in ReadDTCInformation.Subfunction
+            status_mask (Optional[int], optional): A DTC status mask used to filter DTC. Defaults to None.
+            severity_mask (Optional[int], optional): A severity mask used to filter DTC. Defaults to None.
+            dtc (Optional[int], optional): A DTC mask used to filter DTC. Defaults to None.
+            snapshot_record_number (Optional[int], optional): Snapshot record number. Defaults to None.
+            extended_data_record_number (Optional[int], optional): Extended data record number. Defaults to None.
+            memory_selection (Optional[int], optional): Memory selection for user defined memory DTC. Defaults to None.
+            timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
+            standard_version (UdsStandardVersion, optional): the version of the UDS standard we are interacting with. Defaults to ISO_14229_2020.
+
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises NoResponse: If no response was received
+        :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises NegativeResponse: with error code and code name, If negative response was received
+
+        Returns:
+            DtcInformationData: The DTC information response data containing the requested DTC information
+        """
+        request = ReadDTCInformation.make_request(
+            subfunction=subfunction,
+            status_mask=status_mask,
+            severity_mask=severity_mask,
+            dtc=dtc,
+            snapshot_record_number=snapshot_record_number,
+            extended_data_record_number=extended_data_record_number,
+            memory_selection=memory_selection,
+            standard_version=standard_version
+        )
+        response = self._send_and_read_response(request=request, timeout=timeout)
+        interpreted_response = ReadDTCInformation.interpret_response(response=response, subfunction=subfunction, standard_version=standard_version)
+        return interpreted_response.service_data
+    
+    def clear_diagnostic_information(self, group: int = 0xFFFFFF, memory_selection: Optional[int] = None, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, standard_version: UdsStandardVersion = UdsStandardVersion.ISO_14229_2020) -> bool:
+        """Clear Diagnostic Information service (0x14)
+
+        Args:
+            group (int, optional): DTC mask ranging from 0 to 0xFFFFFF. 0xFFFFFF means all DTCs. Defaults to 0xFFFFFF.
+            memory_selection (Optional[int], optional): Number identifying the respective DTC memory. Only supported in ISO-14229-1:2020 and above. Defaults to None.
+            timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
+            standard_version (UdsStandardVersion, optional): the version of the UDS standard we are interacting with. Defaults to ISO_14229_2020.
+
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises NoResponse: If no response was received
+        :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises NegativeResponse: with error code and code name, If negative response was received
+
+        Returns:
+            bool: True if the clear operation was successful, False otherwise
+        """
+        request = ClearDiagnosticInformation.make_request(group=group, memory_selection=memory_selection, standard_version=standard_version)
+        response = self._send_and_read_response(request=request, timeout=timeout)
+        ClearDiagnosticInformation.interpret_response(response=response)
+        return True  # If we get here, the operation was successful since no negative response was raised
+
     def raw_uds_service(self, sid: UdsSid, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, sub_function: Optional[int] = None, data: Optional[bytes] = None) -> RawUdsResponse:
         """sends raw UDS service request and reads response
 
