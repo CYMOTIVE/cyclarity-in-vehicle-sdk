@@ -1,5 +1,18 @@
 # Changelog  
+
+## [1.1.1] – 12/06/2025
   
+### Added  
+- **New Functionalities to UdsUtils**
+  - UDS Read DTC Information service (0x19) Service
+  - Clear Diagnostic Information service (0x14)
+  
+### Changed  
+  
+- Update dependency of py-pcapplusplus to version 1.0.5 - now supports macos platform
+
+---  
+
 ## [1.1.0] – 11/05/2025
   
 ### Added  

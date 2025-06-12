@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath('../cyclarity_in_vehicle_sdk'))
 project = 'cyclarity-in-vehicle-sdk'
 copyright = '2025, Cymotive'
 author = 'Cymotive'
-release = '1.1.0'
+release = '1.1.1'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
