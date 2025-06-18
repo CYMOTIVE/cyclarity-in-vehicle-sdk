@@ -1,5 +1,6 @@
 import socket
 import asyncio
+import threading
 from typing import Callable, Sequence
 import time
 
@@ -271,21 +272,26 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
         Returns:
             list[Packet]: All packets received that satisfy the "is_answer" callback.
         """ 
-        found_packet: list[Packet] = []
-        
-        async def find_packet(in_socket: RawSocket, timeout: float):
-            nonlocal found_packet
-            nonlocal is_answer
-            sniffed_packets = in_socket.sniff(timeout=timeout)
-            for sniffed_packet in sniffed_packets:
-                if is_answer(sniffed_packet):
-                    found_packet.append(sniffed_packet)
-        
-        loop = asyncio.new_event_loop()
-        find_packet_task = loop.create_task(find_packet(self._in_socket, timeout))
+        found_packets: list[Packet] = []
+
+        sniff_result: list[Packet] = []
+
+        def sniff_thread():
+            sniffed = self._in_socket.sniff(timeout=timeout)
+            sniff_result.extend(sniffed)
+
+        t = threading.Thread(target=sniff_thread, daemon=True)
+        t.start()
         self.send(packet)
-        loop.run_until_complete(find_packet_task)
-        return found_packet
+
+        # Only wait up to [timeout] for sniff thread to finish  
+        t.join(timeout=timeout)
+
+        for pkt in sniff_result:
+            if is_answer(pkt):
+                found_packets.append(pkt)
+
+        return found_packets  
 
     def receive(self, timeout: float = 2) -> Packet | None:
         """read a single packet from the socket
