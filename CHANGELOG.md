@@ -1,5 +1,10 @@
 # Changelog  
 
+## [1.1.2] – 15/06/2025
+
+### Fixed  
+- py-pcapplusplus dependency to ^1.0.6
+
 ## [1.1.1] – 12/06/2025
   
 ### Added  
