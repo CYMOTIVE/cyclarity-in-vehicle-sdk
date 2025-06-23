@@ -2,6 +2,7 @@ import time
 from typing import Optional, Type, Union
 
 from pydantic import Field
+from udsoncan import MemoryLocation, DataFormatIdentifier
 from udsoncan.BaseService import BaseService
 from udsoncan.common.DidCodec import DidCodec
 from udsoncan.Request import Request
@@ -13,6 +14,9 @@ from udsoncan.services import (
     ReadDataByIdentifier,
     ReadDTCInformation,
     RoutineControl,
+    RequestDownload,
+    TransferData,
+    RequestTransferExit,
     SecurityAccess,
     TesterPresent,
     WriteDataByIdentifier,
@@ -277,6 +281,77 @@ class UdsUtils(UdsUtilsBase):
                                                                                    mode=SecurityAccess.Mode.SendKey)
         
         return interpreted_response.service_data.security_level_echo == security_algorithm.key_subfunction
+    
+    def request_download(self, addr: int, sz: int, enc_comp=0, addr_len=4, sz_len=4):
+        """Send a Request Download UDS message
+
+        Args:
+            addr (int): Block ID or address of the relevant memory region to update.
+            sz (int): Size of the memory region to update.
+            enc_comp (int, optional): Encription and Compression info. Defaults to 0 (no encription and no compression).
+            addr_len (int, optional): Length in bytes of the Address field. Defaults to 4.
+            sz_len (int, optional): Length in bytes of the Size field. Defaults to 4.
+
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises NoResponse: If no response was received
+        :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises NegativeResponse: with error code and code name, If negative response was received
+        
+        Returns:
+            int: Maximum block length for following transfer data.
+        """
+        memory_location = MemoryLocation(
+            address=addr, 
+            memorysize=sz,
+            address_format=8*2**addr_len,
+            memorysize_format=2**sz_len,
+        )
+        
+        dfi = DataFormatIdentifier.from_byte(enc_comp)
+        
+        request: Request = RequestDownload.make_request(memory_location, dfi)
+        response = self._send_and_read_response(request=request)
+        interpreted_response = RequestDownload.interpret_response(response=response)
+        return interpreted_response.service_data.max_length
+
+    def transfer_data(self, seq: int, data: bytes):
+        """Transfer a block of data as part of Upload or Download session
+
+        Args:
+            seq (int): Sequence nuber of the current TransferData.
+            data (bytes): Data to be transfered.
+
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises NoResponse: If no response was received
+        :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises NegativeResponse: with error code and code name, If negative response was received
+        
+        Returns:
+            bool: True if the TransferData was successfull.
+        """
+        
+        request: Request = TransferData.make_request(sequence_number=seq, data=data)
+        response = self._send_and_read_response(request=request)
+        interpreted_response = TransferData.interpret_response(response=response)
+        return interpreted_response.positive
+    
+    def transfer_exit(self):
+        """Finish transfer session
+
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises NoResponse: If no response was received
+        :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises NegativeResponse: with error code and code name, If negative response was received
+        
+        Returns:
+            bool: True if the TransferExit was successfull.
+        """
+        request: Request = RequestTransferExit.make_request()
+        self._send_and_read_response(request=request)
+        
     
     def read_dtc_information(self, 
                            subfunction: int,
