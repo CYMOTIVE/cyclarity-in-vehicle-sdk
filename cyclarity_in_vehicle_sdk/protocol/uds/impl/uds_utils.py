@@ -53,18 +53,32 @@ from cyclarity_in_vehicle_sdk.utils.crypto.crypto_utils import CryptoUtils
 RAW_SERVICES_WITH_SUB_FUNC = {value: type(name, (BaseService,), {'_sid':value, '_use_subfunction':True}) for name, value in UdsSid.__members__.items()}  
 RAW_SERVICES_WITHOUT_SUB_FUNC = {value: type(name, (BaseService,), {'_sid':value, '_use_subfunction':False}) for name, value in UdsSid.__members__.items()}  
 
-class MyAsciiCodec(DidCodec):
+class HexStringCodec(DidCodec):
     def __init__(self):
         pass
 
-    def encode(self, string_ascii: str) -> bytes:
-        if not isinstance(string_ascii, str):
+    def encode(self, hex_string: str) -> bytes:
+        if not isinstance(hex_string, str):
             raise ValueError("AsciiCodec requires a string for encoding")
 
-        return bytes.fromhex(string_ascii)
+        return bytes.fromhex(hex_string)
 
     def decode(self, string_bin: bytes) -> str:
         return string_bin.hex()
+
+    def __len__(self) -> int:
+        raise DidCodec.ReadAllRemainingData
+    
+
+class RawBytesCodec(DidCodec):
+    def __init__(self):
+        pass
+
+    def encode(self, data: bytes) -> bytes:
+        return data
+
+    def decode(self, data: bytes) -> bytes:
+        return data
 
     def __len__(self) -> int:
         raise DidCodec.ReadAllRemainingData
@@ -220,7 +234,7 @@ class UdsUtils(UdsUtilsBase):
         interpreted_response = TesterPresent.interpret_response(response=response)
         return interpreted_response.service_data.subfunction_echo == 0
 
-    def write_did(self, did: int, value: str, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
+    def write_did(self, did: int, value: str | bytes, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
         """Sends a request for WriteDataByIdentifier
 
         Args:
@@ -237,7 +251,14 @@ class UdsUtils(UdsUtilsBase):
         Returns:
             bool: True if WriteDataByIdentifier request sent successfully, False otherwise
         """
-        request = WriteDataByIdentifier.make_request(did=did, value=value, didconfig={did: MyAsciiCodec()})
+        if isinstance(value, str):
+            codec = HexStringCodec()
+        elif isinstance(value, bytes):
+            codec = RawBytesCodec()
+        else:
+            raise ValueError(f"Value of type {type(value)} is not supported.")
+        
+        request = WriteDataByIdentifier.make_request(did=did, value=value, didconfig={did: codec})
         response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = WriteDataByIdentifier.interpret_response(response=response)
         return interpreted_response.service_data.did_echo == did
