@@ -287,8 +287,6 @@ class SomeipUtils(ParsableModel):
             msg_type=py_pcapplusplus.SomeIpMsgType.REQUEST
             )
 
-        self.logger.debug(f"Testing method ID: {hex(method_id)}")
-
         socket.send(bytes(someip_layer))
 
         # Read received data and convert it to SOME/IP packet
