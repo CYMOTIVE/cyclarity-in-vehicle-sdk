@@ -306,8 +306,8 @@ class UdsUtils(UdsUtilsBase):
         memory_location = MemoryLocation(
             address=address,
             memorysize=memorysize,
-            address_format=8*2**address_format,
-            memorysize_format=2**memorysize_format,
+            address_format=8*address_format,
+            memorysize_format=8*memorysize_format,
         )
 
         dfi = DataFormatIdentifier.from_byte(enc_comp)
@@ -339,10 +339,11 @@ class UdsUtils(UdsUtilsBase):
         if resp_seq != seq:
             raise InvalidResponse(f"Unexpected sequence number response {resp_seq}, expected {seq}.")
 
-    def transfer_exit(self, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> None:
+    def transfer_exit(self, data: bytes | None = None, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bytes:
         """Finish transfer session
 
         Args:
+            data (bytes, optional): Additional optional data to send to the server
             timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
 
         :raises RuntimeError: If failed to send the request
@@ -352,13 +353,12 @@ class UdsUtils(UdsUtilsBase):
         :raises NegativeResponse: with error code and code name, If negative response was received
 
         Returns:
-            bool: True if the TransferExit was successfull.
+            bytes: The parameter records received from the transfer exit response.
         """
-        request: Request = RequestTransferExit.make_request()
+        request: Request = RequestTransferExit.make_request(data=data)
         response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = RequestTransferExit.interpret_response(response=response)
-        # interpreted_response does not need to be validated because it has no additional fields to verify.
-        # If the response is invalid the "interpret_response" method will raise an exception.
+        return interpreted_response.service_data.parameter_records
 
     def read_dtc_information(self, 
                            subfunction: int,

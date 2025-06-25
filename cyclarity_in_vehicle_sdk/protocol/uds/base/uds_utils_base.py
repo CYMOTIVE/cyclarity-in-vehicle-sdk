@@ -221,6 +221,7 @@ class UdsUtilsBase(ParsableModel):
         """Finish transfer session
 
         Args:
+            data (bytes, optional): Additional optional data to send to the server
             timeout (float): timeout for the UDS operation in seconds
 
         :raises RuntimeError: If failed to send the request
@@ -230,7 +231,7 @@ class UdsUtilsBase(ParsableModel):
         :raises NegativeResponse: with error code and code name, If negative response was received
 
         Returns:
-            bool: True if the TransferExit was successfull.
+            bytes: The parameter records received from the transfer exit response.
         """
         raise NotImplementedError
 
