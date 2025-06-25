@@ -174,7 +174,66 @@ class UdsUtilsBase(ParsableModel):
             bool: True if security access was allowed to the requested level. False otherwise
         """
         raise NotImplementedError
-    
+
+    @abstractmethod
+    def request_download(self, address: int, memorysize: int, enc_comp: int, address_format: int,
+                         memorysize_format: int, timeout: float) -> int:
+        """Send a Request Download UDS message
+
+        Args:
+            timeout (float): timeout for the UDS operation in seconds
+            address (int): Block ID or address of the relevant memory region to update.
+            memorysize (int): Size of the memory region to update.
+            enc_comp (int, optional): Encription and Compression info.
+            address_format (int, optional): Length in bytes of the Address field.
+            memorysize_format (int, optional): Length in bytes of the Size field.
+
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises NoResponse: If no response was received
+        :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises NegativeResponse: with error code and code name, If negative response was received
+
+        Returns:
+            int: Maximum block length for following transfer data.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def transfer_data(self, seq: int, data: bytes, timeout: float) -> None:
+        """Transfer a block of data as part of Upload or Download session
+
+        Args:
+            timeout (float): timeout for the UDS operation in seconds
+            seq (int): Sequence nuber of the current TransferData.
+            data (bytes): Data to be transfered.
+
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises NoResponse: If no response was received
+        :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises NegativeResponse: with error code and code name, If negative response was received
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def transfer_exit(self, timeout: float) -> None:
+        """Finish transfer session
+
+        Args:
+            timeout (float): timeout for the UDS operation in seconds
+
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises NoResponse: If no response was received
+        :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises NegativeResponse: with error code and code name, If negative response was received
+
+        Returns:
+            bool: True if the TransferExit was successfull.
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def raw_uds_service(self, sid: UdsSid, timeout: float, sub_function: Optional[int] = None, data: Optional[bytes] = None) -> RawUdsResponse:
         """sends raw UDS service request and reads response

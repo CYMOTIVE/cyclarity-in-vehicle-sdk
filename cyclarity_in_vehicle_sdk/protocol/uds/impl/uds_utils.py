@@ -281,44 +281,47 @@ class UdsUtils(UdsUtilsBase):
                                                                                    mode=SecurityAccess.Mode.SendKey)
         
         return interpreted_response.service_data.security_level_echo == security_algorithm.key_subfunction
-    
-    def request_download(self, addr: int, sz: int, enc_comp=0, addr_len=4, sz_len=4):
+
+    def request_download(self, address: int, memorysize: int, enc_comp: int = 0, address_format: int = 4,
+                         memorysize_format: int = 4, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> int:
         """Send a Request Download UDS message
 
         Args:
-            addr (int): Block ID or address of the relevant memory region to update.
-            sz (int): Size of the memory region to update.
+            timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
+            address (int): Block ID or address of the relevant memory region to update.
+            memorysize (int): Size of the memory region to update.
             enc_comp (int, optional): Encription and Compression info. Defaults to 0 (no encription and no compression).
-            addr_len (int, optional): Length in bytes of the Address field. Defaults to 4.
-            sz_len (int, optional): Length in bytes of the Size field. Defaults to 4.
+            address_format (int, optional): Length in bytes of the Address field. Defaults to 4.
+            memorysize_format (int, optional): Length in bytes of the Size field. Defaults to 4.
 
         :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
-        
+
         Returns:
             int: Maximum block length for following transfer data.
         """
         memory_location = MemoryLocation(
-            address=addr, 
-            memorysize=sz,
-            address_format=8*2**addr_len,
-            memorysize_format=2**sz_len,
+            address=address,
+            memorysize=memorysize,
+            address_format=8*2**address_format,
+            memorysize_format=2**memorysize_format,
         )
-        
+
         dfi = DataFormatIdentifier.from_byte(enc_comp)
-        
+
         request: Request = RequestDownload.make_request(memory_location, dfi)
-        response = self._send_and_read_response(request=request)
+        response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = RequestDownload.interpret_response(response=response)
         return interpreted_response.service_data.max_length
 
-    def transfer_data(self, seq: int, data: bytes):
+    def transfer_data(self, seq: int, data: bytes, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> None:
         """Transfer a block of data as part of Upload or Download session
 
         Args:
+            timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
             seq (int): Sequence nuber of the current TransferData.
             data (bytes): Data to be transfered.
 
@@ -327,32 +330,36 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
-        
-        Returns:
-            bool: True if the TransferData was successfull.
         """
-        
+
         request: Request = TransferData.make_request(sequence_number=seq, data=data)
-        response = self._send_and_read_response(request=request)
+        response = self._send_and_read_response(request=request, timeout=timeout)
         interpreted_response = TransferData.interpret_response(response=response)
-        return interpreted_response.positive
-    
-    def transfer_exit(self):
+        resp_seq = interpreted_response.service_data.sequence_number_echo
+        if resp_seq != seq:
+            raise InvalidResponse(f"Unexpected sequence number response {resp_seq}, expected {seq}.")
+
+    def transfer_exit(self, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> None:
         """Finish transfer session
+
+        Args:
+            timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
 
         :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
-        
+
         Returns:
             bool: True if the TransferExit was successfull.
         """
         request: Request = RequestTransferExit.make_request()
-        self._send_and_read_response(request=request)
-        
-    
+        response = self._send_and_read_response(request=request, timeout=timeout)
+        interpreted_response = RequestTransferExit.interpret_response(response=response)
+        # interpreted_response does not need to be validated because it has no additional fields to verify.
+        # If the response is invalid the "interpret_response" method will raise an exception.
+
     def read_dtc_information(self, 
                            subfunction: int,
                            status_mask: Optional[int] = None,
