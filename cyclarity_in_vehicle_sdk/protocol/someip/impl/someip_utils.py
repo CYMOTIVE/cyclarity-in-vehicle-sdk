@@ -41,7 +41,6 @@ class SomeipUtils(ParsableModel):
             list[SOMEIP_SERVICE_INFO] list of found services
         """
         found_services: list[SOMEIP_SERVICE_INFO] = []
-        self.logger.debug(f"Testing service ID: {hex(service_id)}")
         if isinstance(socket, UdpCommunicator):
             someip_sd_layer = py_pcapplusplus.SomeIpSdLayer(flags=SomeIpSdOptionFlags.Unicast)
 
