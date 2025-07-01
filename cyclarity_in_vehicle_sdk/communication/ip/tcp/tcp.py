@@ -101,6 +101,8 @@ class TcpCommunicator(IpConnectionCommunicatorBase):
             recv_data = self._socket.recv(size)
         except ConnectionResetError:
             pass
+        except TimeoutError:
+            pass
         return recv_data
 
     def __enter__(self):

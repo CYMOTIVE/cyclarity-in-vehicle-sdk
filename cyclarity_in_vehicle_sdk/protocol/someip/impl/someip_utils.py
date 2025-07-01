@@ -148,12 +148,12 @@ class SomeipUtils(ParsableModel):
 
     def subscribe_evtgrp(
         self,
-        sd_socket: UdpCommunicator,
+        sd_socket: UdpCommunicator | MulticastCommunicator,
         ep_socket: Union[UdpCommunicator, TcpCommunicator],
         service_info: SOMEIP_SERVICE_INFO,
         evtgrpid: int,
         transport_protocol: Layer4ProtocolType,
-        recv_timeout: int = 0.01,
+        recv_timeout: int = 0.1,
     ) -> SOMEIP_EVTGROUP_INFO | None:
         """	Subscribing to an eventgroup and fetch dome initial data
 
@@ -181,12 +181,13 @@ class SomeipUtils(ParsableModel):
         sd_socket.send(bytes(someip_sd_layer))
 
         # Read received data on sd socket and convert it to SOME/IP packet
-        recv_data = sd_socket.recv(recv_timeout)
+        recv_data = ep_socket.recv(recv_timeout)
         if recv_data is not None:
             received_someip_sd_layer = py_pcapplusplus.SomeIpSdLayer.from_bytes(recv_data)  # Convert packet to SOME/IP SD
             if (received_someip_sd_layer 
                 and len(received_someip_sd_layer.get_entries()) 
                 and received_someip_sd_layer.get_entries()[0].ttl != 0 # if ttl is 0 it means we got a NACK
+                and received_someip_sd_layer.get_entries()[0].event_group_id == evtgrpid
                 ):
                 found_evtgrpid = received_someip_sd_layer.get_entries()[0].event_group_id
                 self.logger.info(f"Found eventgroup ID: {hex(found_evtgrpid)}")
@@ -299,7 +300,7 @@ class SomeipUtils(ParsableModel):
                 self.logger.info(f"Received something in method ID: {hex(method_id)}")
 
                 found_method_info = SOMEIP_METHOD_INFO(
-                    method_id=method_id,
+                    method_id=ret_someip_layer.method_id,
                     return_code=ret_someip_layer.return_code,
                     payload=ret_someip_layer.payload
                 )

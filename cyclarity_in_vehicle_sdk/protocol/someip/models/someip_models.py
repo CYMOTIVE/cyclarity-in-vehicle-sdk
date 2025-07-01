@@ -46,7 +46,7 @@ class SOMEIP_METHOD_INFO(BaseModel):
 
     def __str__(self):
         return (f"Method ID: {hex(self.method_id)}, Return code: {str(self.return_code)}" 
-                + (f", Payload[{len(self.payload)}]: {self.payload[:20]}" if self.payload else ""))
+                + (f", Payload[{len(self.payload)}]: {self.payload[:20].hex()}" if self.payload else ""))
 
 class SOMEIP_ENDPOINT_OPTION(BaseModel):
     """Model containing information regarding SOME/IP endpoint
