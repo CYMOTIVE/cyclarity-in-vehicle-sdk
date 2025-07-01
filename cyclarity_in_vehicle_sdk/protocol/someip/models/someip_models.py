@@ -8,6 +8,22 @@ from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_en
 class Layer4ProtocolType(IntEnum):
     UDP = 0x11
     TCP = 0x6
+    
+class SomeIpReturnCode(IntEnum):
+    E_OK = 0x00                      # Success
+    E_NOT_OK = 0x01                  # General error
+    E_UNKNOWN_SERVICE = 0x02        # Service not known
+    E_UNKNOWN_METHOD = 0x03         # Method not known
+    E_NOT_READY = 0x04              # Service not ready
+    E_NOT_REACHABLE = 0x05          # Service not reachable
+    E_TIMEOUT = 0x06                # Request timed out
+    E_WRONG_PROTOCOL_VERSION = 0x07 # Unsupported protocol version
+    E_WRONG_INTERFACE_VERSION = 0x08# Unsupported interface version
+    E_MALFORMED_MESSAGE = 0x09      # Malformed message
+    E_WRONG_MESSAGE_TYPE = 0x0A     # Invalid message type
+
+    def __str__(self):
+        return hex(self.value) + ": " + self.name.replace("_", " ").title()
 
 class SOMEIP_EVTGROUP_INFO(BaseModel):
     """Model containing information regarding SOME/IP event group
@@ -25,10 +41,11 @@ class SOMEIP_METHOD_INFO(BaseModel):
     """Model containing information regarding SOME/IP method
     """
     method_id: int = Field(description="The Method ID") 
+    return_code: SomeIpReturnCode = Field(description="The return code of the method")
     payload: HexBytes = Field(description="The payload associated with the method")
 
     def __str__(self):
-        return (f"Method ID: {hex(self.method_id)}" 
+        return (f"Method ID: {hex(self.method_id)}, Return code: {str(self.return_code)}" 
                 + (f", Payload[{len(self.payload)}]: {self.payload[:20]}" if self.payload else ""))
 
 class SOMEIP_ENDPOINT_OPTION(BaseModel):

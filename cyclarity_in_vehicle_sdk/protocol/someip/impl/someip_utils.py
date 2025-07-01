@@ -11,13 +11,12 @@ from cyclarity_in_vehicle_sdk.protocol.someip.models.someip_models import (
     SOMEIP_SERVICE_INFO,
     Layer4ProtocolType,
     SomeIpSdOptionFlags,
+    SomeIpReturnCode,
     )
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 import py_pcapplusplus
 from pydantic import IPvAnyAddress
 
-RET_E_UNKNOWN_SERVICE = 0x02
-RET_E_UNKNOWN_METHOD = 0x03
 
 class SomeipUtils(ParsableModel):
     def find_service(
@@ -42,9 +41,11 @@ class SomeipUtils(ParsableModel):
         """
         found_services: list[SOMEIP_SERVICE_INFO] = []
         if isinstance(socket, UdpCommunicator):
-            someip_sd_layer = py_pcapplusplus.SomeIpSdLayer(flags=SomeIpSdOptionFlags.Unicast)
+            someip_sd_layer = py_pcapplusplus.SomeIpSdLayer(flags=SomeIpSdOptionFlags.Unicast, 
+                                                            msg_type=py_pcapplusplus.SomeIpMsgType.REQUEST)
 
-            find_service_entry = py_pcapplusplus.SomeIpSdEntry(entry_type=py_pcapplusplus.SomeIpSdEntryType.FindService,
+            find_service_entry = py_pcapplusplus.SomeIpSdEntry(
+                                                    entry_type=py_pcapplusplus.SomeIpSdEntryType.FindService,
                                                     service_id=service_id,
                                                     instance_id=0xFFFF,
                                                     major_version=0xFF,
@@ -77,7 +78,7 @@ class SomeipUtils(ParsableModel):
         some_ip_sd_layer = py_pcapplusplus.SomeIpSdLayer.from_bytes(recv_data)  # Convert packet to SOME/IP SD
         if (some_ip_sd_layer
             and not some_ip_sd_layer.message_type == py_pcapplusplus.SomeIpMsgType.ERRORS
-            and not some_ip_sd_layer.return_code == RET_E_UNKNOWN_SERVICE
+            and not some_ip_sd_layer.return_code == SomeIpReturnCode.E_UNKNOWN_SERVICE
         ):
             entries = some_ip_sd_layer.get_entries()
             options = some_ip_sd_layer.get_options()
@@ -293,12 +294,13 @@ class SomeipUtils(ParsableModel):
         if recv_data is not None:
             ret_someip_layer = py_pcapplusplus.SomeIpLayer.from_bytes(recv_data)
             if (ret_someip_layer
-                and ret_someip_layer.return_code != RET_E_UNKNOWN_METHOD
+                and ret_someip_layer.return_code != SomeIpReturnCode.E_UNKNOWN_METHOD
                 ):
                 self.logger.info(f"Received something in method ID: {hex(method_id)}")
 
                 found_method_info = SOMEIP_METHOD_INFO(
                     method_id=method_id,
+                    return_code=ret_someip_layer.return_code,
                     payload=ret_someip_layer.payload
                 )
 
