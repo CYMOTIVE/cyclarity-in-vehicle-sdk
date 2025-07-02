@@ -31,6 +31,7 @@ RdidDataTuple = NamedTuple("RdidDataTuple", did=int, data=str)
 DtcInformationData: TypeAlias = ReadDTCInformation.ResponseData
 
 DEFAULT_UDS_OPERATION_TIMEOUT = 2
+DEFAULT_UDS_PENDING_TIMEOUT = 60
 
 
 class NoResponse(Exception):
