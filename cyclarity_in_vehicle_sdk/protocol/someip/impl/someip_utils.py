@@ -176,13 +176,12 @@ class SomeipUtils(ParsableModel):
             ep_socket.source_port,
             ep_socket.source_ip,
             )
-
         # send evtgrp subscribe
         sd_socket.send(bytes(someip_sd_layer))
 
         # Read received data on sd socket and convert it to SOME/IP packet
         recv_data = ep_socket.recv(recv_timeout)
-        if recv_data is not None:
+        if recv_data:
             received_someip_sd_layer = py_pcapplusplus.SomeIpSdLayer.from_bytes(recv_data)  # Convert packet to SOME/IP SD
             if (received_someip_sd_layer 
                 and len(received_someip_sd_layer.get_entries()) 
