@@ -57,6 +57,16 @@ class SOMEIP_ENDPOINT_OPTION(BaseModel):
 
     def __str__(self):
         return f"Endpoint address: {self.endpoint_addr}, Port: {self.port}, Transport type: {self.port_type.name}"
+    
+    def __hash__(self):
+        return hash((self.endpoint_addr, self.port, self.port_type))
+    
+    def __eq__(self, other):
+        if not isinstance(other, SOMEIP_ENDPOINT_OPTION):
+            return False
+        return (self.endpoint_addr == other.endpoint_addr and 
+                self.port == other.port and 
+                self.port_type == other.port_type)
 
 class SOMEIP_SERVICE_INFO(BaseModel):
     """Model containing information regarding service
@@ -76,7 +86,20 @@ class SOMEIP_SERVICE_INFO(BaseModel):
                 f"TTL: {self.ttl}, "
                 + ("Endpoints:\n" + f'\n'.join(str(ep) for ep in self.endpoints)) if self.endpoints else ""
                 )
-
+    
+    def __hash__(self):
+        return hash((self.service_id, self.instance_id, self.major_ver, 
+                    self.minor_ver, self.ttl, tuple(self.endpoints)))
+    
+    def __eq__(self, other):
+        if not isinstance(other, SOMEIP_SERVICE_INFO):
+            return False
+        return (self.service_id == other.service_id and
+                self.instance_id == other.instance_id and
+                self.major_ver == other.major_ver and
+                self.minor_ver == other.minor_ver and
+                self.ttl == other.ttl and
+                self.endpoints == other.endpoints)
 
 class SomeIpSdOptionFlags(IntFlag):
     Reboot = 0x80
