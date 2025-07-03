@@ -3,6 +3,7 @@ from typing import NamedTuple, Optional, Type, TypeAlias, Union
 
 from cyclarity_sdk.expert_builder.runnable.runnable import ParsableModel
 from udsoncan.common.dids import DataIdentifier
+from udsoncan.Request import Request
 from udsoncan.Response import Response
 from udsoncan.ResponseCode import ResponseCode
 from udsoncan.services.DiagnosticSessionControl import DiagnosticSessionControl
@@ -52,6 +53,21 @@ class InvalidResponse(Exception):
     def __init__(self, invalid_reason: str, *args, **kwargs):
         self.invalid_reason = invalid_reason
         super().__init__(f"Invalid Response received, invalid reason: {invalid_reason}", *args, **kwargs)
+
+class BusyResponseTimeout(Exception):
+    original_request: Request | bytes | str | None
+    def __init__(self, *args, original_request: Request | bytes | str | None = None, timeout_set: float | None = None, **kwargs):
+        self.original_request = original_request
+        response_str = ""
+        time_str = "long period of time"
+        
+        if original_request:
+            response_str = f"The request resulted in the timeout: {original_request}"
+        
+        if timeout_set:
+            time_str = f"{timeout_set} seconds"
+        
+        super().__init__(f"A pending response is received for a {time_str}. {response_str}")
 
 class UdsUtilsBase(ParsableModel):
     """UDS Utility Base class API allowing common UDS functionality - this API is based on types from `udsoncan`
