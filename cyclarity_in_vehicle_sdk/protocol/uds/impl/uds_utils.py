@@ -91,34 +91,28 @@ class RawBytesCodec(DidCodec):
         raise DidCodec.ReadAllRemainingData
 
 
-class TimeoutNotSetType():
-    """A custom type that behaves like None."""  
-    _instance = None  # Class-level instance storage  
-  
-    def __new__(cls):  
-        # Ensure only one instance exists  
-        if cls._instance is None:  
-            cls._instance = super().__new__(cls)  
-        return cls._instance  
-  
-    def __repr__(self):  
-        return "TimeoutNotSet" 
-
-TimeoutNotSet = TimeoutNotSetType()
-
 class UDS_Timeouts(BaseModel):
-    send_timeout: float | None | TimeoutNotSetType = Field(TimeoutNotSet, description="timeout for a send operation to succeed. None for no timeout.")
-    recv_timeout: float | TimeoutNotSetType = Field(TimeoutNotSet, description="Timeout for a recv operation to indicate no incoming messages.")
-    sr1_timeout: float | TimeoutNotSetType = Field(TimeoutNotSet, description="Timeout for a service to be requested and receive a response.")
-    pending_timeout: float | None | TimeoutNotSetType = Field(TimeoutNotSet, description="Timeout to be updated in case a pending request is received.")
-    busy_timeout: float | None | TimeoutNotSetType = Field(TimeoutNotSet, description="Timeout to fail in case a pending is repeatedly transmitted for a long period of time")
+    send_timeout: float | None = Field(
+        None, description="timeout for a send operation to succeed. None for no timeout.")
+    recv_timeout: float = Field(0.5, description="Timeout for a recv operation to indicate no incoming messages.")
+    sr1_timeout: float = Field(DEFAULT_UDS_OPERATION_TIMEOUT,
+                               description="Timeout for a service to be requested and receive a response.")
+    pending_timeout: float = Field(DEFAULT_UDS_PENDING_TIMEOUT,
+                                   description="Timeout to be updated in case a pending request is received.")
+    busy_timeout: float | None = Field(
+        300, description="Timeout to fail in case a pending is repeatedly transmitted for a long period of time")
 
     def update(self, timeouts: 'UDS_Timeouts'):
-        for field in self.model_fields.keys():
+        """Update the timeout fields only for fields which were explicitly set in the provided timeouts argument.
+
+        Args:
+            timeouts (UDS_Timeouts): an instace of timeout object that indicate all the timeouts to be updated. 
+                In order for a field to be updated the value should have been explicitly set on creation of the UDS_Timeout object provided. all other timeouts will remain with their current value.
+            """
+        for field in timeouts.model_fields_set:
             new = getattr(timeouts, field)
-            if new is not TimeoutNotSet:
-                setattr(self, field, new)
-        
+            setattr(self, field, new)
+
 
 Default_UDS_Timeouts = UDS_Timeouts(
     send_timeout = None,
@@ -129,9 +123,9 @@ Default_UDS_Timeouts = UDS_Timeouts(
 )
 
 class UdsUtils(UdsUtilsBase):
-    data_link_layer: Union[IsoTpCommunicator, DoipCommunicator]
-    attempts: int = Field(default=1, ge=1, description="Number of attempts to perform the UDS operation if no response was received")
-    timeouts: UDS_Timeouts = Field(Default_UDS_Timeouts, description="Timeouts values to use by default for this UDS session.")
+    timeouts: UDS_Timeouts = Field(
+        UDS_Timeouts(),
+        description="Timeouts values to use by default for this UDS session.")
     _crypto_utils: CryptoUtils = CryptoUtils()
 
     def setup(self) -> bool:
@@ -143,64 +137,62 @@ class UdsUtils(UdsUtilsBase):
         """Teardown the library
         """
         self.data_link_layer.close()
-    
-    def update_default_timeouts(self, timeouts: UDS_Timeouts):  
+
+    def update_default_timeouts(self, timeouts: UDS_Timeouts):
         """  
         Updates the default timeouts of the current instance.  
-    
+
         This method takes an instance of `UDS_Timeouts` and updates the current instance's   
         `timeouts` attribute with the provided values. It overwrites the existing default timeout values.  
-    
+
         Args:  
             timeouts (UDS_Timeouts): An instance of `UDS_Timeouts` containing the new timeout values.  
-        """  
-        self.timeouts.update(timeouts)  
-    
+        """
+        self.timeouts.update(timeouts)
+
     @contextmanager
-    def temporal_timeouts(self, temporal_timeouts: UDS_Timeouts):  
+    def temporal_timeouts(self, temporal_timeouts: UDS_Timeouts):
         """  
         Temporarily updates the timeouts for a scoped operation.  
-    
+
         This method temporarily updates the `timeouts` attribute of the current instance with   
         the provided `temporal_timeouts`. It saves the current timeout values, applies the new values,   
         and restores the original values after the scoped operation completes.  
-    
+
         Args:  
             temporal_timeouts (UDS_Timeouts): An instance of `UDS_Timeouts` containing the temporary timeout values.  
-    
+
         Yields:  
             None: This method is intended to be used in a context manager.  
-    
+
         Example:  
             Suppose you want to temporarily set specific timeout values for a block of code:  
-    
+
             ```python  
             uds_utils # a pre initialized UdsUtils instance 
-    
+
             print("Original timeouts:", instance.timeouts)  
-            
+
             # Temporarily update timeouts  
             with uds_utils.temporal_timeouts(UDS_Timeouts(send_timeout=5.0, recv_timeout=10.0)):  
                 print("Temporary timeouts:", uds_utils.timeouts)  
                 # Perform operations with the temporary timeouts  
-            
+
             # After the block, original timeouts are restored  
             print("Restored timeouts:", uds_utils.timeouts)  
             ```  
-    
+
             Output:  
             ```  
             Original timeouts: UDS_Timeouts(send_timeout=10.0, recv_timeout=20.0)  
             Temporary timeouts: UDS_Timeouts(send_timeout=5.0, recv_timeout=10.0)  
             Restored timeouts: UDS_Timeouts(send_timeout=10.0, recv_timeout=20.0)  
             ```  
-        """  
-        old_timeouts = self.timeouts.model_copy()  
-        self.timeouts.update(temporal_timeouts)  
-        yield  
-        self.timeouts = old_timeouts  
-    
-    def session(self, session: int, timeout: float | None = None, standard_version: UdsStandardVersion = UdsStandardVersion.ISO_14229_2020) -> SessionControlResultData:
+        """
+        old_timeouts = self.timeouts.model_copy()
+        self.timeouts.update(temporal_timeouts)
+        yield
+        self.timeouts = old_timeouts
         """	Diagnostic Session Control
 
         Args:
