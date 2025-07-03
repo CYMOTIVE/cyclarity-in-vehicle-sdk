@@ -33,6 +33,7 @@ from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (
     DEFAULT_UDS_OPERATION_TIMEOUT,
     DEFAULT_UDS_PENDING_TIMEOUT,
     AuthenticationReturnParameter,
+    BusyResponseTimeout,
     DtcInformationData,
     InvalidResponse,
     NegativeResponse,
@@ -109,8 +110,8 @@ class UDS_Timeouts(BaseModel):
     send_timeout: float | None | TimeoutNotSetType = Field(TimeoutNotSet, description="timeout for a send operation to succeed. None for no timeout.")
     recv_timeout: float | TimeoutNotSetType = Field(TimeoutNotSet, description="Timeout for a recv operation to indicate no incoming messages.")
     sr1_timeout: float | TimeoutNotSetType = Field(TimeoutNotSet, description="Timeout for a service to be requested and receive a response.")
-    pending_timeout: float | TimeoutNotSetType = Field(TimeoutNotSet, description="Timeout to be updated in case a pending request is received.")
-    busy_timeout: float | TimeoutNotSetType = Field(TimeoutNotSet, description="Timeout to fail in case a pending is repeatedly transmitted for a long period of time")
+    pending_timeout: float | None | TimeoutNotSetType = Field(TimeoutNotSet, description="Timeout to be updated in case a pending request is received.")
+    busy_timeout: float | None | TimeoutNotSetType = Field(TimeoutNotSet, description="Timeout to fail in case a pending is repeatedly transmitted for a long period of time")
 
     def update(self, timeouts: 'UDS_Timeouts'):
         for field in self.model_fields.keys():
@@ -212,6 +213,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             SessionControlResultData
@@ -267,6 +269,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             bool: True if ECU request was accepted, False otherwise.
@@ -288,6 +291,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             dict[int, str]: Dictionary mapping the DID (int) with the value returned
@@ -310,6 +314,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             RoutingControlResponseData
@@ -330,6 +335,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             bool: True if tester preset was accepted successfully. False otherwise
@@ -352,6 +358,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             bool: True if WriteDataByIdentifier request sent successfully, False otherwise
@@ -380,6 +387,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             bool: True if security access was allowed to the requested level. False otherwise
@@ -421,6 +429,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             int: Maximum block length for following transfer data.
@@ -452,6 +461,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
         """
 
         request: Request = TransferData.make_request(sequence_number=seq, data=data)
@@ -473,6 +483,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             bytes: The parameter records received from the transfer exit response.
@@ -510,6 +521,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             DtcInformationData: The DTC information response data containing the requested DTC information
@@ -542,6 +554,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             bool: True if the clear operation was successful, False otherwise
@@ -564,6 +577,7 @@ class UdsUtils(UdsUtilsBase):
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             RawUdsResponse: Raw UdsResponse
@@ -589,6 +603,7 @@ class UdsUtils(UdsUtilsBase):
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             AuthenticationReturnParameter: The results code of the authentication action
@@ -688,6 +703,11 @@ class UdsUtils(UdsUtilsBase):
             uds_timeouts.send_timeout = timeout
             uds_timeouts.recv_timeout = timeout
             uds_timeouts.sr1_timeout = timeout
+        
+        if request.service is None:
+            raise ValueError(f"UDS request {request} have no service assign to it.")
+            
+        req_str = f"{request.service.get_name()}(0x{request.service.request_id():X})"
             
         raw_response = None
         for i in range(self.attempts):
@@ -697,21 +717,26 @@ class UdsUtils(UdsUtilsBase):
                 raise RuntimeError("Failed to send request")
             
             start = time.time()
+            busy_start = None
             response_timeout = uds_timeouts.sr1_timeout
             while True:
                 now = time.time()
-                if (now - start) > response_timeout:
-                    self.logger.debug(f"Timeout reading response for request with SID: {hex(request.service.request_id())}, attempt {i}")
+                if response_timeout is not None and (now - start) > response_timeout:
+                    self.logger.debug(f"Timeout reading response for request {req_str}, attempt {i}")
                     break
+                
+                if busy_start and (now - busy_start) > uds_timeouts.busy_timeout:
+                    self.logger.debug(f"Busy timeout for request {req_str}, attempt {i}")
+                    raise BusyResponseTimeout(f"Pending for response from service  for {uds_timeouts.busy_timeout} seconds, timeout reached.")
 
                 raw_response = self.data_link_layer.recv(recv_timeout=uds_timeouts.recv_timeout)
 
                 if not raw_response:
-                    self.logger.debug(f"No response for request with SID: {hex(request.service.request_id())}, attempt {i}")
+                    self.logger.debug(f"No response for request {req_str}, attempt {i}")
                     continue
 
                 response = RawUdsResponse.from_payload(payload=raw_response)
-                if not response.valid:
+                if not response.valid or response.service is None:
                     raise InvalidResponse(invalid_reason=response.invalid_reason)
                 
                 if response.service.response_id() != request.service.response_id():
@@ -722,6 +747,8 @@ class UdsUtils(UdsUtilsBase):
                 if not response.positive and response.code == UdsResponseCode.RequestCorrectlyReceived_ResponsePending:
                     self.logger.debug(f"Got error: {response.code_name}, trying to receive again")
                     start: float = time.time()
+                    if not busy_start and uds_timeouts.busy_timeout:
+                        busy_start = start
                     response_timeout = self.timeouts.pending_timeout
                     continue
                 else:
