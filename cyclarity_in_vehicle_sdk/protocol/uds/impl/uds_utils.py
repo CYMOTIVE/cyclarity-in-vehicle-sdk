@@ -601,7 +601,7 @@ class UdsUtils(UdsUtilsBase):
 
                 if not raw_response:
                     self.logger.debug(f"No response for request with SID: {hex(request.service.request_id())}, attempt {i}")
-                    break
+                    continue
 
                 response = RawUdsResponse.from_payload(payload=raw_response)
                 if not response.valid:
@@ -622,7 +622,7 @@ class UdsUtils(UdsUtilsBase):
             
 
         if not raw_response:
-            raise NoResponse
+            raise NoResponse(f"timeouts = {uds_timeouts}")
         
         return response
     
