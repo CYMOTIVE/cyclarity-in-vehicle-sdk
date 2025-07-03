@@ -3,7 +3,7 @@ import socket
 import struct
 from typing import Optional
 from cyclarity_in_vehicle_sdk.communication.ip.base.ip_communicator_base import IpConnectionlessCommunicatorBase
-from pydantic import Field, IPvAnyAddress
+from pydantic import Field, IPvAnyAddress, model_validator
 
 from cyclarity_in_vehicle_sdk.communication.base.communicator_base import CommunicatorType
 

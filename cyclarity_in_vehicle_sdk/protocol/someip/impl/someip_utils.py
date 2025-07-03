@@ -41,8 +41,7 @@ class SomeipUtils(ParsableModel):
         """
         found_services: list[SOMEIP_SERVICE_INFO] = []
         if isinstance(socket, UdpCommunicator):
-            someip_sd_layer = py_pcapplusplus.SomeIpSdLayer(flags=SomeIpSdOptionFlags.Unicast, 
-                                                            msg_type=py_pcapplusplus.SomeIpMsgType.REQUEST)
+            someip_sd_layer = py_pcapplusplus.SomeIpSdLayer(flags=SomeIpSdOptionFlags.Unicast)
 
             find_service_entry = py_pcapplusplus.SomeIpSdEntry(
                                                     entry_type=py_pcapplusplus.SomeIpSdEntryType.FindService,
@@ -180,7 +179,7 @@ class SomeipUtils(ParsableModel):
         sd_socket.send(bytes(someip_sd_layer))
 
         # Read received data on sd socket and convert it to SOME/IP packet
-        recv_data = ep_socket.recv(recv_timeout)
+        recv_data = sd_socket.recv(recv_timeout)
         if recv_data:
             received_someip_sd_layer = py_pcapplusplus.SomeIpSdLayer.from_bytes(recv_data)  # Convert packet to SOME/IP SD
             if (received_someip_sd_layer 
