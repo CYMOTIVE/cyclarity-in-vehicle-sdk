@@ -184,7 +184,7 @@ class SomeipUtils(ParsableModel):
             received_someip_sd_layer = py_pcapplusplus.SomeIpSdLayer.from_bytes(recv_data)  # Convert packet to SOME/IP SD
             if (received_someip_sd_layer 
                 and len(received_someip_sd_layer.get_entries()) 
-                and received_someip_sd_layer.get_entries()[0].ttl != 0 # if ttl is 0 it means we got a NACK
+                and received_someip_sd_layer.get_entries()[0].type == py_pcapplusplus.SomeIpSdEntryType.SubscribeEventgroupAck
                 and received_someip_sd_layer.get_entries()[0].event_group_id == evtgrpid
                 ):
                 found_evtgrpid = received_someip_sd_layer.get_entries()[0].event_group_id
