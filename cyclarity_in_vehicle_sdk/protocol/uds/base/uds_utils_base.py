@@ -37,7 +37,7 @@ DEFAULT_UDS_PENDING_TIMEOUT = 60
 
 class NoResponse(Exception):
     def __init__(self, *args, **kwargs):
-        super().__init__("No response received for UDS request")
+        super().__init__("No response received for UDS request", *args, **kwargs)
 
 
 class NegativeResponse(Exception):
