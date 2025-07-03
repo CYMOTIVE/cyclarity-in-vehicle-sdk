@@ -229,6 +229,10 @@ class UdsUtils(UdsUtilsBase):
             timeout (float): Timeout for the UDS operation in seconds (if None use default)
             standard_version (UdsStandardVersion, optional): the version of the UDS standard we are interacting with. Defaults to ISO_14229_2020.
 
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
+        
         Returns:
             bool: True if succeeded to transit to the session, False otherwise 
         """
@@ -242,10 +246,10 @@ class UdsUtils(UdsUtilsBase):
                 if session.elevation_info and session.elevation_info.security_algorithm:
                     try:
                         self.security_access(security_algorithm=session.elevation_info.security_algorithm, timeout=timeout)
-                    except Exception as ex:
+                    except (NoResponse, InvalidResponse, NegativeResponse) as ex:
                         self.logger.warning(f"Failed to get security access, continuing without. error: {ex}")
 
-            except Exception as ex:
+            except (NoResponse, InvalidResponse, NegativeResponse) as ex:
                 self.logger.warning(f"Failed to switch to session: {hex(session.id)}, what: {ex}")
                 return False
 
