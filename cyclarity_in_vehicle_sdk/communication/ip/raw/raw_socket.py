@@ -2,6 +2,7 @@ import socket
 import asyncio
 from typing import Callable, Sequence
 import time
+import threading
 
 from cyclarity_in_vehicle_sdk.communication.ip.base.ip_communicator_base import IpVersion
 from cyclarity_in_vehicle_sdk.communication.ip.base.raw_socket_base import RawSocketCommunicatorBase
@@ -273,7 +274,7 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
         """ 
         found_packet: list[Packet] = []
         
-        async def find_packet(in_socket: RawSocket, timeout: float):
+        def find_packet(in_socket: RawSocket, timeout: float):
             nonlocal found_packet
             nonlocal is_answer
             sniffed_packets = in_socket.sniff(timeout=timeout)
@@ -281,10 +282,12 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
                 if is_answer(sniffed_packet):
                     found_packet.append(sniffed_packet)
         
-        loop = asyncio.new_event_loop()
-        find_packet_task = loop.create_task(find_packet(self._in_socket, timeout))
+        sniff_thread = threading.Thread(target=find_packet, args=(self._in_socket, timeout))
+        sniff_thread.start()
+        
         self.send(packet)
-        loop.run_until_complete(find_packet_task)
+        
+        sniff_thread.join()
         return found_packet
 
     def receive(self, timeout: float = 2) -> Packet | None:

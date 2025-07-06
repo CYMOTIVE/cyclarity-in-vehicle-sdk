@@ -152,9 +152,9 @@ class SomeipUtils(ParsableModel):
         service_info: SOMEIP_SERVICE_INFO,
         evtgrpid: int,
         transport_protocol: Layer4ProtocolType,
-        recv_timeout: int = 0.1,
+        recv_timeout: int = 0.01,
     ) -> SOMEIP_EVTGROUP_INFO | None:
-        """	Subscribing to an eventgroup and fetch dome initial data
+        """	Subscribing to an eventgroup and fetch some initial data
 
         Args:
             sd_socket (UdpCommunicator): A SOME/IP SD socket (UDP) for sending FindService queries
