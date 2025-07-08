@@ -3,7 +3,7 @@ from unittest import TestCase
 from unittest.mock import Mock, PropertyMock
 from cyclarity_in_vehicle_sdk.communication.ip.udp.udp import UdpCommunicator
 from cyclarity_in_vehicle_sdk.protocol.someip.impl.someip_utils import SomeipUtils
-from cyclarity_in_vehicle_sdk.protocol.someip.models.someip_models import SOMEIP_EVTGROUP_INFO, SOMEIP_METHOD_INFO, SOMEIP_SERVICE_INFO, SOMEIP_ENDPOINT_OPTION, Layer4ProtocolType
+from cyclarity_in_vehicle_sdk.protocol.someip.models.someip_models import SOMEIP_EVTGROUP_INFO, SOMEIP_METHOD_INFO, SOMEIP_SERVICE_INFO, SOMEIP_ENDPOINT_OPTION, Layer4ProtocolType, SomeIpReturnCode
 
 
 class SomeipUtilsUTs(TestCase):
@@ -85,7 +85,9 @@ class SomeipUtilsUTs(TestCase):
             ]
         )
         test_method_id = 1
-        expected_method_info = SOMEIP_METHOD_INFO(method_id=test_method_id, payload=b'2025-01-22T14:39:28.091258')
+        expected_method_info = SOMEIP_METHOD_INFO(method_id=test_method_id,
+                                                  return_code=SomeIpReturnCode.E_OK,
+                                                  payload=b'2025-01-22T14:39:28.091258')
 
         mocked_socket = Mock(spec=UdpCommunicator)
         mocked_socket.recv.return_value = bytes.fromhex(test_packet)
