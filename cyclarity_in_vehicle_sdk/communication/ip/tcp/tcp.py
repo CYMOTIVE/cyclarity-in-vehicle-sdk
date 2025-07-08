@@ -51,7 +51,6 @@ class TcpCommunicator(IpConnectionCommunicatorBase):
         except TimeoutError:
             return True  # socket is open and reading from it would block
         except Exception as ex:
-            self.logger.error(str(ex))
             return False
 
     def close(self) -> bool:
@@ -100,6 +99,8 @@ class TcpCommunicator(IpConnectionCommunicatorBase):
         try:
             recv_data = self._socket.recv(size)
         except ConnectionResetError:
+            pass
+        except TimeoutError:
             pass
         return recv_data
 

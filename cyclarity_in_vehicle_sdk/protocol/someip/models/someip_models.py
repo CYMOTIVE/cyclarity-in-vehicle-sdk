@@ -8,6 +8,22 @@ from cyclarity_in_vehicle_sdk.utils.custom_types.enum_by_name import pydantic_en
 class Layer4ProtocolType(IntEnum):
     UDP = 0x11
     TCP = 0x6
+    
+class SomeIpReturnCode(IntEnum):
+    E_OK = 0x00                      # Success
+    E_NOT_OK = 0x01                  # General error
+    E_UNKNOWN_SERVICE = 0x02        # Service not known
+    E_UNKNOWN_METHOD = 0x03         # Method not known
+    E_NOT_READY = 0x04              # Service not ready
+    E_NOT_REACHABLE = 0x05          # Service not reachable
+    E_TIMEOUT = 0x06                # Request timed out
+    E_WRONG_PROTOCOL_VERSION = 0x07 # Unsupported protocol version
+    E_WRONG_INTERFACE_VERSION = 0x08# Unsupported interface version
+    E_MALFORMED_MESSAGE = 0x09      # Malformed message
+    E_WRONG_MESSAGE_TYPE = 0x0A     # Invalid message type
+
+    def __str__(self):
+        return hex(self.value) + ": " + self.name.replace("_", " ").title()
 
 class SOMEIP_EVTGROUP_INFO(BaseModel):
     """Model containing information regarding SOME/IP event group
@@ -25,11 +41,12 @@ class SOMEIP_METHOD_INFO(BaseModel):
     """Model containing information regarding SOME/IP method
     """
     method_id: int = Field(description="The Method ID") 
+    return_code: SomeIpReturnCode = Field(description="The return code of the method")
     payload: HexBytes = Field(description="The payload associated with the method")
 
     def __str__(self):
-        return (f"Method ID: {hex(self.method_id)}" 
-                + (f", Payload[{len(self.payload)}]: {self.payload[:20]}" if self.payload else ""))
+        return (f"Method ID: {hex(self.method_id)}, Return code: {str(self.return_code)}" 
+                + (f", Payload[{len(self.payload)}]: {self.payload[:20].hex()}" if self.payload else ""))
 
 class SOMEIP_ENDPOINT_OPTION(BaseModel):
     """Model containing information regarding SOME/IP endpoint
@@ -40,6 +57,16 @@ class SOMEIP_ENDPOINT_OPTION(BaseModel):
 
     def __str__(self):
         return f"Endpoint address: {self.endpoint_addr}, Port: {self.port}, Transport type: {self.port_type.name}"
+    
+    def __hash__(self):
+        return hash((self.endpoint_addr, self.port, self.port_type))
+    
+    def __eq__(self, other):
+        if not isinstance(other, SOMEIP_ENDPOINT_OPTION):
+            return False
+        return (self.endpoint_addr == other.endpoint_addr and 
+                self.port == other.port and 
+                self.port_type == other.port_type)
 
 class SOMEIP_SERVICE_INFO(BaseModel):
     """Model containing information regarding service
@@ -59,7 +86,20 @@ class SOMEIP_SERVICE_INFO(BaseModel):
                 f"TTL: {self.ttl}, "
                 + ("Endpoints:\n" + f'\n'.join(str(ep) for ep in self.endpoints)) if self.endpoints else ""
                 )
-
+    
+    def __hash__(self):
+        return hash((self.service_id, self.instance_id, self.major_ver, 
+                    self.minor_ver, self.ttl, tuple(self.endpoints)))
+    
+    def __eq__(self, other):
+        if not isinstance(other, SOMEIP_SERVICE_INFO):
+            return False
+        return (self.service_id == other.service_id and
+                self.instance_id == other.instance_id and
+                self.major_ver == other.major_ver and
+                self.minor_ver == other.minor_ver and
+                self.ttl == other.ttl and
+                self.endpoints == other.endpoints)
 
 class SomeIpSdOptionFlags(IntFlag):
     Reboot = 0x80
