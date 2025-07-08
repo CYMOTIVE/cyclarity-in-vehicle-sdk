@@ -147,7 +147,7 @@ class SomeipUtils(ParsableModel):
 
     def subscribe_evtgrp(
         self,
-        sd_socket: UdpCommunicator | MulticastCommunicator,
+        sd_socket: UdpCommunicator,
         ep_socket: Union[UdpCommunicator, TcpCommunicator],
         service_info: SOMEIP_SERVICE_INFO,
         evtgrpid: int,
