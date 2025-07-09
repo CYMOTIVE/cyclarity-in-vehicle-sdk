@@ -183,9 +183,9 @@ class SomeipUtils(ParsableModel):
         if recv_data:
             received_someip_sd_layer = py_pcapplusplus.SomeIpSdLayer.from_bytes(recv_data)  # Convert packet to SOME/IP SD
             if (received_someip_sd_layer 
-                and len(received_someip_sd_layer.get_entries()) 
-                and received_someip_sd_layer.get_entries()[0].type == py_pcapplusplus.SomeIpSdEntryType.SubscribeEventgroupAck
+                and len(received_someip_sd_layer.get_entries())
                 and received_someip_sd_layer.get_entries()[0].event_group_id == evtgrpid
+                and received_someip_sd_layer.get_entries()[0].service_id == service_info.service_id
                 ):
                 found_evtgrpid = received_someip_sd_layer.get_entries()[0].event_group_id
                 self.logger.info(f"Found eventgroup ID: {hex(found_evtgrpid)}")
@@ -222,7 +222,7 @@ class SomeipUtils(ParsableModel):
         """
         # Build base packet.
         someip_sd_layer = py_pcapplusplus.SomeIpSdLayer(
-            flags=SomeIpSdOptionFlags.Unicast
+            flags=(SomeIpSdOptionFlags.Unicast | SomeIpSdOptionFlags.Reboot)
             )
         someip_sd_entry = py_pcapplusplus.SomeIpSdEntry(
             entry_type=py_pcapplusplus.SomeIpSdEntryType.SubscribeEventgroup,
