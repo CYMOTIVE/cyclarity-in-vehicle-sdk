@@ -30,6 +30,7 @@ from cyclarity_in_vehicle_sdk.communication.isotp.impl.isotp_communicator import
 )
 from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (
     DEFAULT_UDS_OPERATION_TIMEOUT,
+    DEFAULT_UDS_PENDING_TIMEOUT,
     AuthenticationReturnParameter,
     DtcInformationData,
     InvalidResponse,
@@ -613,6 +614,8 @@ class UdsUtils(UdsUtilsBase):
                 
                 if not response.positive and response.code == UdsResponseCode.RequestCorrectlyReceived_ResponsePending:
                     self.logger.debug(f"Got error: {response.code_name}, trying to receive again")
+                    start = time.time()
+                    timeout = DEFAULT_UDS_PENDING_TIMEOUT
                     continue
                 else:
                     return response
