@@ -1,5 +1,57 @@
 # Changelog  
 
+## [1.1.3] – 10/07/2025
+
+### Added
+- **Enhanced Multicast Communication**
+  - Added separate socket management for sending and receiving in `MulticastCommunicator`
+  - Implemented proper IPv6 multicast support with interface binding
+  - Added model validation for multicast address configuration
+  - Enhanced error handling with specific exception types
+
+- **UDS Utils Enhancements**
+  - Added `request_download()` method for initiating UDS download sessions
+  - Added `transfer_data()` method for transferring data blocks during upload/download sessions
+  - Added `transfer_exit()` method for completing transfer sessions
+  - Enhanced UDS service support with comprehensive error handling and timeout management
+
+### Changed
+- **Raw Socket Communication**
+  - Replaced async/await pattern with threading in `Layer3RawSocket.send_and_receive()` for better stability
+  - Improved packet sniffing mechanism using dedicated threads instead of event loops
+
+- **TCP Communication**
+  - Enhanced error handling in `TcpCommunicator.is_open()` method
+  - Added `TimeoutError` exception handling in `TcpCommunicator.recv()` method
+  - Removed redundant error logging to reduce noise
+
+- **Multicast Communication Architecture**
+  - Refactored `MulticastCommunicator` to use separate input and output sockets
+  - Improved socket lifecycle management with proper cleanup methods
+  - Enhanced IPv6 multicast support with proper interface indexing
+  - Added comprehensive validation for multicast address configuration
+
+### Fixed
+- **Socket Management**
+  - Fixed socket reuse issues in multicast communication
+  - Improved socket cleanup and resource management
+  - Enhanced error handling for socket operations
+
+- **IPv6 Support**
+  - Fixed IPv6 multicast binding and sending logic
+  - Improved interface handling for IPv6 multicast operations
+  - Enhanced address validation and error reporting
+
+- **Threading and Concurrency**
+  - Fixed potential blocking issues in raw socket communication
+  - Improved thread safety in packet sniffing operations
+
+### Removed
+- Removed unused configuration manager example files
+- Removed outdated package configuration files
+
+---
+
 ## [1.1.2] – 15/06/2025
 
 ### Fixed  
