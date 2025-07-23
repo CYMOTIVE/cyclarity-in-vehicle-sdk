@@ -1,5 +1,9 @@
 # Changelog  
 
+## [1.1.4] – 23/07/2025
+### Fixed
+- Fixed parallelism in Layer3RawSocket - use async instead of threading
+
 ## [1.1.3] – 10/07/2025
 
 ### Added
