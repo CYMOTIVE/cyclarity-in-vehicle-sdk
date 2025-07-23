@@ -272,23 +272,23 @@ class Layer3RawSocket(RawSocketCommunicatorBase):
         Returns:
             list[Packet]: All packets received that satisfy the "is_answer" callback.
         """ 
-        found_packet: list[Packet] = []
+        found_packets: list[Packet] = []
         
-        def find_packet(in_socket: RawSocket, timeout: float):
-            nonlocal found_packet
+        async def find_packet(in_socket: RawSocket, timeout: float):
+            nonlocal found_packets
             nonlocal is_answer
             sniffed_packets = in_socket.sniff(timeout=timeout)
             for sniffed_packet in sniffed_packets:
                 if is_answer(sniffed_packet):
-                    found_packet.append(sniffed_packet)
-        
-        sniff_thread = threading.Thread(target=find_packet, args=(self._in_socket, timeout))
-        sniff_thread.start()
-        
+                    found_packets.append(sniffed_packet)
+
+        loop = asyncio.new_event_loop()
+        find_packet_task = loop.create_task(find_packet(self._in_socket, timeout))
+
         self.send(packet)
-        
-        sniff_thread.join()
-        return found_packet
+        loop.run_until_complete(find_packet_task)
+
+        return found_packets
 
     def receive(self, timeout: float = 2) -> Packet | None:
         """read a single packet from the socket
