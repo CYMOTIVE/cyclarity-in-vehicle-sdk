@@ -1,7 +1,8 @@
+from contextlib import contextmanager
 import time
 from typing import Optional, Type, Union
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from udsoncan import MemoryLocation, DataFormatIdentifier
 from udsoncan.BaseService import BaseService
 from udsoncan.common.DidCodec import DidCodec
@@ -32,6 +33,7 @@ from cyclarity_in_vehicle_sdk.protocol.uds.base.uds_utils_base import (
     DEFAULT_UDS_OPERATION_TIMEOUT,
     DEFAULT_UDS_PENDING_TIMEOUT,
     AuthenticationReturnParameter,
+    BusyResponseTimeout,
     DtcInformationData,
     InvalidResponse,
     NegativeResponse,
@@ -88,9 +90,42 @@ class RawBytesCodec(DidCodec):
     def __len__(self) -> int:
         raise DidCodec.ReadAllRemainingData
 
+
+class UDS_Timeouts(BaseModel):
+    send_timeout: float | None = Field(
+        None, description="timeout for a send operation to succeed. None for no timeout.")
+    recv_timeout: float = Field(0.5, description="Timeout for a recv operation to indicate no incoming messages.")
+    sr1_timeout: float = Field(DEFAULT_UDS_OPERATION_TIMEOUT,
+                               description="Timeout for a service to be requested and receive a response.")
+    pending_timeout: float = Field(DEFAULT_UDS_PENDING_TIMEOUT,
+                                   description="Timeout to be updated in case a pending request is received.")
+    busy_timeout: float | None = Field(
+        300, description="Timeout to fail in case a pending is repeatedly transmitted for a long period of time")
+
+    def update(self, timeouts: 'UDS_Timeouts'):
+        """Update the timeout fields only for fields which were explicitly set in the provided timeouts argument.
+
+        Args:
+            timeouts (UDS_Timeouts): an instace of timeout object that indicate all the timeouts to be updated. 
+                In order for a field to be updated the value should have been explicitly set on creation of the UDS_Timeout object provided. all other timeouts will remain with their current value.
+            """
+        for field in timeouts.model_fields_set:
+            new = getattr(timeouts, field)
+            setattr(self, field, new)
+
+
+Default_UDS_Timeouts = UDS_Timeouts(
+    send_timeout = None,
+    recv_timeout = 0.5,
+    sr1_timeout = DEFAULT_UDS_OPERATION_TIMEOUT,
+    pending_timeout = DEFAULT_UDS_PENDING_TIMEOUT,
+    busy_timeout = 300,
+)
+
 class UdsUtils(UdsUtilsBase):
-    data_link_layer: Union[IsoTpCommunicator, DoipCommunicator]
-    attempts: int = Field(default=1, ge=1, description="Number of attempts to perform the UDS operation if no response was received")
+    timeouts: UDS_Timeouts = Field(
+        UDS_Timeouts(),
+        description="Timeouts values to use by default for this UDS session.")
     _crypto_utils: CryptoUtils = CryptoUtils()
 
     def setup(self) -> bool:
@@ -102,12 +137,66 @@ class UdsUtils(UdsUtilsBase):
         """Teardown the library
         """
         self.data_link_layer.close()
-    
-    def session(self, session: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, standard_version: UdsStandardVersion = UdsStandardVersion.ISO_14229_2020) -> SessionControlResultData:
+
+    def update_default_timeouts(self, timeouts: UDS_Timeouts):
+        """  
+        Updates the default timeouts of the current instance.  
+
+        This method takes an instance of `UDS_Timeouts` and updates the current instance's   
+        `timeouts` attribute with the provided values. It overwrites the existing default timeout values.  
+
+        Args:  
+            timeouts (UDS_Timeouts): An instance of `UDS_Timeouts` containing the new timeout values.  
+        """
+        self.timeouts.update(timeouts)
+
+    @contextmanager
+    def temporal_timeouts(self, temporal_timeouts: UDS_Timeouts):
+        """  
+        Temporarily updates the timeouts for a scoped operation.  
+
+        This method temporarily updates the `timeouts` attribute of the current instance with   
+        the provided `temporal_timeouts`. It saves the current timeout values, applies the new values,   
+        and restores the original values after the scoped operation completes.  
+
+        Args:  
+            temporal_timeouts (UDS_Timeouts): An instance of `UDS_Timeouts` containing the temporary timeout values.  
+
+        Yields:  
+            None: This method is intended to be used in a context manager.  
+
+        Example:  
+            Suppose you want to temporarily set specific timeout values for a block of code:  
+
+            ```python  
+            uds_utils # a pre initialized UdsUtils instance 
+
+            print("Original timeouts:", instance.timeouts)  
+
+            # Temporarily update timeouts  
+            with uds_utils.temporal_timeouts(UDS_Timeouts(send_timeout=5.0, recv_timeout=10.0)):  
+                print("Temporary timeouts:", uds_utils.timeouts)  
+                # Perform operations with the temporary timeouts  
+
+            # After the block, original timeouts are restored  
+            print("Restored timeouts:", uds_utils.timeouts)  
+            ```  
+
+            Output:  
+            ```  
+            Original timeouts: UDS_Timeouts(send_timeout=10.0, recv_timeout=20.0)  
+            Temporary timeouts: UDS_Timeouts(send_timeout=5.0, recv_timeout=10.0)  
+            Restored timeouts: UDS_Timeouts(send_timeout=10.0, recv_timeout=20.0)  
+            ```  
+        """
+        old_timeouts = self.timeouts.model_copy()
+        self.timeouts.update(temporal_timeouts)
+        yield
+        self.timeouts = old_timeouts
         """	Diagnostic Session Control
 
         Args:
-            timeout (float): timeout for the UDS operation in seconds
+            timeout (float): Timeout for the UDS operation in seconds (if None use default)
             session (int): session to switch into
             standard_version (UdsStandardVersion, optional): the version of the UDS standard we are interacting with. Defaults to ISO_14229_2020.
             
@@ -116,6 +205,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             SessionControlResultData
@@ -125,14 +215,18 @@ class UdsUtils(UdsUtilsBase):
         interpreted_response = DiagnosticSessionControl.interpret_response(response=response, standard_version=standard_version)
         return interpreted_response.service_data
     
-    def transit_to_session(self, route_to_session: list[SESSION_ACCESS], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, standard_version: UdsStandardVersion = UdsStandardVersion.ISO_14229_2020) -> bool:
+    def transit_to_session(self, route_to_session: list[SESSION_ACCESS], timeout: float | None = None, standard_version: UdsStandardVersion = UdsStandardVersion.ISO_14229_2020) -> bool:
         """Transit to the UDS session according to route
 
         Args:
             route_to_session (list[SESSION_ACCESS]): list of UDS SESSION_ACCESS objects to follow
-            timeout (float): timeout for the UDS operation in seconds
+            timeout (float): Timeout for the UDS operation in seconds (if None use default)
             standard_version (UdsStandardVersion, optional): the version of the UDS standard we are interacting with. Defaults to ISO_14229_2020.
 
+        :raises RuntimeError: If failed to send the request
+        :raises ValueError: If parameters are out of range, missing or wrong type
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
+        
         Returns:
             bool: True if succeeded to transit to the session, False otherwise 
         """
@@ -146,20 +240,20 @@ class UdsUtils(UdsUtilsBase):
                 if session.elevation_info and session.elevation_info.security_algorithm:
                     try:
                         self.security_access(security_algorithm=session.elevation_info.security_algorithm, timeout=timeout)
-                    except Exception as ex:
+                    except (NoResponse, InvalidResponse, NegativeResponse) as ex:
                         self.logger.warning(f"Failed to get security access, continuing without. error: {ex}")
 
-            except Exception as ex:
+            except (NoResponse, InvalidResponse, NegativeResponse) as ex:
                 self.logger.warning(f"Failed to switch to session: {hex(session.id)}, what: {ex}")
                 return False
 
         return True
     
-    def ecu_reset(self, reset_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
+    def ecu_reset(self, reset_type: int, timeout: float | None = None) -> bool:
         """The service "ECU reset" is used to restart the control unit (ECU)
 
         Args:
-            timeout (float): timeout for the UDS operation in seconds
+            timeout (float): Timeout for the UDS operation in seconds (if None use default)
             reset_type (int): type of the reset (1: hard reset, 2: key Off-On Reset, 3: Soft Reset, .. more manufacture specific types may be supported)
 
         :raises RuntimeError: If failed to send the request
@@ -167,6 +261,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             bool: True if ECU request was accepted, False otherwise.
@@ -176,11 +271,11 @@ class UdsUtils(UdsUtilsBase):
         interpreted_response = ECUReset.interpret_response(response=response)
         return interpreted_response.service_data.reset_type_echo == reset_type
 
-    def read_did(self, didlist: Union[int, list[int]], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> list[RdidDataTuple]:
+    def read_did(self, didlist: Union[int, list[int]], timeout: float | None = None) -> list[RdidDataTuple]:
         """	Read Data By Identifier
 
         Args:
-            timeout (float): timeout for the UDS operation in seconds
+            timeout (float): Timeout for the UDS operation in seconds (if None use default)
             didlist (Union[int, list[int]]): List of data identifier to read.
 
         :raises RuntimeError: If failed to send the request
@@ -188,6 +283,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             dict[int, str]: Dictionary mapping the DID (int) with the value returned
@@ -196,11 +292,11 @@ class UdsUtils(UdsUtilsBase):
         response = self._send_and_read_response(request=request, timeout=timeout)
         return self._split_dids(didlist=didlist, data_bytes=response.data)
 
-    def routine_control(self, routine_id: int, control_type: int, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, data: Optional[bytes] = None) -> RoutingControlResponseData:
+    def routine_control(self, routine_id: int, control_type: int, timeout: float | None = None, data: Optional[bytes] = None) -> RoutingControlResponseData:
         """Sends a request for RoutineControl
 
         Args:
-            timeout (float): timeout for the UDS operation in seconds
+            timeout (float): Timeout for the UDS operation in seconds (if None use default)
             routine_id (int): The routine ID
             control_type (int): Service subfunction
             data (Optional[bytes], optional): Optional additional data to provide to the server. Defaults to None.
@@ -210,6 +306,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             RoutingControlResponseData
@@ -219,17 +316,18 @@ class UdsUtils(UdsUtilsBase):
         interpreted_response = RoutineControl.interpret_response(response=response)
         return interpreted_response.service_data
 
-    def tester_present(self, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
+    def tester_present(self, timeout: float | None = None) -> bool:
         """Sends a request for TesterPresent
 
         Args:
-            timeout (float): timeout for the UDS operation in seconds
+            timeout (float): Timeout for the UDS operation in seconds (if None use default)
 
         :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             bool: True if tester preset was accepted successfully. False otherwise
@@ -239,11 +337,11 @@ class UdsUtils(UdsUtilsBase):
         interpreted_response = TesterPresent.interpret_response(response=response)
         return interpreted_response.service_data.subfunction_echo == 0
 
-    def write_did(self, did: int, value: str | bytes, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
+    def write_did(self, did: int, value: str | bytes, timeout: float | None = None) -> bool:
         """Sends a request for WriteDataByIdentifier
 
         Args:
-            timeout (float): timeout for the UDS operation in seconds
+            timeout (float): Timeout for the UDS operation in seconds (if None use default)
             did (int): The data identifier to write
             value (str): the value to write
 
@@ -252,6 +350,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             bool: True if WriteDataByIdentifier request sent successfully, False otherwise
@@ -268,11 +367,11 @@ class UdsUtils(UdsUtilsBase):
         interpreted_response = WriteDataByIdentifier.interpret_response(response=response)
         return interpreted_response.service_data.did_echo == did
     
-    def security_access(self, security_algorithm: Type[SECURITY_ALGORITHM_BASE], timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bool:
+    def security_access(self, security_algorithm: Type[SECURITY_ALGORITHM_BASE], timeout: float | None = None) -> bool:
         """Sends a request for SecurityAccess
 
         Args:
-            timeout (float): timeout for the UDS operation in seconds
+            timeout (float, optional): Timeout for the UDS operation in seconds (if None use default)
             security_algorithm (Type[SECURITY_ALGORITHM_BASE]): security algorithm to use for security access
 
         :raises RuntimeError: If failed to send the request
@@ -280,6 +379,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             bool: True if security access was allowed to the requested level. False otherwise
@@ -305,11 +405,11 @@ class UdsUtils(UdsUtilsBase):
         return interpreted_response.service_data.security_level_echo == security_algorithm.key_subfunction
 
     def request_download(self, address: int, memorysize: int, enc_comp: int = 0, address_format: int = 4,
-                         memorysize_format: int = 4, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> int:
+                         memorysize_format: int = 4, timeout: float | None = None) -> int:
         """Send a Request Download UDS message
 
         Args:
-            timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
+            timeout (float, optional): Timeout for the UDS operation in seconds (if None use default)
             address (int): Block ID or address of the relevant memory region to update.
             memorysize (int): Size of the memory region to update.
             enc_comp (int, optional): Encription and Compression info. Defaults to 0 (no encription and no compression).
@@ -321,6 +421,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             int: Maximum block length for following transfer data.
@@ -339,11 +440,11 @@ class UdsUtils(UdsUtilsBase):
         interpreted_response = RequestDownload.interpret_response(response=response)
         return interpreted_response.service_data.max_length
 
-    def transfer_data(self, seq: int, data: bytes, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> None:
+    def transfer_data(self, seq: int, data: bytes, timeout: float | None = None) -> None:
         """Transfer a block of data as part of Upload or Download session
 
         Args:
-            timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
+            timeout (float, optional): Timeout for the UDS operation in seconds (if None use default)
             seq (int): Sequence nuber of the current TransferData.
             data (bytes): Data to be transfered.
 
@@ -352,6 +453,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
         """
 
         request: Request = TransferData.make_request(sequence_number=seq, data=data)
@@ -361,18 +463,19 @@ class UdsUtils(UdsUtilsBase):
         if resp_seq != seq:
             raise InvalidResponse(f"Unexpected sequence number response {resp_seq}, expected {seq}.")
 
-    def transfer_exit(self, data: bytes | None = None, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> bytes:
+    def transfer_exit(self, data: bytes | None = None, timeout: float | None = None) -> bytes:
         """Finish transfer session
 
         Args:
             data (bytes, optional): Additional optional data to send to the server
-            timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
+            timeout (float, optional): Timeout for the UDS operation in seconds (if None use default)
 
         :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             bytes: The parameter records received from the transfer exit response.
@@ -390,7 +493,7 @@ class UdsUtils(UdsUtilsBase):
                            snapshot_record_number: Optional[int] = None,
                            extended_data_record_number: Optional[int] = None,
                            memory_selection: Optional[int] = None,
-                           timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT,
+                           timeout: float | None = None,
                            standard_version: UdsStandardVersion = UdsStandardVersion.ISO_14229_2020) -> DtcInformationData:
         """Read DTC Information service (0x19)
 
@@ -402,7 +505,7 @@ class UdsUtils(UdsUtilsBase):
             snapshot_record_number (Optional[int], optional): Snapshot record number. Defaults to None.
             extended_data_record_number (Optional[int], optional): Extended data record number. Defaults to None.
             memory_selection (Optional[int], optional): Memory selection for user defined memory DTC. Defaults to None.
-            timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
+            timeout (float, optional): Timeout for the UDS operation in seconds (if None use default)
             standard_version (UdsStandardVersion, optional): the version of the UDS standard we are interacting with. Defaults to ISO_14229_2020.
 
         :raises RuntimeError: If failed to send the request
@@ -410,6 +513,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             DtcInformationData: The DTC information response data containing the requested DTC information
@@ -428,13 +532,13 @@ class UdsUtils(UdsUtilsBase):
         interpreted_response = ReadDTCInformation.interpret_response(response=response, subfunction=subfunction, standard_version=standard_version)
         return interpreted_response.service_data
     
-    def clear_diagnostic_information(self, group: int = 0xFFFFFF, memory_selection: Optional[int] = None, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, standard_version: UdsStandardVersion = UdsStandardVersion.ISO_14229_2020) -> bool:
+    def clear_diagnostic_information(self, group: int = 0xFFFFFF, memory_selection: Optional[int] = None, timeout: float | None = None, standard_version: UdsStandardVersion = UdsStandardVersion.ISO_14229_2020) -> bool:
         """Clear Diagnostic Information service (0x14)
 
         Args:
             group (int, optional): DTC mask ranging from 0 to 0xFFFFFF. 0xFFFFFF means all DTCs. Defaults to 0xFFFFFF.
             memory_selection (Optional[int], optional): Number identifying the respective DTC memory. Only supported in ISO-14229-1:2020 and above. Defaults to None.
-            timeout (float, optional): Timeout for the UDS operation in seconds. Defaults to DEFAULT_UDS_OPERATION_TIMEOUT.
+            timeout (float, optional): Timeout for the UDS operation in seconds (if None use default)
             standard_version (UdsStandardVersion, optional): the version of the UDS standard we are interacting with. Defaults to ISO_14229_2020.
 
         :raises RuntimeError: If failed to send the request
@@ -442,6 +546,7 @@ class UdsUtils(UdsUtilsBase):
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
         :raises NegativeResponse: with error code and code name, If negative response was received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             bool: True if the clear operation was successful, False otherwise
@@ -451,12 +556,12 @@ class UdsUtils(UdsUtilsBase):
         ClearDiagnosticInformation.interpret_response(response=response)
         return True  # If we get here, the operation was successful since no negative response was raised
 
-    def raw_uds_service(self, sid: UdsSid, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT, sub_function: Optional[int] = None, data: Optional[bytes] = None) -> RawUdsResponse:
+    def raw_uds_service(self, sid: UdsSid, timeout: float | None = None, sub_function: Optional[int] = None, data: Optional[bytes] = None) -> RawUdsResponse:
         """sends raw UDS service request and reads response
 
         Args:
             sid (UdsSid): Service ID of the request
-            timeout (float): timeout for the UDS operation in seconds
+            timeout (float): Timeout for the UDS operation in seconds (if None use default)
             sub_function (Optional[int], optional): The service subfunction. Defaults to None.
             data (Optional[bytes], optional): The service data. Defaults to None.
 
@@ -464,6 +569,7 @@ class UdsUtils(UdsUtilsBase):
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             RawUdsResponse: Raw UdsResponse
@@ -477,18 +583,19 @@ class UdsUtils(UdsUtilsBase):
     
     def authentication(self, 
                        params: Type[AuthenticationParamsBase],
-                       timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> AuthenticationReturnParameter:
+                       timeout: float | None = None) -> AuthenticationReturnParameter:
         """Initiate UDS Authentication service sequence 
 
         Args:
             params (Type[AuthenticationParamsBase]): Set of parameters defined for the desired authentication task
-            timeout (float): timeout for the UDS operation in seconds
+            timeout (float): Timeout for the UDS operation in seconds (if None use default)
 
         :raises NotImplementedError: for operations that are not supported yet
         :raises RuntimeError: If failed to send the request
         :raises ValueError: If parameters are out of range, missing or wrong type
         :raises NoResponse: If no response was received
         :raises InvalidResponse: with invalid reason, if invalid response has received
+        :raises BusyResponseTimeout: with causing request and configured timeout if pending for too long
 
         Returns:
             AuthenticationReturnParameter: The results code of the authentication action
@@ -574,7 +681,7 @@ class UdsUtils(UdsUtilsBase):
 
         return AuthenticationReturnParameter(interpreted_response.service_data.return_value)
 
-    def _send_and_read_response(self, request: Request, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> RawUdsResponse:
+    def _send_and_read_response(self, request: Request, timeout: float | None = None) -> RawUdsResponse:
         response = self._send_and_read_raw_response(request=request, timeout=timeout)
         
         if not response.positive:
@@ -582,29 +689,46 @@ class UdsUtils(UdsUtilsBase):
         
         return response
     
-    def _send_and_read_raw_response(self, request: Request, timeout: float = DEFAULT_UDS_OPERATION_TIMEOUT) -> RawUdsResponse:
+    def _send_and_read_raw_response(self, request: Request, timeout: float | None = None) -> RawUdsResponse:
+        uds_timeouts = self.timeouts.model_copy()
+        if timeout is not None:
+            uds_timeouts.send_timeout = timeout
+            uds_timeouts.recv_timeout = timeout
+            uds_timeouts.sr1_timeout = timeout
+        
+        if request.service is None:
+            raise ValueError(f"UDS request {request} have no service assign to it.")
+            
+        req_str = f"{request.service.get_name()}(0x{request.service.request_id():X})"
+            
         raw_response = None
         for i in range(self.attempts):
-            sent_bytes = self.data_link_layer.send(data=request.get_payload(), timeout=timeout)
+            sent_bytes = self.data_link_layer.send(data=request.get_payload(), timeout=uds_timeouts.send_timeout)
             if sent_bytes < len(request.get_payload()):
                 self.logger.error("Failed to send request")
                 raise RuntimeError("Failed to send request")
             
             start = time.time()
+            busy_start = None
+            response_timeout = uds_timeouts.sr1_timeout
             while True:
                 now = time.time()
-                if (now - start) > timeout:
-                    self.logger.debug(f"Timeout reading response for request with SID: {hex(request.service.request_id())}, attempt {i}")
+                if response_timeout is not None and (now - start) > response_timeout:
+                    self.logger.debug(f"Timeout reading response for request {req_str}, attempt {i}")
                     break
+                
+                if busy_start and (now - busy_start) > uds_timeouts.busy_timeout:
+                    self.logger.debug(f"Busy timeout for request {req_str}, attempt {i}")
+                    raise BusyResponseTimeout(f"Pending for response from service  for {uds_timeouts.busy_timeout} seconds, timeout reached.")
 
-                raw_response = self.data_link_layer.recv(recv_timeout=timeout)
+                raw_response = self.data_link_layer.recv(recv_timeout=uds_timeouts.recv_timeout)
 
                 if not raw_response:
-                    self.logger.debug(f"No response for request with SID: {hex(request.service.request_id())}, attempt {i}")
-                    break
+                    self.logger.debug(f"No response for request {req_str}, attempt {i}")
+                    continue
 
                 response = RawUdsResponse.from_payload(payload=raw_response)
-                if not response.valid:
+                if not response.valid or response.service is None:
                     raise InvalidResponse(invalid_reason=response.invalid_reason)
                 
                 if response.service.response_id() != request.service.response_id():
@@ -614,15 +738,17 @@ class UdsUtils(UdsUtilsBase):
                 
                 if not response.positive and response.code == UdsResponseCode.RequestCorrectlyReceived_ResponsePending:
                     self.logger.debug(f"Got error: {response.code_name}, trying to receive again")
-                    start = time.time()
-                    timeout = DEFAULT_UDS_PENDING_TIMEOUT
+                    start: float = time.time()
+                    if not busy_start and uds_timeouts.busy_timeout:
+                        busy_start = start
+                    response_timeout = self.timeouts.pending_timeout
                     continue
                 else:
                     return response
             
 
         if not raw_response:
-            raise NoResponse
+            raise NoResponse(f"timeouts = {uds_timeouts}")
         
         return response
     
