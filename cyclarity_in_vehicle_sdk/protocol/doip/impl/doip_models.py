@@ -9,7 +9,7 @@ class DOIP_VEHICLE_IDENTIFICATION(BaseModel):
     eid: str = Field("This is a unique identification of the DoIP entity")
     gid: str = Field(description="This is a unique identification of a group of DoIP entity")
     further_action_required: int = Field(description="Further action required")
-    vin_gid_sync_status: Optional[int] = Field(description="VIN/GID sync. status")
+    vin_gid_sync_status: Optional[int] = Field(default=None, description="VIN/GID sync. status")
 
     def __str__(self):
         vin_gid_sync_status_str = f", vin gid sync status: {self.vin_gid_sync_status}" if self.vin_gid_sync_status else ""
