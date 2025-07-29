@@ -7,6 +7,7 @@ from cyclarity_in_vehicle_sdk.communication.ip.base.ip_communicator_base import 
 from cyclarity_in_vehicle_sdk.communication.base.communicator_base import CommunicatorType
 
 SOCK_DATA_RECV_AMOUNT = 4096
+SOCK_CONNECT_TIMEOUT = 3
 
 class TcpCommunicator(IpConnectionCommunicatorBase):
     """TCP Communicator. The class provides methods to open, close, send, receive data over a TCP connection.
@@ -131,9 +132,14 @@ class TcpCommunicator(IpConnectionCommunicatorBase):
         """Connects the socket to the destination IP and port.
 
         Returns:
-            bool: rue on successful completion.
+            bool: True on successful completion.
         """
-        self._socket.connect((self.destination_ip.exploded, self.dport))
+        prev_timeout = self._socket.gettimeout()
+        try:
+            self._socket.settimeout(SOCK_CONNECT_TIMEOUT)
+            self._socket.connect((self.destination_ip.exploded, self.dport))
+        finally:
+            self._socket.settimeout(prev_timeout)
         return True
 
     def get_type(self) -> CommunicatorType:

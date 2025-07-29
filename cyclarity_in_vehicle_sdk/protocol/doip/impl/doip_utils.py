@@ -55,6 +55,51 @@ class DoipUtils(ParsableModel):
             tcp_con.close()
         return True
     
+    def initiate_diagnostic_power_mode_req(self, 
+                                          source_address: IPvAnyAddress, 
+                                          source_port: int, 
+                                          target_address: IPvAnyAddress, 
+                                          protocol_version: DoipProtocolVersion = DoipProtocolVersion.DoIP_13400_2012) -> messages.DiagnosticPowerModeResponse | None:
+        """Initiate Diagnostic power mode request
+        Args:
+            source_address (IPvAnyAddress): source IP address
+            source_port (int): source port
+            target_address (IPvAnyAddress): target IP address
+            protocol_version (DoipProtocolVersion, optional): the Doip Protocol Version. Defaults to DoipProtocolVersion.DoIP_13400_2012.
+
+        Returns:
+            messages.DiagnosticPowerModeResponse | None: DiagnosticPowerModeResponse if got a response, None otherwise
+        """
+        message = messages.DiagnosticPowerModeRequest()
+        is_answer_cb = partial(DoipUtils._is_answer, 
+                        expected_source_port=source_port, 
+                        l4_type=LayerType.UdpLayer, 
+                        expected_resp_type=messages.DiagnosticPowerModeResponse)
+        doip_layer_data = self._pack_doip_message(message, protocol_version)
+        packet = Packet()
+        if source_address.version == 4:
+            ip_layer = IPv4Layer(src_addr=str(source_address), dst_addr=str(target_address))
+        else:
+            ip_layer = IPv6Layer(src_addr=str(source_address), dst_addr=str(target_address))
+        packet.add_layer(ip_layer)
+        udp_layer = UdpLayer(src_port=source_port, dst_port=DOIP_PORT)
+        packet.add_layer(udp_layer)
+        doip_layer = PayloadLayer(doip_layer_data)
+        packet.add_layer(doip_layer)
+
+        resp_packet = self.raw_socket.send_receive_packet(packet, is_answer_cb, constants.A_PROCESSING_TIME)
+        if resp_packet:
+            parser = Parser()
+            parser.reset()
+            result = parser.read_message(bytes(resp_packet.get_layer(LayerType.PayloadLayer)))
+            if type(result) is messages.DiagnosticPowerModeResponse:
+                return result
+            elif result:
+                self.logger.warning(
+                    f"Received unexpected DoIP message type {type(result)}. Ignoring"
+                )
+        return None
+    
     def initiate_vehicle_identity_req(self, 
                                       source_address: IPvAnyAddress, 
                                       source_port: int, 
