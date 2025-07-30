@@ -1,6 +1,6 @@
 from types import TracebackType
 from typing import Optional, Type, Union
-
+import subprocess
 import nmcli
 from pydantic import Field
 
@@ -23,6 +23,7 @@ from cyclarity_in_vehicle_sdk.configuration_manager.actions import (
     WifiConnectAction,
     EthInterfaceConfigurationAction,
     CanConfigurationAction,
+    SetAutoFlowLabelAction,
 )
 from pyroute2 import NDB, IPRoute
 from pyroute2.netlink.exceptions import NetlinkError
@@ -71,18 +72,23 @@ class ConfigurationManager(ParsableModel):
             actions = [actions]
 
         for action in actions:
-            if type(action) is IpAddAction:
-                self._configure_ip(action)
-            if type(action) is IpRemoveAction:
-                self._remove_ip(action)
-            if type(action) is CanConfigurationAction:
-                self._configure_can(action)
-            if type(action) is EthInterfaceConfigurationAction:
-                self._configure_eth_interface(action)
-            if type(action) is WifiConnectAction:
-                self._connect_wifi_device(action)
-            if type(action) is CreateVlanAction:
-                self._create_vlan_interface(action)
+            try:
+                if type(action) is IpAddAction:
+                    self._configure_ip(action)
+                if type(action) is IpRemoveAction:
+                    self._remove_ip(action)
+                if type(action) is CanConfigurationAction:
+                    self._configure_can(action)
+                if type(action) is EthInterfaceConfigurationAction:
+                    self._configure_eth_interface(action)
+                if type(action) is WifiConnectAction:
+                    self._connect_wifi_device(action)
+                if type(action) is CreateVlanAction:
+                    self._create_vlan_interface(action)
+                if type(action) is SetAutoFlowLabelAction:
+                    self._set_auto_flow_label(action)
+            except Exception as ex:
+                self.logger.error(f"Failed to configure action: {action.action_type}, error: {ex}")
 
     def get_device_configuration(self) -> DeviceConfiguration:
         """Get the current device configuration
@@ -116,6 +122,16 @@ class ConfigurationManager(ParsableModel):
                 state="up"
             )
 
+    def _set_auto_flow_label(self, auto_flow_label_params: SetAutoFlowLabelAction):
+        try:
+            if auto_flow_label_params.auto_flow_label:
+                res = subprocess.run(["sysctl", "-w", "net.ipv6.auto_flowlabels=1"], check=True, capture_output=True)
+            else:
+                res = subprocess.run(["sysctl", "-w", "net.ipv6.auto_flowlabels=0"], check=True, capture_output=True)  
+            self.logger.info(f"Auto flow label status: {res.stdout.decode('utf-8')}")
+        except subprocess.CalledProcessError as ex:
+            self.logger.error(f"Failed to set auto flow label: {ex}")
+        
     def _connect_wifi_device(self, wifi_connect_params: WifiConnectAction):
         try:
             nmcli.device.wifi_connect(ssid=wifi_connect_params.ssid,

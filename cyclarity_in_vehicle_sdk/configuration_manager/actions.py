@@ -49,3 +49,10 @@ class CreateVlanAction(ConfigurationAction):
     if_name: str = Field(description="The new vlan interface name")
     if_link: str = Field(description="The physical interface to link to")
     vlan_id: int = Field(description="The vlan ID")
+    
+class SetAutoFlowLabelAction(ConfigurationAction):
+    """Action for setting the auto flow label, this setting in Linux is a sysctl that 
+    controls whether the kernel automatically assigns random IPv6 flow labels to outgoing packets.
+    """
+    action_type: Literal['set_auto_flow_label'] = 'set_auto_flow_label'
+    auto_flow_label: bool = Field(description="The auto flow label")
